@@ -125,7 +125,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       },
       semanticTokensProvider: {
         legend: {
-          tokenTypes: ["variable"],
+          tokenTypes: ["variable", "property", "enumMember"],
           tokenModifiers: [],
         },
         full: true,
