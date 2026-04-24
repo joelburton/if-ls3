@@ -316,5 +316,46 @@ find the parent for nesting.
   autosave means users already get near-real-time updates without explicit saves.
 - Find references (requires compiler-side reference tracking in `expressp.c`)
 - Signature help for routine calls
-- Semantic token highlighting
-- Rename symbol
+- ~~Semantic token highlighting~~ — done (locals, globals, constants)
+- Rename symbol — becomes straightforward once find-references exists; caveat
+  that references inside inactive `#IfDef` branches won't be seen by the
+  compiler and so won't be renamed. Worth documenting but not a blocker.
+
+### Unknown property warnings + Pragma:Prop
+
+Warn when an object uses a property name that isn't declared anywhere as a
+`Property individual` (or built-in library property). The primary value is
+catching typos in subclass instances:
+
+```inform6
+Class C
+  with foo 10;
+
+C B with foof 20;    ! warning: unknown property 'foof'
+```
+
+Implementation is entirely LS-side — no compiler changes needed:
+- Known properties = `symbols[]` entries with type `PROPERTY_T` or
+  `INDIVIDUAL_PROPERTY_T`
+- For each `objects[].properties[]` entry, check against that set
+- Unknown name → Warning diagnostic at the property's line
+
+**Escape hatch — `! Pragma:Prop`**: for authors who don't want the ceremony
+of `Property individual` for every informal property, a trailing pragma
+suppresses the warning for that line and adds the name to the known set
+for the file:
+
+```inform6
+Object O
+  with
+    informal_prop 23,    ! Pragma:Prop
+;
+```
+
+Two tiers of "known":
+- **Declared** (`Property individual foo`) — formal, cross-file, documentable
+- **Pragmaed** (`! Pragma:Prop`) — local acknowledgment, suppress warning
+- **Neither** → warn (probably a typo)
+
+The source-file scanning already done for `#IfDef` warnings is the right
+place to collect `Pragma:Prop` annotations in the same pass.
