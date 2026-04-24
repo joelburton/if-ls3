@@ -30,9 +30,17 @@ libraryPath: ~/if/puny/lib
 
 # Entry-point file for compilation (relative to workspace root)
 mainFile: horror.inf
+
+# Compiler switches (space-separated; no quoting needed for typical switch strings)
+switches: -~S
+
+# Defines passed as $NAME or $NAME=VALUE (each becomes a $... argument)
+defines:
+  - GRAMMAR_META_FLAG=1
+  - DEBUG
 ```
 
-Existing fields from the old server (`defines`, `target`, `externalDefines`)
+Existing fields from the old server (`target`, `externalDefines`)
 are ignored but harmless if present.
 
 ## Directory structure

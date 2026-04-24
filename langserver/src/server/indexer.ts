@@ -22,7 +22,9 @@ export function reindex(
   const mainFilePath = path.resolve(workspaceRoot, config.mainFile);
 
   const args: string[] = ["-y"];
+  if (config.switches) args.push(...config.switches.trim().split(/\s+/));
   if (config.libraryPath) args.push(`+${config.libraryPath}`);
+  for (const def of config.defines) args.push(`$${def}`);
   args.push(mainFilePath);
 
   spawnCount += 1;

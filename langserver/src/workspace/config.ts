@@ -7,6 +7,8 @@ export interface Inform6Config {
   compiler: string;
   libraryPath: string;
   mainFile: string;
+  switches: string;
+  defines: string[];
 }
 
 function expandTilde(p: string): string {
@@ -22,18 +24,25 @@ export function loadConfig(workspaceRoot: string): Inform6Config | null {
   const configPath = path.join(workspaceRoot, "inform6rc.yaml");
   if (!fs.existsSync(configPath)) return null;
 
-  let raw: Record<string, string>;
+  let raw: Record<string, unknown>;
   try {
-    raw = yaml.load(fs.readFileSync(configPath, "utf-8")) as Record<string, string>;
+    raw = yaml.load(fs.readFileSync(configPath, "utf-8")) as Record<string, unknown>;
   } catch {
     return null;
   }
 
   if (!raw || typeof raw !== "object") return null;
 
+  const rawDefines = raw["defines"];
+  const defines = Array.isArray(rawDefines)
+    ? rawDefines.map(String)
+    : [];
+
   return {
-    compiler: expandTilde(raw["compiler"] ?? "inform6"),
-    libraryPath: expandTilde(raw["libraryPath"] ?? ""),
-    mainFile: raw["mainFile"] ?? "",
+    compiler: expandTilde(String(raw["compiler"] ?? "inform6")),
+    libraryPath: expandTilde(String(raw["libraryPath"] ?? "")),
+    mainFile: String(raw["mainFile"] ?? ""),
+    switches: String(raw["switches"] ?? ""),
+    defines,
   };
 }
