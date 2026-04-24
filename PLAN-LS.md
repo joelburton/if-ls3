@@ -186,7 +186,8 @@ find the parent for nesting.
 ## Added during phase-2 (not in original plan)
 
 - ✅ **Action navigation**: `Jump:` (action label), `##Jump` (action value),
-  `<Jump ...>` / `<<Jump ...>>` (action statements) all navigate to `JumpSub`.
+  `<Jump ...>` / `<<Jump ...>>` (action statements), and `* noun -> Jump`
+  (Verb directive grammar) all navigate to `JumpSub`.
   `<` is distinguished from comparisons (`x<a`) by checking for a non-identifier
   character before the `<`. Paren forms `<<(x)>>` are naturally excluded.
   No fallthrough to a routine named `Jump` — action context is unambiguous.

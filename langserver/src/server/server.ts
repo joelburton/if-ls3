@@ -33,6 +33,16 @@ function log(msg: string): void {
 }
 
 /**
+ * Returns true if `word` at `wordStart` is an action name following `->` in a
+ * Verb directive grammar line (e.g. `* noun -> Foozle`).
+ */
+function isActionArrow(line: string, wordStart: number): boolean {
+  let i = wordStart - 1;
+  while (i >= 0 && line[i] === " ") i--;
+  return i >= 1 && line[i] === ">" && line[i - 1] === "-";
+}
+
+/**
  * Returns true if `word` at `wordStart` is the action name in `<Word ...>` or
  * `<<Word ...>>`. Distinguished from comparison expressions (e.g. `x<a`) by
  * checking that the character immediately before the `<` is not an identifier
@@ -119,7 +129,8 @@ connection.onDefinition((params: DefinitionParams) => {
   //   an identifier character — statements start at whitespace/line-start.
   const isActionRef = hit.lineText[hit.end] === ":"
     || (hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#")
-    || isActionAngleBracket(hit.lineText, hit.start);
+    || isActionAngleBracket(hit.lineText, hit.start)
+    || isActionArrow(hit.lineText, hit.start);
   return findDefinition(currentIndex, hit.word, objCtx, isActionRef);
 });
 
