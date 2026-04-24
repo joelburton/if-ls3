@@ -285,6 +285,10 @@ static int current, lookahead,          /* The latest character read, and    */
     lookahead2, lookahead3;             /* the three characters following it */
                                         /* (zero means end-of-stream)        */
 
+static int seen_code_on_line;            /* For doc comments: TRUE once a
+                                           non-whitespace, non-comment char
+                                           has been seen on the current line */
+
 static int pipeline_made;               /* Whether or not the pipeline of
                                            characters has been constructed
                                            yet (this pass)                   */
@@ -1208,6 +1212,7 @@ static void reached_new_line(void)
 {
     /*  Called to signal that a new line has been reached in the source code */
 
+    seen_code_on_line = FALSE;
     forerrors_pointer = 0;
 
     CurrentLB->source_line++;
@@ -1867,6 +1872,13 @@ extern void get_next_token(void)
         }
     }
 
+    if (index_switch
+        && (e != WHITESPACE_CODE) && (e != COMMENT_CODE)
+        && (e != EOF_CODE) && (e != 0))
+    {   seen_code_on_line = TRUE;
+        index_doc_nontrivial_token();
+    }
+
     circle[circle_position].location = get_current_debug_location();
 
     switch(e)
@@ -1879,8 +1891,35 @@ extern void get_next_token(void)
             goto StartTokenAgain;
 
         case COMMENT_CODE:
-            while ((lookahead != '\n') && (lookahead != '\r') && (lookahead != 0))
-                (*get_next_char)();
+            if (index_switch && lookahead == '!'
+                && (lookahead2 == ' ' || lookahead2 == '\t'))
+            {   /* "!! " doc comment — exactly two !'s then a space */
+                char doc_line_buf[512];
+                int doc_pos = 0;
+                (*get_next_char)();  /* consume second ! */
+                while ((lookahead != '\n') && (lookahead != '\r')
+                       && (lookahead != 0) && (doc_pos < 510))
+                {   doc_line_buf[doc_pos++] = (*get_next_char)();
+                }
+                /* Skip any remaining chars on this line */
+                while ((lookahead != '\n') && (lookahead != '\r')
+                       && (lookahead != 0))
+                    (*get_next_char)();
+                doc_line_buf[doc_pos] = '\0';
+
+                if (!seen_code_on_line)
+                    index_doc_comment_line(doc_line_buf);
+                else
+                {   brief_location loc = get_brief_location(&ErrorReport);
+                    index_doc_comment_trailing(doc_line_buf,
+                        loc.line_number);
+                }
+            }
+            else
+            {   while ((lookahead != '\n') && (lookahead != '\r')
+                       && (lookahead != 0))
+                    (*get_next_char)();
+            }
             goto StartTokenAgain;
 
         case EOF_CODE:

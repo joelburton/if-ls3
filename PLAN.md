@@ -53,54 +53,25 @@ choice.
   name, array_type (byte/word/string/table/buffer), size, is_static, file, line
 - [x] No new hooks needed — reads existing compiler data structures directly
 
-### 1e. Doc comments
+### 1e. Doc comments — DONE
 
-Introduce a doc-comment convention for Inform6 using `!!` (double-bang).
-Two forms:
+Doc comment convention for Inform6 using `!! ` (two bangs + space).
+The space requirement filters out decorative `!!!!!!` lines and
+commented-out ICL directives like `!!%`.
 
-**Form 1 — preceding lines:**
-```inform6
-!! This is a doc comment for MyFunc.
-!! It can span multiple consecutive !! lines.
-[ MyFunc a b; ... ];
-```
-Must be `!!` at the start of the line (ignoring leading whitespace), with
-no non-comment/non-blank lines between the comment block and the definition.
-Blank lines between the `!!` block and the definition are fine — the buffer
-is only cleared when a non-blank, non-comment line is encountered that isn't
-the definition itself.
-
-**Form 2 — trailing on definition line:**
-```inform6
-Constant FOO = 42;    !! This is a doc comment for FOO
-```
-Must start and end on the same line as the identifier's definition.
-
-**Implementation:**
-
-Hook into the lexer (`lexer.c`), which currently discards all comments.
-Add two buffers:
-
-1. *Preceding doc buffer* — when the lexer sees a `!!` comment on its own
-   line, append to buffer. Clear on any non-`!!`, non-blank line. When
-   `index.c` records a definition, consume the buffer.
-
-2. *Trailing doc buffer* — when the lexer sees `!!` after code on the same
-   line, stash it with the line number. When `index.c` records a definition
-   whose start line matches, attach it. **Fallback:** if the lexer hook
-   proves too tangled, trailing doc comments can be found by post-processing
-   — the JSON already has file + line for every symbol, so the consumer can
-   scan that source line for `!!` directly.
-
-Both forms are purely additive — buffering data that's currently discarded.
-No parser changes needed, just lexer + index. This is done at the compiler
-level (not the language server) so other tools can benefit from it via `-y`.
-
-Target JSON:
-```json
-{"name": "MyFunc", "type": "routine", ..., "doc": "This is a doc comment for MyFunc."}
-{"name": "FOO", "type": "constant", ..., "doc": "This is a doc comment for FOO"}
-```
+- [x] **Form 1 — preceding lines:** `!! ` lines before a definition,
+  with blank lines allowed between comment block and definition.
+  Buffer cleared when a non-blank, non-comment token is encountered.
+- [x] **Form 2 — trailing on same line:** `!! ` after code on the
+  definition line (e.g., `Constant FOO = 42;  !! doc for FOO`).
+  Stored in a persistent list, looked up by file+line at output time.
+- [x] Lexer hook in `lexer.c`: detects `!! ` (checks `lookahead2`
+  for space/tab), captures text, calls `index_doc_comment_line()`
+  or `index_doc_comment_trailing()`
+- [x] Doc attached to routines, objects, and all symbols (via
+  `assign_symbol_base()` hook)
+- [x] `"doc"` field in JSON for routines[], objects[], symbols[],
+  globals[], arrays[]
 
 ### 1f. Error output in JSON
 

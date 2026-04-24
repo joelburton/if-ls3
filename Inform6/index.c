@@ -23,6 +23,7 @@ typedef struct index_routine_s {
     int32 end_line;           /* line number of closing ] */
     int locals_start;         /* index into locals_pool */
     int locals_count;
+    char *doc;                /* doc comment, or NULL */
 } index_routine;
 
 static index_routine *routines_info;
@@ -53,6 +54,7 @@ typedef struct index_object_s {
     int attrs_count;
     int props_start;           /* index into obj_props_pool */
     int props_count;
+    char *doc;                 /* doc comment, or NULL */
 } index_object;
 
 static index_object *objects_info;
@@ -78,6 +80,156 @@ static char *index_strdup(const char *s)
     if (!copy) fatalerror("out of memory in index");
     memcpy(copy, s, len + 1);
     return copy;
+}
+
+/* --------------------------------------------------------------------- */
+/*   Doc comment buffers                                                 */
+/*                                                                       */
+/*   Preceding doc: !! lines on their own line, before a definition.     */
+/*   Trailing doc: !! after code on the same line as a definition.       */
+/* --------------------------------------------------------------------- */
+
+#define MAX_DOC_BUFFER 4096
+
+static char *doc_buffer;          /* preceding doc comment text */
+static int doc_buffer_len;
+static int doc_fresh;             /* TRUE if no real tokens since last !! */
+
+static char *trailing_doc_text;   /* trailing doc comment text */
+static int32 trailing_doc_line;   /* line number of the trailing doc */
+static int trailing_doc_file;     /* file index of the trailing doc */
+
+/* List of all trailing doc comments for lookup at output time */
+#define MAX_TRAILING_DOCS 256
+typedef struct trailing_doc_s {
+    char *text;
+    int32 line;
+    int file_index;
+} trailing_doc_entry;
+static trailing_doc_entry *trailing_docs;
+static int trailing_docs_count;
+
+static memory_list doc_buffer_memlist;
+static memory_list trailing_doc_memlist;
+static memory_list trailing_docs_list_memlist;
+
+/* Parallel array for symbol doc comments, indexed by symbol number */
+#define MAX_SYMBOL_DOCS 4096
+static char **symbol_docs;
+static memory_list symbol_docs_memlist;
+
+static char *index_consume_doc(int32 def_line);
+
+extern void index_note_symbol_doc(int symbol)
+{   char *doc;
+    brief_location loc;
+    if (symbol < 0) return;
+    loc = get_brief_location(&ErrorReport);
+    doc = index_consume_doc(loc.line_number);
+    if (!doc) return;
+    ensure_memory_list_available(&symbol_docs_memlist, symbol + 1);
+    if (symbol_docs[symbol]) free(symbol_docs[symbol]);
+    symbol_docs[symbol] = doc;
+}
+
+extern void index_doc_comment_line(const char *text)
+{   int len;
+
+    if (!doc_fresh && doc_buffer_len > 0)
+    {   /* A non-doc token was seen since the last !! line — stale buffer */
+        doc_buffer_len = 0;
+    }
+    doc_fresh = TRUE;
+
+    len = strlen(text);
+    /* Skip leading whitespace in the comment text */
+    while (len > 0 && (text[0] == ' ' || text[0] == '\t'))
+    {   text++; len--;
+    }
+    /* Trim trailing whitespace */
+    while (len > 0 && (text[len-1] == ' ' || text[len-1] == '\t'
+           || text[len-1] == '\n' || text[len-1] == '\r'))
+        len--;
+
+    if (len == 0) return;
+
+    /* Append to doc buffer (with newline separator if not first line) */
+    ensure_memory_list_available(&doc_buffer_memlist,
+        doc_buffer_len + len + 2);
+    if (doc_buffer_len > 0)
+        doc_buffer[doc_buffer_len++] = '\n';
+    memcpy(doc_buffer + doc_buffer_len, text, len);
+    doc_buffer_len += len;
+    doc_buffer[doc_buffer_len] = '\0';
+}
+
+extern void index_doc_comment_trailing(const char *text, int32 line)
+{   int len = strlen(text);
+    /* Skip leading whitespace */
+    while (len > 0 && (text[0] == ' ' || text[0] == '\t'))
+    {   text++; len--;
+    }
+    /* Trim trailing whitespace */
+    while (len > 0 && (text[len-1] == ' ' || text[len-1] == '\t'
+           || text[len-1] == '\n' || text[len-1] == '\r'))
+        len--;
+
+    if (len == 0) return;
+
+    ensure_memory_list_available(&trailing_doc_memlist, len + 1);
+    memcpy(trailing_doc_text, text, len);
+    trailing_doc_text[len] = '\0';
+    trailing_doc_line = line;
+    {   brief_location loc = get_brief_location(&ErrorReport);
+        trailing_doc_file = loc.file_index;
+    }
+
+    /* Also store in the persistent list for lookup at output time */
+    ensure_memory_list_available(&trailing_docs_list_memlist,
+        trailing_docs_count + 1);
+    trailing_docs[trailing_docs_count].text = index_strdup(trailing_doc_text);
+    trailing_docs[trailing_docs_count].line = line;
+    trailing_docs[trailing_docs_count].file_index = trailing_doc_file;
+    trailing_docs_count++;
+}
+
+extern void index_doc_nontrivial_token(void)
+{   doc_fresh = FALSE;
+}
+
+/* Look up a trailing doc comment by file and line number */
+static const char *find_trailing_doc(int file_index, int32 line)
+{   int i;
+    for (i = 0; i < trailing_docs_count; i++)
+    {   if (trailing_docs[i].line == line
+            && trailing_docs[i].file_index == file_index)
+            return trailing_docs[i].text;
+    }
+    return NULL;
+}
+
+/* Consume and return the doc comment for a definition.
+   Returns a malloc'd string, or NULL if none. Caller must free. */
+static char *index_consume_doc(int32 def_line)
+{   char *result = NULL;
+
+    /* Check trailing doc first — if it's on the same line, use it */
+    if (trailing_doc_text[0] != '\0' && trailing_doc_line == def_line)
+    {   result = index_strdup(trailing_doc_text);
+        trailing_doc_text[0] = '\0';
+        trailing_doc_line = 0;
+        doc_buffer_len = 0;
+        return result;
+    }
+
+    /* Check preceding doc buffer */
+    if (doc_buffer_len > 0)
+    {   result = index_strdup(doc_buffer);
+        doc_buffer_len = 0;
+        return result;
+    }
+
+    return NULL;
 }
 
 /* Pending attribute/property names for current object being parsed */
@@ -160,6 +312,7 @@ extern void index_note_routine(char *name, int embedded_flag, int r_symbol)
     r->line = get_brief_location(&ErrorReport);
     r->locals_start = locals_pool_count;
     r->locals_count = no_locals;
+    r->doc = index_consume_doc(r->line.line_number);
 
     ensure_memory_list_available(&locals_pool_memlist,
         locals_pool_count + no_locals);
@@ -183,9 +336,14 @@ extern void index_note_routine_end(void)
 /*   Capture object info during parsing                                      */
 /* ------------------------------------------------------------------------- */
 
+static char *pending_object_doc;
+
 extern void index_reset_object_props(void)
-{   pending_attrs_count = 0;
+{   brief_location loc = get_brief_location(&ErrorReport);
+    pending_attrs_count = 0;
     pending_props_count = 0;
+    if (pending_object_doc) free(pending_object_doc);
+    pending_object_doc = index_consume_doc(loc.line_number);
 }
 
 extern void index_note_attribute(char *name)
@@ -216,6 +374,8 @@ extern void index_note_object(char *name, int symbol, int is_class,
     o->parent = parent;
     o->line = start;
     o->end_line = loc.line_number;
+    o->doc = pending_object_doc;
+    pending_object_doc = NULL;
 
     /* Copy pending attributes */
     o->attrs_start = obj_attrs_pool_count;
@@ -288,6 +448,18 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
         }
+        {   const char *doc = NULL;
+            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
+                && symbol_docs[i][0] != '\0')
+                doc = symbol_docs[i];
+            if (!doc && symbols[i].line.file_index > 0)
+                doc = find_trailing_doc(symbols[i].line.file_index,
+                    symbols[i].line.line_number);
+            if (doc)
+            {   printf(", \"doc\": ");
+                json_print_escaped_string(doc);
+            }
+        }
         printf("}");
     }
     printf("\n  ],\n");
@@ -316,6 +488,11 @@ extern void index_output_json(void)
                 (int)r->line.line_number);
             if (r->end_line > 0)
                 printf(", \"end_line\": %d", (int)r->end_line);
+        }
+
+        if (r->doc)
+        {   printf(", \"doc\": ");
+            json_print_escaped_string(r->doc);
         }
 
         printf(", \"locals\": [");
@@ -378,6 +555,11 @@ extern void index_output_json(void)
         }
         printf("]");
 
+        if (o->doc)
+        {   printf(", \"doc\": ");
+            json_print_escaped_string(o->doc);
+        }
+
         printf(", \"properties\": [");
         for (j = 0; j < o->props_count; j++)
         {   if (j > 0) printf(", ");
@@ -409,6 +591,18 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
         }
+        {   const char *doc = NULL;
+            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
+                && symbol_docs[i][0] != '\0')
+                doc = symbol_docs[i];
+            if (!doc && symbols[i].line.file_index > 0)
+                doc = find_trailing_doc(symbols[i].line.file_index,
+                    symbols[i].line.line_number);
+            if (doc)
+            {   printf(", \"doc\": ");
+                json_print_escaped_string(doc);
+            }
+        }
         printf("}");
     }
     printf("\n  ],\n");
@@ -438,6 +632,18 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[sym].line.line_number);
         }
+        {   const char *doc = NULL;
+            if (sym < (int)symbol_docs_memlist.count && symbol_docs[sym]
+                && symbol_docs[sym][0] != '\0')
+                doc = symbol_docs[sym];
+            if (!doc && symbols[sym].line.file_index > 0)
+                doc = find_trailing_doc(symbols[sym].line.file_index,
+                    symbols[sym].line.line_number);
+            if (doc)
+            {   printf(", \"doc\": ");
+                json_print_escaped_string(doc);
+            }
+        }
         printf("}");
     }
     printf("\n  ]\n");
@@ -457,6 +663,12 @@ extern void init_index_vars(void)
     obj_props_pool = NULL;
     pending_attrs = NULL;
     pending_props = NULL;
+    doc_buffer = NULL;
+    trailing_doc_text = NULL;
+    symbol_docs = NULL;
+    trailing_docs = NULL;
+    pending_object_doc = NULL;
+    trailing_docs_count = 0;
     routines_count = 0;
     locals_pool_count = 0;
     objects_info_count = 0;
@@ -464,6 +676,9 @@ extern void init_index_vars(void)
     obj_props_pool_count = 0;
     pending_attrs_count = 0;
     pending_props_count = 0;
+    doc_buffer_len = 0;
+    doc_fresh = FALSE;
+    trailing_doc_line = 0;
 }
 
 extern void index_begin_pass(void)
@@ -474,6 +689,10 @@ extern void index_begin_pass(void)
     obj_props_pool_count = 0;
     pending_attrs_count = 0;
     pending_props_count = 0;
+    doc_buffer_len = 0;
+    doc_fresh = FALSE;
+    trailing_doc_line = 0;
+    trailing_docs_count = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -498,16 +717,32 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&pending_props_memlist,
         sizeof(char *), 64,
         (void **)&pending_props, "index pending props");
+    initialise_memory_list(&doc_buffer_memlist,
+        sizeof(char), MAX_DOC_BUFFER,
+        (void **)&doc_buffer, "index doc buffer");
+    initialise_memory_list(&trailing_doc_memlist,
+        sizeof(char), 512,
+        (void **)&trailing_doc_text, "index trailing doc");
+    initialise_memory_list(&symbol_docs_memlist,
+        sizeof(char *), MAX_SYMBOL_DOCS,
+        (void **)&symbol_docs, "index symbol docs");
+    initialise_memory_list(&trailing_docs_list_memlist,
+        sizeof(trailing_doc_entry), MAX_TRAILING_DOCS,
+        (void **)&trailing_docs, "index trailing docs");
 }
 
 extern void index_free_arrays(void)
 {   int i;
     for (i = 0; i < routines_count; i++)
-        free(routines_info[i].name);
+    {   free(routines_info[i].name);
+        if (routines_info[i].doc) free(routines_info[i].doc);
+    }
     for (i = 0; i < locals_pool_count; i++)
         free(locals_pool[i]);
     for (i = 0; i < objects_info_count; i++)
-        free(objects_info[i].name);
+    {   free(objects_info[i].name);
+        if (objects_info[i].doc) free(objects_info[i].doc);
+    }
     for (i = 0; i < obj_attrs_pool_count; i++)
         free(obj_attrs_pool[i]);
     for (i = 0; i < obj_props_pool_count; i++)
@@ -517,6 +752,11 @@ extern void index_free_arrays(void)
         free(pending_attrs[i]);
     for (i = 0; i < pending_props_count; i++)
         free(pending_props[i]);
+    for (i = 0; i < (int)symbol_docs_memlist.count; i++)
+        if (symbol_docs[i]) free(symbol_docs[i]);
+    for (i = 0; i < trailing_docs_count; i++)
+        free(trailing_docs[i].text);
+    if (pending_object_doc) free(pending_object_doc);
     deallocate_memory_list(&routines_info_memlist);
     deallocate_memory_list(&locals_pool_memlist);
     deallocate_memory_list(&objects_info_memlist);
@@ -524,4 +764,8 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&obj_props_pool_memlist);
     deallocate_memory_list(&pending_attrs_memlist);
     deallocate_memory_list(&pending_props_memlist);
+    deallocate_memory_list(&doc_buffer_memlist);
+    deallocate_memory_list(&trailing_doc_memlist);
+    deallocate_memory_list(&symbol_docs_memlist);
+    deallocate_memory_list(&trailing_docs_list_memlist);
 }

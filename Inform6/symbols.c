@@ -757,6 +757,8 @@ static void assign_symbol_base(int index, int32 value, int type)
     {   symbols[index].flags &= (~UNKNOWN_SFLAG);
         if (is_systemfile()) symbols[index].flags |= INSF_SFLAG;
         symbols[index].line = get_brief_location(&ErrorReport);
+        if (index_switch)
+            index_note_symbol_doc(index);
     }
 }
 

@@ -2557,6 +2557,10 @@ extern void  index_note_attribute(char *name);
 extern void  index_note_property(char *name);
 extern void  index_note_object(char *name, int symbol, int is_class,
                  int parent, brief_location start);
+extern void  index_doc_comment_line(const char *text);
+extern void  index_doc_comment_trailing(const char *text, int32 line);
+extern void  index_doc_nontrivial_token(void);
+extern void  index_note_symbol_doc(int symbol);
 extern void  index_output_json(void);
 
 /* ------------------------------------------------------------------------- */
