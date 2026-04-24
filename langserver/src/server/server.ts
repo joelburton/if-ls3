@@ -8,6 +8,8 @@ import {
   DefinitionParams,
   HoverParams,
   DocumentSymbolParams,
+  WorkspaceSymbolParams,
+  CompletionParams,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
@@ -18,6 +20,8 @@ import { pushDiagnostics } from "../features/diagnostics";
 import { findDefinition } from "../features/definition";
 import { findHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
+import { getWorkspaceSymbols } from "../features/workspaceSymbols";
+import { getCompletions } from "../features/completions";
 import { wordAtPosition, objectBeforeDot } from "../features/wordAtPosition";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -109,6 +113,10 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       definitionProvider: true,
       hoverProvider: true,
       documentSymbolProvider: true,
+      workspaceSymbolProvider: true,
+      completionProvider: {
+        triggerCharacters: ["."],
+      },
     },
   };
 });
@@ -178,6 +186,22 @@ connection.onHover((params: HoverParams) => {
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {
   if (!currentIndex) return [];
   return getDocumentSymbols(currentIndex, params.textDocument.uri);
+});
+
+connection.onWorkspaceSymbol((params: WorkspaceSymbolParams) => {
+  if (!currentIndex) return [];
+  return getWorkspaceSymbols(currentIndex, params.query);
+});
+
+connection.onCompletion((params: CompletionParams) => {
+  if (!currentIndex) return null;
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+
+  const lines = doc.getText().split("\n");
+  const lineText = lines[params.position.line] ?? "";
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  return getCompletions(currentIndex, filePath, params.position, lineText);
 });
 
 documents.listen(connection);

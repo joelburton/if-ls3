@@ -195,6 +195,18 @@ find the parent for nesting.
   workspace root (e.g. `small.inf:12` not `/Users/joel/.../small.inf:12`).
 - ✅ **Async compiler spawn**: `spawnSync` replaced with async `spawn` so
   hover/definition/etc. remain responsive during the ~1–2 s compile window.
+- ✅ **Grammar action refs**: compiler emits `grammar_action_refs[]` (file+line
+  positions of action names after `->` in Verb/Extend grammar lines). The LS
+  uses these to distinguish grammar arrows from array-operator `-->` and
+  property-access `->`, preventing false action navigation (e.g. `Array x --> Foozle`
+  no longer jumps to `FoozleSub`).
+- ✅ **Workspace symbol search** (`Cmd+T`): case-insensitive substring match
+  over routines, objects/classes, globals, constants, and arrays. Embedded
+  routines are skipped (they appear under their parent in the document outline).
+- ✅ **Completions**: two modes — dot-triggered (`ObjName.`) returns the
+  object's properties, private properties, and attributes; general completion
+  returns locals of the enclosing routine followed by all routines (with
+  parameter list as detail), objects, globals, constants, and arrays.
 
 ## Known limitations / deferred
 
@@ -209,9 +221,7 @@ find the parent for nesting.
   on-disk content, so save-triggered reindex is the right model. VS Code
   autosave means users already get near-real-time updates without explicit saves.
 - Find references (requires compiler-side reference tracking in `expressp.c`)
-- Completions (scope-aware: locals + globals + object properties)
 - Signature help for routine calls
 - Semantic token highlighting
-- Workspace symbol search
 - Rename symbol
 - Keyword/operator hover table
