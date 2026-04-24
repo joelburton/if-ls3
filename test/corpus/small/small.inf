@@ -66,6 +66,7 @@ Constant NOT_SET_CONST;
 
 [ Initialise;
     location = TheRoom;
+    if (true) { FoodFood() };
 ];
 
 [ MyScopeFunc;

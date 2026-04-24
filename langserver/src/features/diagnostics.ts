@@ -23,6 +23,7 @@ export function pushDiagnostics(
   previousUris: Set<string>,
 ): Set<string> {
   const byUri = new Map<string, Diagnostic[]>();
+  const fileLines = new Map<string, string[]>();  // path → lines cache
 
   // --- Compiler errors (from all compilations) ---
   for (const { index } of compilations) {
@@ -36,11 +37,34 @@ export function pushDiagnostics(
           : DiagnosticSeverity.Error;
 
       const line = Math.max(0, error.line - 1);
+
+      // Try to narrow the squiggle to just the quoted name in the error
+      // message (e.g. 'No such constant as "FoodFood"') rather than the
+      // whole line.
+      let startChar = 0;
+      let endChar = Number.MAX_SAFE_INTEGER;
+      const nameMatch = /"([^"]+)"/.exec(error.message);
+      if (nameMatch) {
+        if (!fileLines.has(error.file)) {
+          try {
+            fileLines.set(error.file, fs.readFileSync(error.file, "utf-8").split("\n"));
+          } catch {
+            fileLines.set(error.file, []);
+          }
+        }
+        const srcLine = fileLines.get(error.file)![line] ?? "";
+        const col = srcLine.indexOf(nameMatch[1]);
+        if (col !== -1) {
+          startChar = col;
+          endChar = col + nameMatch[1].length;
+        }
+      }
+
       byUri.get(uri)!.push({
         severity,
         range: {
-          start: { line, character: 0 },
-          end: { line, character: Number.MAX_SAFE_INTEGER },
+          start: { line, character: startChar },
+          end: { line, character: endChar },
         },
         message: error.message,
         source: "inform6",

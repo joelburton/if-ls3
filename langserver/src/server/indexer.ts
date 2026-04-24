@@ -19,7 +19,10 @@ export function reindex(
   const args: string[] = ["-y"];
   if (fileConfig.switches) args.push(...fileConfig.switches.trim().split(/\s+/));
   if (fileConfig.libraryPath) args.push(`+${fileConfig.libraryPath}`);
-  for (const def of fileConfig.defines) args.push(`$${def}`);
+  for (const def of fileConfig.defines) {
+    args.push("--define");
+    args.push(def.includes("=") ? def : `${def}=1`);
+  }
   args.push(fileConfig.mainFile);
 
   spawnCount += 1;
