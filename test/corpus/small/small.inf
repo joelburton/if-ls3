@@ -64,9 +64,10 @@ Constant NOT_SET_CONST;
 ];
 
 
-[ Initialise;
+[ Initialise a b ;
     location = TheRoom;
-    if (true) { FoodFood() };
+    print a, b, c;
+    ! if (true) { FoodFood() };
 ];
 
 [ MyScopeFunc;

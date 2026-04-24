@@ -10,6 +10,7 @@ import {
   DocumentSymbolParams,
   WorkspaceSymbolParams,
   CompletionParams,
+  SemanticTokensParams,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
@@ -23,6 +24,7 @@ import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
 import { wordAtPosition, objectBeforeDot } from "../features/wordAtPosition";
+import { getSemanticTokens } from "../features/semanticTokens";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -121,6 +123,13 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       completionProvider: {
         triggerCharacters: ["."],
       },
+      semanticTokensProvider: {
+        legend: {
+          tokenTypes: ["variable"],
+          tokenModifiers: [],
+        },
+        full: true,
+      },
     },
   };
 });
@@ -213,6 +222,15 @@ connection.onCompletion((params: CompletionParams) => {
   const lineText = lines[params.position.line] ?? "";
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   return getCompletions(index, filePath, params.position, lineText);
+});
+
+connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return { data: [] };
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return { data: [] };
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  return { data: getSemanticTokens(index, filePath, doc.getText()) };
 });
 
 documents.listen(connection);
