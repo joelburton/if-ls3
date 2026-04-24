@@ -45,10 +45,12 @@ choice.
   `index_note_object()` at end of `make_object()`/`make_class()`
 - [x] Metaclass objects (Class, Object, Routine, String) are excluded
 
-### 1d. Globals and arrays — DONE
+### 1d. Globals, constants, and arrays — DONE
 
 - [x] `globals[]` section: filtered from symbol table (non-system
   `GLOBAL_VARIABLE_T` symbols) with name, file, line
+- [x] `constants[]` section: filtered from symbol table (non-system
+  `CONSTANT_T` symbols) with name, file, line
 - [x] `arrays[]` section: from compiler's `arrays[]` tracking array with
   name, array_type (byte/word/string/table/buffer), size, is_static, file, line
 - [x] No new hooks needed — reads existing compiler data structures directly
@@ -101,6 +103,24 @@ commented-out ICL directives like `!!%`.
   for both Z-machine and Glulx formats
 - [x] Entries are in internal (node) order, not sorted — consumer
   can sort if needed
+
+### 1i. Final refinements — DONE
+
+- [x] `"version": 1` top-level key in JSON output (for cache
+  compatibility when format changes)
+- [x] Objects distinguish `"properties"` (public/with) from
+  `"private_properties"` (private segment) — uses `PRIVATE_SEGMENT`
+  check at `index_note_property()` call sites in `objects.c`
+- [x] `constants[]` section: non-system `CONSTANT_T` symbols with
+  name, file, line, doc
+- [x] Verified: compiled Z-code output is byte-for-byte identical to
+  upstream compiler (`40faabc`)
+
+## Future compiler enhancements (post-v1)
+
+- [ ] **References (use sites)**: Hook in `expressp.c` to record where
+  each symbol is referenced (file, line). Enables "find references"
+  without text search. High data volume for large games.
 
 ## Phase 2: TypeScript language server (Sonnet, some Opus)
 

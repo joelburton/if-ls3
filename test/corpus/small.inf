@@ -6,6 +6,8 @@ Include "Parser";
 
 Object TheRoom "The Room"
   has light
+  private
+    super_secret "Hello.",
   with
     description "The Room.",
     before [;

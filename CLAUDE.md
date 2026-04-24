@@ -50,8 +50,9 @@ The index includes:
 - `files[]` — all source files parsed (main + includes)
 - `symbols[]` — every defined symbol with name, type, value, flags, is_system, file, line, doc
 - `routines[]` — every routine with name, locals, start/end lines, embedded flag, doc
-- `objects[]` — every object/class with name, is_class, parent, attributes, properties, start/end lines, doc
+- `objects[]` — every object/class with name, is_class, parent, attributes, properties, private_properties, start/end lines, doc
 - `globals[]` — non-system global variables with name, file, line, doc
+- `constants[]` — non-system constants with name, file, line, doc
 - `arrays[]` — arrays with name, array_type, size, is_static, file, line, doc
 - `verbs[]` — verb definitions with dictionary words, actions, file, line
 - `dictionary[]` — all dictionary words with flags (noun, verb, preposition, meta, plural)

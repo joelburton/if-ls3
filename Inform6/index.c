@@ -54,6 +54,8 @@ typedef struct index_object_s {
     int attrs_count;
     int props_start;           /* index into obj_props_pool */
     int props_count;
+    int private_props_start;   /* index into obj_private_props_pool */
+    int private_props_count;
     char *doc;                 /* doc comment, or NULL */
 } index_object;
 
@@ -63,12 +65,16 @@ static int objects_info_count;
 static char **obj_attrs_pool;   /* attribute names */
 static int obj_attrs_pool_count;
 
-static char **obj_props_pool;   /* property names */
+static char **obj_props_pool;   /* property names (public) */
 static int obj_props_pool_count;
+
+static char **obj_private_props_pool;   /* property names (private) */
+static int obj_private_props_pool_count;
 
 static memory_list objects_info_memlist;
 static memory_list obj_attrs_pool_memlist;
 static memory_list obj_props_pool_memlist;
+static memory_list obj_private_props_pool_memlist;
 
 /* ------------------------------------------------------------------------- */
 /*   String copy helper                                                      */
@@ -271,6 +277,10 @@ static char **pending_props;
 static int pending_props_count;
 static memory_list pending_props_memlist;
 
+static char **pending_private_props;
+static int pending_private_props_count;
+static memory_list pending_private_props_memlist;
+
 /* ------------------------------------------------------------------------- */
 /*   JSON output helpers                                                     */
 /* ------------------------------------------------------------------------- */
@@ -372,6 +382,7 @@ extern void index_reset_object_props(void)
 {   brief_location loc = get_brief_location(&ErrorReport);
     pending_attrs_count = 0;
     pending_props_count = 0;
+    pending_private_props_count = 0;
     if (pending_object_doc) free(pending_object_doc);
     pending_object_doc = index_consume_doc(loc.line_number);
 }
@@ -382,10 +393,18 @@ extern void index_note_attribute(char *name)
     pending_attrs[pending_attrs_count++] = index_strdup(name);
 }
 
-extern void index_note_property(char *name)
-{   ensure_memory_list_available(&pending_props_memlist,
-        pending_props_count + 1);
-    pending_props[pending_props_count++] = index_strdup(name);
+extern void index_note_property(char *name, int is_private)
+{   if (is_private)
+    {   ensure_memory_list_available(&pending_private_props_memlist,
+            pending_private_props_count + 1);
+        pending_private_props[pending_private_props_count++] =
+            index_strdup(name);
+    }
+    else
+    {   ensure_memory_list_available(&pending_props_memlist,
+            pending_props_count + 1);
+        pending_props[pending_props_count++] = index_strdup(name);
+    }
 }
 
 extern void index_note_object(char *name, int symbol, int is_class,
@@ -416,7 +435,7 @@ extern void index_note_object(char *name, int symbol, int is_class,
         obj_attrs_pool[obj_attrs_pool_count + i] = pending_attrs[i];
     obj_attrs_pool_count += pending_attrs_count;
 
-    /* Copy pending properties */
+    /* Copy pending properties (public) */
     o->props_start = obj_props_pool_count;
     o->props_count = pending_props_count;
     ensure_memory_list_available(&obj_props_pool_memlist,
@@ -425,8 +444,19 @@ extern void index_note_object(char *name, int symbol, int is_class,
         obj_props_pool[obj_props_pool_count + i] = pending_props[i];
     obj_props_pool_count += pending_props_count;
 
+    /* Copy pending properties (private) */
+    o->private_props_start = obj_private_props_pool_count;
+    o->private_props_count = pending_private_props_count;
+    ensure_memory_list_available(&obj_private_props_pool_memlist,
+        obj_private_props_pool_count + pending_private_props_count);
+    for (i = 0; i < pending_private_props_count; i++)
+        obj_private_props_pool[obj_private_props_pool_count + i] =
+            pending_private_props[i];
+    obj_private_props_pool_count += pending_private_props_count;
+
     pending_attrs_count = 0;
     pending_props_count = 0;
+    pending_private_props_count = 0;
 
     objects_info_count++;
 }
@@ -440,6 +470,7 @@ extern void index_output_json(void)
     int is_sys;
 
     printf("{\n");
+    printf("  \"version\": 1,\n");
 
     /* --- files --- */
     printf("  \"files\": [\n");
@@ -596,6 +627,14 @@ extern void index_output_json(void)
             json_print_escaped_string(
                 obj_props_pool[o->props_start + j]);
         }
+        printf("]");
+
+        printf(", \"private_properties\": [");
+        for (j = 0; j < o->private_props_count; j++)
+        {   if (j > 0) printf(", ");
+            json_print_escaped_string(
+                obj_private_props_pool[o->private_props_start + j]);
+        }
         printf("]}");
     }
     printf("\n  ],\n");
@@ -605,6 +644,43 @@ extern void index_output_json(void)
     first = TRUE;
     for (i = 0; i < no_symbols; i++)
     {   if (symbols[i].type != GLOBAL_VARIABLE_T) continue;
+        if (symbols[i].flags & UNKNOWN_SFLAG) continue;
+        if (symbols[i].flags & SYSTEM_SFLAG) continue;
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {\"name\": ");
+        json_print_escaped_string(symbols[i].name);
+
+        if (symbols[i].line.file_index > 0)
+        {   printf(", \"file\": ");
+            json_print_escaped_string(
+                InputFiles[symbols[i].line.file_index - 1].filename);
+            printf(", \"line\": %d",
+                (int)symbols[i].line.line_number);
+        }
+        {   const char *doc = NULL;
+            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
+                && symbol_docs[i][0] != '\0')
+                doc = symbol_docs[i];
+            if (!doc && symbols[i].line.file_index > 0)
+                doc = find_trailing_doc(symbols[i].line.file_index,
+                    symbols[i].line.line_number);
+            if (doc)
+            {   printf(", \"doc\": ");
+                json_print_escaped_string(doc);
+            }
+        }
+        printf("}");
+    }
+    printf("\n  ],\n");
+
+    /* --- constants --- */
+    printf("  \"constants\": [\n");
+    first = TRUE;
+    for (i = 0; i < no_symbols; i++)
+    {   if (symbols[i].type != CONSTANT_T) continue;
         if (symbols[i].flags & UNKNOWN_SFLAG) continue;
         if (symbols[i].flags & SYSTEM_SFLAG) continue;
 
@@ -814,8 +890,10 @@ extern void init_index_vars(void)
     objects_info = NULL;
     obj_attrs_pool = NULL;
     obj_props_pool = NULL;
+    obj_private_props_pool = NULL;
     pending_attrs = NULL;
     pending_props = NULL;
+    pending_private_props = NULL;
     doc_buffer = NULL;
     trailing_doc_text = NULL;
     symbol_docs = NULL;
@@ -829,8 +907,10 @@ extern void init_index_vars(void)
     objects_info_count = 0;
     obj_attrs_pool_count = 0;
     obj_props_pool_count = 0;
+    obj_private_props_pool_count = 0;
     pending_attrs_count = 0;
     pending_props_count = 0;
+    pending_private_props_count = 0;
     doc_buffer_len = 0;
     doc_fresh = FALSE;
     trailing_doc_line = 0;
@@ -842,8 +922,10 @@ extern void index_begin_pass(void)
     objects_info_count = 0;
     obj_attrs_pool_count = 0;
     obj_props_pool_count = 0;
+    obj_private_props_pool_count = 0;
     pending_attrs_count = 0;
     pending_props_count = 0;
+    pending_private_props_count = 0;
     doc_buffer_len = 0;
     doc_fresh = FALSE;
     trailing_doc_line = 0;
@@ -867,12 +949,18 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&obj_props_pool_memlist,
         sizeof(char *), MAX_INDEX_OBJ_PROPS,
         (void **)&obj_props_pool, "index object props");
+    initialise_memory_list(&obj_private_props_pool_memlist,
+        sizeof(char *), MAX_INDEX_OBJ_PROPS,
+        (void **)&obj_private_props_pool, "index object private props");
     initialise_memory_list(&pending_attrs_memlist,
         sizeof(char *), 64,
         (void **)&pending_attrs, "index pending attrs");
     initialise_memory_list(&pending_props_memlist,
         sizeof(char *), 64,
         (void **)&pending_props, "index pending props");
+    initialise_memory_list(&pending_private_props_memlist,
+        sizeof(char *), 64,
+        (void **)&pending_private_props, "index pending private props");
     initialise_memory_list(&doc_buffer_memlist,
         sizeof(char), MAX_DOC_BUFFER,
         (void **)&doc_buffer, "index doc buffer");
@@ -906,11 +994,15 @@ extern void index_free_arrays(void)
         free(obj_attrs_pool[i]);
     for (i = 0; i < obj_props_pool_count; i++)
         free(obj_props_pool[i]);
+    for (i = 0; i < obj_private_props_pool_count; i++)
+        free(obj_private_props_pool[i]);
     /* pending pools are consumed by index_note_object, but clean up stragglers */
     for (i = 0; i < pending_attrs_count; i++)
         free(pending_attrs[i]);
     for (i = 0; i < pending_props_count; i++)
         free(pending_props[i]);
+    for (i = 0; i < pending_private_props_count; i++)
+        free(pending_private_props[i]);
     for (i = 0; i < (int)symbol_docs_memlist.count; i++)
         if (symbol_docs[i]) free(symbol_docs[i]);
     for (i = 0; i < trailing_docs_count; i++)
@@ -925,8 +1017,10 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&objects_info_memlist);
     deallocate_memory_list(&obj_attrs_pool_memlist);
     deallocate_memory_list(&obj_props_pool_memlist);
+    deallocate_memory_list(&obj_private_props_pool_memlist);
     deallocate_memory_list(&pending_attrs_memlist);
     deallocate_memory_list(&pending_props_memlist);
+    deallocate_memory_list(&pending_private_props_memlist);
     deallocate_memory_list(&doc_buffer_memlist);
     deallocate_memory_list(&trailing_doc_memlist);
     deallocate_memory_list(&symbol_docs_memlist);

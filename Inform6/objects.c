@@ -1169,7 +1169,8 @@ static void properties_segment_z(int this_segment)
         }
 
         if (index_switch)
-            index_note_property(token_text);
+            index_note_property(token_text,
+                this_segment == PRIVATE_SEGMENT);
 
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
@@ -1442,7 +1443,8 @@ static void properties_segment_g(int this_segment)
         }
 
         if (index_switch)
-            index_note_property(token_text);
+            index_note_property(token_text,
+                this_segment == PRIVATE_SEGMENT);
 
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
