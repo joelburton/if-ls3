@@ -194,7 +194,9 @@ find the parent for nesting.
   character before the `<`. Paren forms `<<(x)>>` are naturally excluded.
   No fallthrough to a routine named `Jump` — action context is unambiguous.
 - ✅ **Relative paths in hover**: file references show paths relative to
-  workspace root (e.g. `small.inf:12` not `/Users/joel/.../small.inf:12`).
+  workspace root when the path requires ≤ 2 leading `../` segments; deeper
+  paths (e.g. into a library several directories away) fall back to the
+  absolute path, which is more navigable than `../../../../../../lib/foo.h`.
 - ✅ **Async compiler spawn**: `spawnSync` replaced with async `spawn` so
   hover/definition/etc. remain responsive during the ~1–2 s compile window.
 - ✅ **Grammar action refs**: compiler emits `grammar_action_refs[]` (file+line
@@ -217,6 +219,53 @@ find the parent for nesting.
   save+reindex, not immediately. Acceptable with autosave; may revisit with a
   custom `TreeDataProvider` if it proves annoying.
 
+- ✅ **TextMate grammar** (`langserver/syntaxes/inform6.tmLanguage.json`):
+  copied from the old project and substantially improved:
+  - **Verb/Extend mini-language**: `Verb`/`Extend` directives are now a
+    `begin`/`end` block with their own sub-rules. Grammar stars (`*`) →
+    `keyword.control.grammar.star`, grammar arrows (`->`) →
+    `keyword.control.grammar.arrow`, action names after `->` →
+    `entity.name.function.action`. Built-in grammar tokens (`noun`, `held`,
+    `scope=Routine`, etc.) are colored within the block; `meta`/`reverse`
+    modifiers work at both the verb and grammar-line level. `first`/`last`/
+    `only`/`replace` modifiers (Extend) are inside the block only.
+  - **Action invocations**: `<<ActionName ...>>` (unambiguous — `begin`/`end`
+    block) and `<ActionName ...>` (capital-letter heuristic to avoid matching
+    comparison operators) both color the delimiters as `keyword.control.action`
+    and the action name as `entity.name.function.action`.
+  - **Print format specifiers**: `(char)`, `(string)`, `(The)`, `(a)`, etc.
+    colored as `keyword.other.print-format` inside routine bodies.
+  - **Object body sections**: `has`/`with`/`private` sections each have
+    `begin`/`end` blocks (safe at the top level — these keywords only appear
+    as operators inside `embeddedRoutine` blocks). Property names in
+    `with`/`private` are colored as `entity.name.function.property`;
+    attribute names in `has` as `variable.other.attribute`. `embeddedRoutine`
+    is included inside property definitions so `[...]` routine values don't
+    have their commas/semicolons misread as section delimiters.
+  - **Doc-comments**: `!! ` lines → `comment.line.documentation.inform6`
+    (before the plain `!` rule); users can set a distinct color in
+    `editor.tokenColorCustomizations`.
+  - **Removed stale library lists**: `supportFunction`, `supportConstant`,
+    `supportVariable` (library functions, constants, action names, variables,
+    attributes) removed — the LS classifies these from the symbol index and
+    the static lists were incomplete and stale.
+  - **`Fake_action`** promoted from `invalid.deprecated` to
+    `keyword.other.directive` (no longer deprecated in modern Inform 6).
+  - **Numeric literal fix**: `(\\b|-)\\d+` → `\\b\\d+` so `-` in `x - 1`
+    is the arithmetic operator, not part of a negative number token.
+  - **`CompassDirection`** removed from built-in class list (library symbol).
+  - **`variable.language.inform6`** reduced to `self` only (the sole genuine
+    language keyword in that list; library globals handled by the LS).
+  - **`support` wrapper** collapsed; `supportOpcode` inlined.
+  - **Undefined `#stringInvalid`** references removed.
+- ✅ **Extension config settings** (`package.json`):
+  - `inform6.enableTextMateHighlighting` (default: true) — swaps
+    `inform6-active.tmLanguage.json` between the full grammar and an empty
+    one at activation time; toggle command available in the command palette.
+  - `inform6.enableLanguageServer` (default: true) — skips `startClient()`
+    if false; `onDidChangeConfiguration` restarts or stops the client when
+    the setting changes.
+
 ## Future (post-phase-2)
 
 - Debounced reindex on keystrokes — deliberately deferred; compiler needs
@@ -226,4 +275,3 @@ find the parent for nesting.
 - Signature help for routine calls
 - Semantic token highlighting
 - Rename symbol
-- TextMate grammar for syntax highlighting

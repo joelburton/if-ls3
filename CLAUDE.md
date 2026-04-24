@@ -131,6 +131,7 @@ cd Inform6
 
 ## Related project
 
-The language server lives at `~/if/inform6-langserver/` (TypeScript). The plan is
-to use this compiler fork as an out-of-process indexer, invoked by the language
+The language server lives at `langserver/` in this repo (TypeScript). The old
+prototype at `~/if/inform6-langserver/` is superseded and kept only for reference.
+The compiler fork is used as an out-of-process indexer, invoked by the language
 server on file save to provide semantic symbol data.

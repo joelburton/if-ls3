@@ -1,0 +1,816 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Inform 6",
+    "scopeName": "source.inform6",
+    "patterns": [
+        {
+            "include": "#switchComment"
+        },
+        {
+            "include": "#comment"
+        },
+        {
+            "include": "#routine"
+        },
+        {
+            "include": "#embeddedRoutine"
+        },
+        {
+            "include": "#verbDirective"
+        },
+        {
+            "include": "#objectHasSection"
+        },
+        {
+            "include": "#objectWithSection"
+        },
+        {
+            "include": "#constant"
+        },
+        {
+            "include": "#keyword"
+        },
+        {
+            "include": "#support"
+        },
+        {
+            "include": "#variable"
+        },
+        {
+            "include": "#javascriptExecution"
+        },
+        {
+            "include": "#objectDeclaration"
+        },
+        {
+            "include": "#class"
+        },
+        {
+            "include": "#string"
+        }
+    ],
+    "repository": {
+        "switchComment": {
+            "patterns": [
+                {
+                    "comment": "ICL directives: !% lines at the absolute start of the file only. The first line that does not begin with !% terminates the ICL section; subsequent !% lines are ordinary comments.",
+                    "begin": "\\A(?=!%)",
+                    "end": "^(?!!%)",
+                    "patterns": [
+                        {
+                            "name": "keyword.other.directive.inform6",
+                            "match": "!%.*$"
+                        }
+                    ]
+                }
+            ]
+        },
+        "comment": {
+            "patterns": [
+                {
+                    "comment": "Doc-comment: !! followed by a space (two bangs + space convention). Must come before the plain comment rule.",
+                    "name": "comment.line.documentation.inform6",
+                    "match": "!! .*$"
+                },
+                {
+                    "name": "comment.line.bang.inform6",
+                    "match": "!.*$"
+                }
+            ]
+        },
+        "routine": {
+            "patterns": [
+                {
+                    "name": "meta.routine.inform6",
+                    "begin": "^\\s*\\[",
+                    "end": "\\]",
+                    "captures": {
+                        "0": { "name": "keyword.other.directive.inform6" }
+                    },
+                    "patterns": [
+                        { "include": "#routineHead" },
+                        { "include": "#routineBody" }
+                    ]
+                }
+            ]
+        },
+        "embeddedRoutine": {
+            "patterns": [
+                {
+                    "name": "meta.routine.inform6",
+                    "begin": "\\[",
+                    "end": "\\]",
+                    "captures": {
+                        "0": { "name": "keyword.other.directive.inform6" }
+                    },
+                    "patterns": [
+                        { "include": "#embeddedRoutineHead" },
+                        { "include": "#routineBody" }
+                    ]
+                }
+            ]
+        },
+        "routineHead": {
+            "patterns": [
+                {
+                    "include": "#comment"
+                },
+                {
+                    "begin": "([a-zA-Z_]\\w*)\\b",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.function.inform6" }
+                    },
+                    "end": "(?=;)",
+                    "patterns": [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "name": "variable.parameter.inform6",
+                            "match": "\\b[a-zA-Z_]\\w*\\b"
+                        }
+                    ]
+                }
+            ]
+        },
+        "embeddedRoutineHead": {
+            "patterns": [
+                {
+                    "include": "#comment"
+                },
+                {
+                    "begin": "(?=[a-zA-Z_])",
+                    "end": "(?=;)",
+                    "patterns": [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "name": "variable.parameter.inform6",
+                            "match": "\\b[a-zA-Z_]\\w*\\b"
+                        }
+                    ]
+                }
+            ]
+        },
+        "routineBody": {
+            "patterns": [
+                {
+                    "begin": "(?=;)",
+                    "end": "(?=\\])",
+                    "patterns": [
+                        {
+                            "include": "#comment"
+                        },
+                        {
+                            "include": "#actionInvocation"
+                        },
+                        {
+                            "include": "#printFormatSpecifier"
+                        },
+                        {
+                            "include": "#constant"
+                        },
+                        {
+                            "include": "#keyword"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#variable"
+                        },
+                        {
+                            "include": "#class"
+                        },
+                        {
+                            "include": "#javascriptExecution"
+                        },
+                        {
+                            "include": "#string"
+                        }
+                    ]
+                }
+            ]
+        },
+        "keyword": {
+            "patterns": [
+                {
+                    "include": "#keywordControl"
+                },
+                {
+                    "include": "#keywordDirective"
+                },
+                {
+                    "include": "#keywordOperator"
+                }
+            ]
+        },
+        "keywordControl": {
+            "patterns": [
+                {
+                    "match": "\\b(move)\\s+([a-zA-Z_]\\w*)\\s+(to)\\b",
+                    "captures": {
+                        "1": { "name": "keyword.control.inform6" },
+                        "2": {
+                            "patterns": [
+                                {
+                                    "include": "#variable"
+                                }
+                            ]
+                        },
+                        "3": { "name": "keyword.control.inform6" }
+                    }
+                },
+                {
+                    "name": "keyword.control.inform6",
+                    "match": "\\b(box|break|continue|do|else|font\\s+(on|off)|for|give|if|inversion|jump|move|new_line|objectloop|print|print_ret|quit|remove|return|rfalse|rtrue|spaces|string|switch|until|while)\\b"
+                },
+                {
+                    "name": "keyword.control.zmachine.inform6",
+                    "match": "\\b(read|restore|save|style\\s+(roman|bold|underline|reverse|fixed))\\b"
+                }
+            ]
+        },
+        "keywordDirective": {
+            "patterns": [
+                {
+                    "match": "(?i)\\b(Array)\\s+[a-zA-Z_]\\w*\\s+(static\\s+)?(-->|->|buffer\\b|string\\b|table\\b)",
+                    "captures": {
+                        "1": { "name": "keyword.other.directive.inform6" },
+                        "2": { "name": "keyword.other.directive.inform6" },
+                        "3": { "name": "keyword.other.directive.inform6" }
+                    }
+                },
+                {
+                    "name": "entity.name.tag.directive.inform6",
+                    "match": "(?i)#(Abbreviate|Array|Attribute|Constant|Default|Dictionary|End|Endif|Extend|Fake_action|Global|Ifdef|Iffalse|Ifndef|Ifnot|Iftrue|Ifv3|Ifv5|Import|Include|Link|Message(\\s+(error|fatalerror|warning))?|Origsource|Property(\\s+(additive|individual))?|Release|Replace|Serial|StatusLine\\s+(time|score)|Stub|Switches|System_file|Undef|Verb(\\s+meta)?|Zcharacter(\\s+table)?)\\b"
+                },
+                {
+                    "name": "keyword.other.directive.inform6",
+                    "match": "(?i)\\b(Abbreviate|Array|Attribute|Constant|Default|Dictionary|End|Endif|Extend|Fake_action|Global|Ifdef|Iffalse|Ifndef|Ifnot|Iftrue|Ifv3|Ifv5|Import|Include|Link|Message(\\s+(error|fatalerror|warning))?|Origsource|Property(\\s+(additive|individual))?|Release|Replace|Serial|StatusLine\\s+(time|score)|Stub|Switches|System_file|Undef|Verb(\\s+meta)?|Zcharacter(\\s+table)?)\\b"
+                },
+                {
+                    "name": "invalid.deprecated.inform6",
+                    "match": "(?i)(\\b|#)(Lowstring|Nearby|Trace)\\b"
+                },
+                {
+                    "comment": "alias: used in Property declarations (e.g. 'Property name alias short_name')",
+                    "name": "keyword.other.inform6",
+                    "match": "\\balias\\b"
+                }
+            ]
+        },
+        "keywordOperator": {
+            "patterns": [
+                {
+                    "name": "keyword.operator.expression.inform6",
+                    "match": "\\b(class|has|hasnt|in|notin|ofclass|or|private|provides|with)\\b"
+                },
+                {
+                    "name": "keyword.operator.comparison.inform6",
+                    "match": "==|~=|<=|<|>=|>"
+                },
+                {
+                    "name": "keyword.operator.logical.inform6",
+                    "match": "&&|\\|\\||~~"
+                },
+                {
+                    "name": "keyword.operator.array.inform6",
+                    "match": "-->|->"
+                },
+                {
+                    "name": "keyword.operator.increment.inform6",
+                    "match": "\\+\\+"
+                },
+                {
+                    "name": "keyword.operator.decrement.inform6",
+                    "match": "--"
+                },
+                {
+                    "name": "keyword.operator.arithmetic.inform6",
+                    "match": "\\+|-|\\*|/|%"
+                },
+                {
+                    "name": "keyword.operator.assignment.inform6",
+                    "match": "="
+                },
+                {
+                    "name": "keyword.operator.bitwise.inform6",
+                    "match": "&|\\||~"
+                },
+                {
+                    "name": "punctuation.separator.comma.inform6",
+                    "match": ","
+                },
+                {
+                    "name": "punctuation.accessor.inform6",
+                    "match": "\\.&|\\.#|\\."
+                }
+            ]
+        },
+        "constant": {
+            "patterns": [
+                {
+                    "name": "constant.numeric.integer.binary.inform6",
+                    "match": "\\$\\$[01]+\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.hexadecimal.inform6",
+                    "match": "\\$[0-9a-fA-F]+\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.inform6",
+                    "match": "\\b\\d+\\b"
+                },
+                {
+                    "name": "constant.numeric.float.inform6",
+                    "match": "\\$[\\+-]\\d+(\\.\\d+)?(e[\\+-]\\d+)?\\b"
+                },
+                {
+                    "name": "invalid.illegal.inform6",
+                    "match": "'@\\{[0-9a-fA-F]{7,}\\}'"
+                },
+                {
+                    "name": "constant.numeric.integer.character.inform6",
+                    "match": "'(@(\\{[0-9a-fA-F]{1,6}\\}|[\\^`:][aeiouAEIOU]|:y|'[aeiouyAEIOUY]|c[cC]|~[anoANO]|/[oO]|o[aA]|ss|oe|OE|ae|AE|th|Th|et|Et|LL|!!|\\?\\?|<<|>>)|[^@])'"
+                },
+                {
+                    "name": "invalid.illegal.inform6",
+                    "match": "'@'"
+                },
+                {
+                    "name": "constant.language.inform6",
+                    "match": "\\b(false|nothing|NULL|true)\\b"
+                }
+            ]
+        },
+        "support": {
+            "comment": "Assembly opcodes — language-level constructs, not library symbols.",
+            "patterns": [
+                {
+                    "name": "support.function.opcode.inform6",
+                    "match": "@(catch|pull|push|quit|restore|save|throw)\\b"
+                },
+                {
+                    "name": "support.function.opcode.zmachine.inform6",
+                    "match": "@(aread|buffer_mode|check_unicode|encode_text|erase_window|input_stream|loadb|output_stream|print_table|print_unicode|read_char|set_color|set_cursor|set_window|sound_effect|split_window|tokenise)\\b"
+                },
+                {
+                    "name": "support.function.opcode.glulx.inform6",
+                    "match": "@(accelfunc|accelparam|acos|add|aload|aloadb|aloadbit|aloads|asin|astore|astoreb|astorebit|astores|atan|atan2|binarysearch|bitand|bitnot|bitor|bitxor|call|callf|callfi|callfii|callfiii|ceil|copy|copyb|copys|cos|debugtrap|div|exp|fadd|fdiv|floor|fmod|fmul|fsub|ftonumn|ftonumz|gestalt|getiosys|getmemsize|getstringtbl|glk|jeq|jfeq|jfge|jfgt|jfle|jflt|jfne|jge|jgeu|jgt|jgtu|jisinf|jisnan|jle|jleu|jltu|jne|jlt|jnz|jump|jumpabs|jz|linearsearch|linkedsearch|log|malloc|mcopy|mfree|mod|mul|mzero|neg|nop|numtof|pow|protect|random|restart|restoreundo|return|saveundo|setiosys|setmemsize|setrandom|setstringtbl|sexb|sexs|shiftl|sin|sqrt|sshiftr|stkcopy|stkcount|stkpeek|stkroll|stkswap|streamchar|streamnum|streamstr|streamunichar|sub|tailcall|tan|ushiftr|verify)\\b"
+                },
+                {
+                    "name": "support.function.opcode.glulx.custom.inform6",
+                    "match": "@\"[SBR]*\\d:\\d+\""
+                }
+            ]
+        },
+        "class": {
+            "patterns": [
+                {
+                    "name": "support.class.inform6",
+                    "match": "\\b(Class|Object|Routine|String)\\b"
+                }
+            ]
+        },
+        "variable": {
+            "patterns": [
+                {
+                    "name": "variable.other.actiontype.inform6",
+                    "match": "##[a-zA-Z]+\\b"
+                },
+                {
+                    "comment": "self is a genuine language keyword (the current object); everything else here is a library global and will be classified by the LS from the symbol index.",
+                    "name": "variable.language.inform6",
+                    "match": "\\bself\\b"
+                }
+            ]
+        },
+        "javascriptExecution": {
+            "patterns": [
+                {
+                    "begin": "(VorpleExecuteJavaScriptCommand|BuildCommand)\\(",
+                    "end": "\\);",
+                    "patterns": [
+                        {
+                            "include": "#javascriptCommand"
+                        },
+                        {
+                            "include": "#support"
+                        },
+                        {
+                            "include": "#variable"
+                        }
+                    ]
+                }
+            ]
+        },
+        "javascriptCommand": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.inform6",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.inform6"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.inform6"
+                        }
+                    },
+                    "contentName": "meta.embedded.js",
+                    "patterns": [
+                        {
+                            "include": "#javascript"
+                        }
+                    ]
+                }
+            ]
+        },
+        "objectDeclaration": {
+            "patterns": [
+                {
+                    "match": "^([a-zA-Z_]\\w*)\\s*((?:->)(?:\\s*->)*)\\s*([a-zA-Z_]\\w*)?\\s*(\"[^\"]*?\")?\\s*([a-zA-Z_]\\w*)?",
+                    "captures": {
+                        "1": { "name": "entity.name.type.inform6" },
+                        "2": { "name": "storage.modifier.inform6" },
+                        "3": { "name": "variable.other.inform6" },
+                        "4": {
+                            "name": "string.quoted.double.inform6",
+                            "patterns": [
+                                {
+                                    "include": "#stringPrintingVariable"
+                                },
+                                {
+                                    "include": "#stringEscapeSequence"
+                                }
+                            ]
+                        },
+                        "5": { "name": "invalid.illegal.inform6" }
+                    }
+                },
+                {
+                    "match": "^([a-zA-Z_]\\w*)\\s*([a-zA-Z_]\\w*)?\\s*(\"[^\"]*?\")?\\s*([a-zA-Z_]\\w*)?",
+                    "captures": {
+                        "1": { "name": "entity.name.type.inform6" },
+                        "2": { "name": "variable.other.inform6" },
+                        "3": {
+                            "name": "string.quoted.double.inform6",
+                            "patterns": [
+                                {
+                                    "include": "#stringPrintingVariable"
+                                },
+                                {
+                                    "include": "#stringEscapeSequence"
+                                }
+                            ]
+                        },
+                        "4": { "name": "storage.modifier.inform6" }
+                    }
+                }
+            ]
+        },
+        "string": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.inform6",
+                    "begin": "\"",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.inform6"
+                        }
+                    },
+                    "end": "\"",
+                    "endCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.end.inform6"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#stringPrintingVariable"
+                        },
+                        {
+                            "include": "#stringEscapeSequence"
+                        }
+                    ]
+                },
+                {
+                    "name": "string.regexp.inform6",
+                    "begin": "'",
+                    "beginCaptures": {
+                        "0": {
+                            "name": "punctuation.definition.string.begin.inform6"
+                        }
+                    },
+                    "end": "(//(?:p)?)?(')",
+                    "endCaptures": {
+                        "1": {
+                            "name": "constant.character.escape.inform6"
+                        },
+                        "2": {
+                            "name": "punctuation.definition.string.end.inform6"
+                        }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#stringEscapeSequence"
+                        }
+                    ]
+                }
+            ]
+        },
+        "stringEscapeSequence": {
+            "patterns": [
+                {
+                    "name": "invalid.illegal.inform6",
+                    "match": "@\\{[0-9a-fA-F]{7,}\\}"
+                },
+                {
+                    "name": "constant.character.escape.inform6",
+                    "match": "@\\{[0-9a-fA-F]{1,6}\\}"
+                },
+                {
+                    "name": "constant.character.escape.inform6",
+                    "match": "\\^|~|\\\\|@(@\\d{1,3}|[\\^`:][aeiouAEIOU]|:y|'[aeiouyAEIOUY]|c[cC]|~[anoANO]|/[oO]|o[aA]|ss|oe|ae|OE|AE|th|Th|et|Et|LL|!!|\\?\\?|<<|>>)"
+                },
+                {
+                    "name": "invalid.illegal.inform6",
+                    "match": "@"
+                }
+            ]
+        },
+        "stringPrintingVariable": {
+            "patterns": [
+                {
+                    "name": "variable.other.inform6",
+                    "match": "@[0-9]{2}"
+                }
+            ]
+        },
+        "objectHasSection": {
+            "comment": "has section in object/class body — ends at ; or next section keyword. Safe at top level because 'has' as an expression operator only appears inside routines (inside embeddedRoutine blocks).",
+            "patterns": [
+                {
+                    "begin": "\\bhas\\b",
+                    "beginCaptures": {
+                        "0": { "name": "keyword.other.directive.inform6" }
+                    },
+                    "end": "(?=[;]|\\b(?:has|with|private)\\b)",
+                    "patterns": [
+                        { "include": "#comment" },
+                        {
+                            "comment": "~ negates an attribute (e.g. has ~open)",
+                            "name": "keyword.operator.bitwise.inform6",
+                            "match": "~"
+                        },
+                        {
+                            "name": "variable.other.attribute.inform6",
+                            "match": "\\b[a-zA-Z_]\\w*\\b"
+                        }
+                    ]
+                }
+            ]
+        },
+        "objectWithSection": {
+            "comment": "with/private section in object/class body — ends at ; or next section keyword. Property name is the first identifier after the section keyword or after each separating comma.",
+            "patterns": [
+                {
+                    "begin": "\\b(with|private)\\b",
+                    "beginCaptures": {
+                        "1": { "name": "keyword.other.directive.inform6" }
+                    },
+                    "end": "(?=[;]|\\b(?:has|with|private)\\b)",
+                    "patterns": [
+                        { "include": "#comment" },
+                        { "include": "#objectPropertyDefinition" }
+                    ]
+                }
+            ]
+        },
+        "objectPropertyDefinition": {
+            "comment": "A single property definition: the opening identifier is the property name; content runs until the separating comma. embeddedRoutine is included so commas and semicolons inside [ ] routine values are consumed and don't end the property prematurely.",
+            "begin": "([a-zA-Z_]\\w*)",
+            "beginCaptures": {
+                "1": { "name": "entity.name.function.property.inform6" }
+            },
+            "end": ",|(?=[;]|\\b(?:has|with|private)\\b)",
+            "patterns": [
+                { "include": "#comment" },
+                { "include": "#embeddedRoutine" },
+                { "include": "#actionInvocation" },
+                { "include": "#printFormatSpecifier" },
+                { "include": "#constant" },
+                { "include": "#string" },
+                { "include": "#keyword" },
+                { "include": "#support" },
+                { "include": "#variable" },
+                { "include": "#class" }
+            ]
+        },
+        "verbDirective": {
+            "comment": "Verb and Extend directives — a mini grammar language, terminated by semicolon.",
+            "patterns": [
+                {
+                    "name": "meta.directive.verb.inform6",
+                    "begin": "(?i)\\b(Verb|Extend)\\b",
+                    "beginCaptures": {
+                        "1": { "name": "keyword.other.directive.inform6" }
+                    },
+                    "end": ";",
+                    "endCaptures": {
+                        "0": { "name": "punctuation.terminator.inform6" }
+                    },
+                    "patterns": [
+                        { "include": "#comment" },
+                        {
+                            "comment": "Verb meta modifier and Extend placement modifiers",
+                            "name": "keyword.other.directive.inform6",
+                            "match": "(?i)\\b(meta|replace|first|last|only)\\b"
+                        },
+                        { "include": "#verbGrammarLine" },
+                        { "include": "#string" }
+                    ]
+                }
+            ]
+        },
+        "verbGrammarLine": {
+            "comment": "A single grammar alternative within a Verb/Extend directive, starting with *.",
+            "patterns": [
+                {
+                    "begin": "\\*",
+                    "beginCaptures": {
+                        "0": { "name": "keyword.control.grammar.star.inform6" }
+                    },
+                    "end": "(?=[;*])",
+                    "patterns": [
+                        { "include": "#comment" },
+                        { "include": "#verbGrammarArrowAction" },
+                        { "include": "#verbGrammarToken" },
+                        { "include": "#string" }
+                    ]
+                }
+            ]
+        },
+        "verbGrammarArrowAction": {
+            "comment": "Grammar arrow and the action name it introduces: -> ActionName",
+            "patterns": [
+                {
+                    "match": "(->)\\s*([a-zA-Z_]\\w*)?",
+                    "captures": {
+                        "1": { "name": "keyword.control.grammar.arrow.inform6" },
+                        "2": { "name": "entity.name.function.action.inform6" }
+                    }
+                }
+            ]
+        },
+        "verbGrammarToken": {
+            "comment": "Tokens that appear between * and -> in a grammar line.",
+            "patterns": [
+                {
+                    "comment": "scope=RoutineName — the scope token with its routine argument",
+                    "match": "\\b(scope)\\s*(=)\\s*([a-zA-Z_]\\w*)?",
+                    "captures": {
+                        "1": { "name": "variable.language.grammartoken.inform6" },
+                        "2": { "name": "keyword.operator.assignment.inform6" },
+                        "3": { "name": "entity.name.function.inform6" }
+                    }
+                },
+                {
+                    "comment": "Built-in grammar tokens",
+                    "name": "variable.language.grammartoken.inform6",
+                    "match": "\\b(creature|held|multi|multiexcept|multiheld|multiinside|noun|number|topic)\\b"
+                },
+                {
+                    "comment": "Line-level meta and reverse modifiers",
+                    "name": "keyword.other.directive.inform6",
+                    "match": "\\b(meta|reverse)\\b"
+                },
+                {
+                    "comment": "Attribute name or GPR routine — any remaining identifier in grammar position",
+                    "name": "variable.other.grammartoken.inform6",
+                    "match": "\\b[a-zA-Z_]\\w*\\b"
+                }
+            ]
+        },
+        "actionInvocation": {
+            "patterns": [
+                {
+                    "comment": "Double-bracket action invocation: <<ActionName ...>>. Always unambiguous — << is not used elsewhere.",
+                    "name": "meta.statement.action.double.inform6",
+                    "begin": "<<",
+                    "beginCaptures": {
+                        "0": { "name": "keyword.control.action.inform6" }
+                    },
+                    "end": ">>",
+                    "endCaptures": {
+                        "0": { "name": "keyword.control.action.inform6" }
+                    },
+                    "patterns": [
+                        {
+                            "comment": "Action name is the first identifier inside <<",
+                            "begin": "([a-zA-Z_]\\w*)",
+                            "beginCaptures": {
+                                "1": { "name": "entity.name.function.action.inform6" }
+                            },
+                            "end": "(?=>>)",
+                            "patterns": [
+                                { "include": "#comment" },
+                                { "include": "#constant" },
+                                { "include": "#string" },
+                                { "include": "#support" },
+                                { "include": "#variable" }
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "comment": "Single-bracket action invocation: <ActionName ...>. Capital-letter heuristic avoids matching comparison operators (whose RHS is almost never TitleCase).",
+                    "match": "(<)([A-Z][a-zA-Z_]\\w*)([^>]*)(>)(?!>)",
+                    "captures": {
+                        "1": { "name": "keyword.control.action.inform6" },
+                        "2": { "name": "entity.name.function.action.inform6" },
+                        "4": { "name": "keyword.control.action.inform6" }
+                    }
+                }
+            ]
+        },
+        "printFormatSpecifier": {
+            "patterns": [
+                {
+                    "comment": "Built-in print format specifiers: (char), (string), (The), (a), etc.",
+                    "name": "keyword.other.print-format.inform6",
+                    "match": "\\((char|string|address|number|object|property|The|the|a|A|An|an|name|i)\\)"
+                }
+            ]
+        },
+        "javascript": {
+            "patterns": [
+                {
+                    "name": "invalid.illegal.js",
+                    "match": "//[^\"]*"
+                },
+                {
+                    "name": "string.quoted.single.js",
+                    "match": "'"
+                },
+                {
+                    "name": "keyword.control.js",
+                    "match": "\\b(await|break|case|catch|continue|default|do|else|finally|for|goto|if|return|switch|throw|try|while|with|yield)\\b"
+                },
+                {
+                    "name": "keyword.operator.expression.js",
+                    "match": "\\b(delete|in|instanceof|new|typeof|void)\\b"
+                },
+                {
+                    "name": "keyword.other.js",
+                    "match": "\\b(debugger)\\b"
+                },
+                {
+                    "name": "constant.language.js",
+                    "match": "\\b(false|Infinity|NaN|true|undefined)\\b"
+                },
+                {
+                    "name": "storage.type.js",
+                    "match": "\\b(class|const|function|interface|let|var)\\b"
+                },
+                {
+                    "name": "storage.modifier.js",
+                    "match": "\\b(extends|private|protected|public|static)\\b"
+                },
+                {
+                    "name": "variable.language.js",
+                    "match": "\\b(arguments|null|this)\\b"
+                },
+                {
+                    "name": "support.class.js",
+                    "match": "\\b(Array|console|Date|Math|Number|Object|String)\\b"
+                },
+                {
+                    "name": "constant.numeric.integer.js",
+                    "match": "\\b\\d+\\b"
+                },
+                {
+                    "name": "entity.name.function.js",
+                    "match": "(\\$|\\b[a-zA-Z_])[\\w\\$]*(?=\\s*\\()"
+                },
+                {
+                    "name": "variable.other.js",
+                    "match": "(\\$|\\b[a-zA-Z_])[\\w\\$]*"
+                },
+                {
+                    "name": "invalid.illegal.js",
+                    "match": "\\\\(?:[1-7][0-7]{0,2}|[0-7]{2,3})"
+                },
+                {
+                    "name": "constant.character.escape.js",
+                    "match": "\\\\(?:x[a-fA-F0-9]{2}|u[a-fA-F0-9]{4}|u\\{([0-9a-fA-F]{1,})\\}|[^\" ])"
+                }
+            ]
+        }
+    }
+}

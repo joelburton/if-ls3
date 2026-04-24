@@ -29,7 +29,35 @@
         ],
         "configuration": "./language-configuration.json"
       }
-    ]
+    ],
+    "grammars": [
+      {
+        "language": "inform6",
+        "scopeName": "source.inform6",
+        "path": "./syntaxes/inform6-active.tmLanguage.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "inform6.toggleTextMateHighlighting",
+        "title": "Inform 6: Toggle TextMate Highlighting"
+      }
+    ],
+    "configuration": {
+      "title": "Inform 6 Language Server",
+      "properties": {
+        "inform6.enableTextMateHighlighting": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable TextMate grammar highlighting. Requires a window reload to take effect. Disable to see only LSP semantic token highlighting."
+        },
+        "inform6.enableLanguageServer": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the Inform 6 language server (completions, hover, go-to-definition, etc.). Disable to use only TextMate grammar highlighting."
+        }
+      }
+    }
   },
   "scripts": {
     "compile": "tsc -p tsconfig.client.json",

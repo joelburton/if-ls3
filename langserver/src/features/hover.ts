@@ -13,8 +13,15 @@ function md(parts: string[]): Hover {
  * Lookup order: routines (richest data) → objects → constants → globals →
  * arrays → symbols[] fallback (covers library properties/attributes).
  */
+/**
+ * Return a display path for filePath relative to workspaceRoot.
+ * If the relative path requires more than 2 leading "../" segments it's
+ * more confusing than helpful, so fall back to the absolute path.
+ */
 function rel(filePath: string, workspaceRoot: string): string {
-  return path.relative(workspaceRoot, filePath);
+  const relative = path.relative(workspaceRoot, filePath);
+  const leadingUps = relative.split(path.sep).filter(s => s === "..").length;
+  return leadingUps > 2 ? filePath : relative;
 }
 
 export function findHover(index: CompilerIndex, word: string, workspaceRoot: string): Hover | null {

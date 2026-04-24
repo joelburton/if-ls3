@@ -1,13 +1,97 @@
 import { spawn } from "node:child_process";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/node";
 
 let client: LanguageClient | undefined;
+let outputChannel: vscode.OutputChannel;
 
 export function activate(context: vscode.ExtensionContext): void {
-  const bundledServer = path.join(context.extensionPath, "bundled-server", "server.cjs");
-  const outputChannel = vscode.window.createOutputChannel("Inform6 Language Server");
+  outputChannel = vscode.window.createOutputChannel("Inform6 Language Server");
+
+  // Write the correct grammar file before VS Code tokenizes any .inf files.
+  // This must be synchronous so it completes before activate() returns.
+  applyGrammarFile(context.extensionPath);
+
+  if (languageServerEnabled()) {
+    startClient(context);
+  } else {
+    outputChannel.appendLine("[activate] language server disabled by configuration");
+  }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.toggleTextMateHighlighting", async () => {
+      const config = vscode.workspace.getConfiguration("inform6");
+      const current = config.get<boolean>("enableTextMateHighlighting", true);
+      await config.update("enableTextMateHighlighting", !current, vscode.ConfigurationTarget.Global);
+      applyGrammarFile(context.extensionPath);
+      const label = !current ? "enabled" : "disabled";
+      const action = await vscode.window.showInformationMessage(
+        `Inform 6 TextMate highlighting ${label}. Reload the window to apply.`,
+        "Reload Window"
+      );
+      if (action === "Reload Window") {
+        await vscode.commands.executeCommand("workbench.action.reloadWindow");
+      }
+    })
+  );
+
+  // Restart the LSP client when the language server enable/disable setting changes.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("inform6.enableLanguageServer")) {
+        outputChannel.appendLine(
+          "[extension] inform6.enableLanguageServer changed — restarting client"
+        );
+        void restartClient(context);
+      }
+    })
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Grammar file management
+//
+// VS Code reads the TextMate grammar from the path declared in package.json
+// (syntaxes/inform6-active.tmLanguage.json) each time a new session starts.
+// We swap its contents at activation time so the correct grammar is in place
+// before any .inf file is tokenized.
+// ---------------------------------------------------------------------------
+
+function applyGrammarFile(extensionPath: string): void {
+  const enabled = vscode.workspace
+    .getConfiguration("inform6")
+    .get<boolean>("enableTextMateHighlighting", true);
+
+  const srcName = enabled ? "inform6.tmLanguage.json" : "inform6-empty.tmLanguage.json";
+  const src = path.join(extensionPath, "syntaxes", srcName);
+  const dest = path.join(extensionPath, "syntaxes", "inform6-active.tmLanguage.json");
+
+  try {
+    fs.copyFileSync(src, dest);
+    outputChannel.appendLine(
+      `[extension] TextMate highlighting: ${enabled ? "on" : "off"} (${srcName} → inform6-active.tmLanguage.json)`
+    );
+  } catch (e) {
+    outputChannel.appendLine(`[extension] warning: could not write grammar file: ${e}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Language client
+// ---------------------------------------------------------------------------
+
+function languageServerEnabled(): boolean {
+  return vscode.workspace
+    .getConfiguration("inform6")
+    .get<boolean>("enableLanguageServer", true);
+}
+
+function startClient(context: vscode.ExtensionContext): void {
+  const bundledServer = context.asAbsolutePath(
+    path.join("bundled-server", "server.cjs")
+  );
 
   outputChannel.appendLine(`[activate] server: ${bundledServer}`);
 
@@ -68,6 +152,18 @@ export function activate(context: vscode.ExtensionContext): void {
       void client?.stop().catch(() => { /* ignore */ });
     },
   });
+}
+
+async function restartClient(context: vscode.ExtensionContext): Promise<void> {
+  if (client) {
+    await client.stop().catch(() => { /* ignore */ });
+    client = undefined;
+  }
+  if (languageServerEnabled()) {
+    startClient(context);
+  } else {
+    outputChannel.appendLine("[extension] language server disabled — not restarting");
+  }
 }
 
 export async function deactivate(): Promise<void> {
