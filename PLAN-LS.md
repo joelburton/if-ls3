@@ -100,10 +100,16 @@ find references, signature help.
 ## Feature: Go-to-definition
 
 1. Extract identifier at cursor (`wordAtPosition`)
-2. Case-insensitive name lookup in order: `routines[]`, `objects[]`,
+2. **Object.property lookbehind**: if the character immediately before the
+   identifier is `.`, scan left for an object name. If found, look up that
+   object in `objects[]` and navigate to the matching entry in its
+   `properties[]` or `private_properties[]` array (each entry has a `line`).
+   This handles `TheRoom.description` → jump directly to the `description`
+   line inside `TheRoom`, not to the library `Property description` declaration.
+3. Otherwise, case-insensitive name lookup in order: `routines[]`, `objects[]`,
    `globals[]`, `constants[]`, `arrays[]`, then `symbols[]`
-3. Map `file` (absolute path) + `start_line` / `line` → `Location`
-4. Return first match (multiple results if `Replace` is in play — rare)
+4. Map `file` (absolute path) + `start_line` / `line` → `Location`
+5. Return first match (multiple results if `Replace` is in play — rare)
 
 ## Feature: Hover
 
