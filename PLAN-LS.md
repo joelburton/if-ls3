@@ -311,6 +311,15 @@ find the parent for nesting.
 
 ## Future (post-phase-2)
 
+### Compile-and-play (from original VS Code extension)
+
+The original MIT-licensed Inform6 VS Code extension has a "compile and launch
+in Interactive Fiction Player" feature. Copy/adapt this for completeness —
+it's not a priority (most serious authors use `make` or similar), but worth
+including for users who want a one-click workflow.
+
+Source: the original extension (MIT-licensed, so straightforward to adapt).
+
 - Debounced reindex on keystrokes — deliberately deferred; compiler needs
   on-disk content, so save-triggered reindex is the right model. VS Code
   autosave means users already get near-real-time updates without explicit saves.
