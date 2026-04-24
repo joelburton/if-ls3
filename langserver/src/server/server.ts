@@ -38,7 +38,7 @@ function log(msg: string): void {
  */
 function isActionArrow(line: string, wordStart: number): boolean {
   let i = wordStart - 1;
-  while (i >= 0 && line[i] === " ") i--;
+  while (i >= 0 && (line[i] === " " || line[i] === "\t")) i--;
   return i >= 1 && line[i] === ">" && line[i - 1] === "-";
 }
 
