@@ -678,6 +678,73 @@ extern void index_output_json(void)
     }
     printf("\n  ],\n");
 
+    /* --- verbs --- */
+    printf("  \"verbs\": [\n");
+    first = TRUE;
+    for (i = 0; i < no_Inform_verbs; i++)
+    {   int wc, w;
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {\"verb_num\": %d", i);
+
+        /* Dictionary words for this verb */
+        wc = index_get_verb_word_count(i);
+        printf(", \"words\": [");
+        for (w = 0; w < wc; w++)
+        {   const char *word = index_get_verb_word(i, w);
+            if (w > 0) printf(", ");
+            if (word) json_print_escaped_string(word);
+        }
+        printf("]");
+
+        /* Actions referenced by this verb's grammar lines */
+        printf(", \"actions\": [");
+        {   int li, act, prev_act = -1, act_first = TRUE;
+            for (li = 0; li < Inform_verbs[i].lines; li++)
+            {   int mark = Inform_verbs[i].l[li];
+                if (!glulx_mode)
+                {   act = (grammar_lines[mark] << 8)
+                        | grammar_lines[mark+1];
+                    act &= 0x3FF;
+                }
+                else
+                {   act = (grammar_lines[mark] << 8)
+                        | grammar_lines[mark+1];
+                }
+                if (act != prev_act && act < no_actions)
+                {   char action_name[256];
+                    const char *name = symbols[actions[act].symbol].name;
+                    int nlen;
+                    if (!act_first) printf(", ");
+                    /* Strip __A suffix from action names */
+                    nlen = strlen(name);
+                    if (nlen > 3 && nlen < 256
+                        && strcmp(name + nlen - 3, "__A") == 0)
+                    {   memcpy(action_name, name, nlen - 3);
+                        action_name[nlen - 3] = '\0';
+                        name = action_name;
+                    }
+                    json_print_escaped_string(name);
+                    act_first = FALSE;
+                    prev_act = act;
+                }
+            }
+        }
+        printf("]");
+
+        if (Inform_verbs[i].line.file_index > 0)
+        {   printf(", \"file\": ");
+            json_print_escaped_string(
+                InputFiles[Inform_verbs[i].line.file_index - 1].filename);
+            printf(", \"line\": %d",
+                (int)Inform_verbs[i].line.line_number);
+        }
+        printf("}");
+    }
+    printf("\n  ],\n");
+
     /* --- errors --- */
     printf("  \"errors\": [\n");
     first = TRUE;

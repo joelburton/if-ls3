@@ -1662,6 +1662,29 @@ extern void sort_actions(void)
     }
 }
 
+/* ------------------------------------------------------------------------- */
+/*   Index helpers: expose verb/English word data to index.c                  */
+/* ------------------------------------------------------------------------- */
+
+extern int index_get_verb_word_count(int verbnum)
+{   int count = 0, ix;
+    for (ix = 0; ix < English_verbs_count; ix++)
+        if (English_verbs[ix].verbnum == verbnum) count++;
+    return count;
+}
+
+extern const char *index_get_verb_word(int verbnum, int which)
+{   int count = 0, ix;
+    for (ix = 0; ix < English_verbs_count; ix++)
+    {   if (English_verbs[ix].verbnum == verbnum)
+        {   if (count == which)
+                return English_verbs_text + English_verbs[ix].textpos;
+            count++;
+        }
+    }
+    return NULL;
+}
+
 /* ========================================================================= */
 /*   Data structure management routines                                      */
 /* ------------------------------------------------------------------------- */

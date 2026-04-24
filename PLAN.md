@@ -83,11 +83,14 @@ commented-out ICL directives like `!!%`.
 - [x] Severity mapping: style 1/3 → "error", style 2 → "warning",
   style 4 → "fatal"
 
-### 1g. Verb/grammar table
+### 1g. Verb/grammar table — DONE
 
-Add `verbs[]` section capturing the grammar table (Verb directives,
-grammar lines). This is parsed in `verbs.c`. Useful for go-to-definition
-on action names and for understanding game commands.
+- [x] `verbs[]` section in JSON with verb_num, words (dictionary
+  entries), actions (stripped of `__A` suffix), file, line
+- [x] Helper functions `index_get_verb_word_count()` and
+  `index_get_verb_word()` in `verbs.c` to expose static English_verbs
+  data to `index.c`
+- [x] Actions extracted from grammar line binary data for each verb
 
 ### 1h. Dictionary words
 

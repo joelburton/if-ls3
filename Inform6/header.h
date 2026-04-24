@@ -2559,6 +2559,8 @@ extern void  index_note_object(char *name, int symbol, int is_class,
                  int parent, brief_location start);
 extern void  index_note_error(const char *file, int32 line,
                  const char *msg, int severity);
+extern int   index_get_verb_word_count(int verbnum);
+extern const char *index_get_verb_word(int verbnum, int which);
 extern void  index_doc_comment_line(const char *text);
 extern void  index_doc_comment_trailing(const char *text, int32 line);
 extern void  index_doc_nontrivial_token(void);
