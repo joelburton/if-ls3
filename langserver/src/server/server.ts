@@ -33,13 +33,40 @@ function log(msg: string): void {
 }
 
 /**
+ * Build a Set of "filePath:lineNumber" (1-based) strings from the compiler's
+ * grammar_action_refs list.  Used to distinguish grammar-arrow -> from
+ * array-operator -> and property-access ->.
+ */
+function buildGrammarActionPositions(index: CompilerIndex): Set<string> {
+  const set = new Set<string>();
+  for (const ref of index.grammar_action_refs ?? []) {
+    set.add(`${ref.file}:${ref.line}`);
+  }
+  return set;
+}
+
+/**
  * Returns true if `word` at `wordStart` is an action name following `->` in a
  * Verb directive grammar line (e.g. `* noun -> Foozle`).
+ *
+ * Requires `grammarActionPositions` (built from the compiler's
+ * `grammar_action_refs` list) so that array-operator `->` (e.g.
+ * `Array x --> Foozle`) and property-access `obj->prop` are NOT matched.
  */
-function isActionArrow(line: string, wordStart: number): boolean {
+function isActionArrow(
+  line: string,
+  wordStart: number,
+  lineNumber: number,
+  filePath: string,
+  grammarActionPositions: Set<string>,
+): boolean {
+  // Quick syntactic pre-check: must be preceded by ->
   let i = wordStart - 1;
   while (i >= 0 && (line[i] === " " || line[i] === "\t")) i--;
-  return i >= 1 && line[i] === ">" && line[i - 1] === "-";
+  if (!(i >= 1 && line[i] === ">" && line[i - 1] === "-")) return false;
+  // Confirm via compiler data: only true when the compiler recorded this
+  // file+line as a grammar-line action reference.
+  return grammarActionPositions.has(`${filePath}:${lineNumber + 1}`);
 }
 
 /**
@@ -127,10 +154,13 @@ connection.onDefinition((params: DefinitionParams) => {
   // Action statement: <Jump ...> or <<Jump ...>>
   //   Distinguished from comparisons (x<a) by checking the char before < is not
   //   an identifier character — statements start at whitespace/line-start.
+  // Grammar arrow:    * noun -> Foozle   (compiler-verified: checks grammar_action_refs)
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  const grammarActionPositions = buildGrammarActionPositions(currentIndex);
   const isActionRef = hit.lineText[hit.end] === ":"
     || (hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#")
     || isActionAngleBracket(hit.lineText, hit.start)
-    || isActionArrow(hit.lineText, hit.start);
+    || isActionArrow(hit.lineText, hit.start, params.position.line, filePath, grammarActionPositions);
   return findDefinition(currentIndex, hit.word, objCtx, isActionRef);
 });
 

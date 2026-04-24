@@ -1,5 +1,10 @@
 /** TypeScript interfaces matching the `inform6 -y` JSON output schema. */
 
+export interface GrammarActionRef {
+  file: string;
+  line: number;
+}
+
 export interface CompilerIndex {
   version: number;
   files: string[];
@@ -12,6 +17,7 @@ export interface CompilerIndex {
   verbs: VerbInfo[];
   dictionary: DictionaryWord[];
   errors: CompilerError[];
+  grammar_action_refs: GrammarActionRef[];
 }
 
 export interface SymbolInfo {

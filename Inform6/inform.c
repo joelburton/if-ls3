@@ -1159,6 +1159,10 @@ disabling -X switch\n");
     run_pass();
 
     if (index_switch) {
+        /* Report any unresolved symbol errors from the code area.
+           output_file() is skipped in -y mode, so the zcode_backpatch_table
+           is never processed — we must do that check here. */
+        backpatch_report_zcode_errors();
         /* Always output JSON index, even with errors — the language
            server needs partial results plus error diagnostics */
         index_output_json();

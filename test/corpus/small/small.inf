@@ -20,10 +20,7 @@ Constant NOPE;
 
 [Foo;
   if (action == ##Jump) print "hello";
-  <<Jump var var>>;
-  if (x<12) { }
 ];
-[Far; ];
 
 
 
@@ -35,7 +32,7 @@ Global c = 42;  !! Doc comment for c
 
 [ MyFunc a b;
     print a, b, "^";
-    Bar();
+    Foo();
 ];
 
 [ Initialise;
@@ -44,4 +41,12 @@ Global c = 42;  !! Doc comment for c
 
 Include "VerbLib";
 Include "Grammar";
+
+[ FoozleSub; print "hey"; ];
+
+Verb 'foozle' * noun -> Foozle;
+
+Constant Foozle 10;
+
+Array x --> Foozle;
 

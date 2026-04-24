@@ -579,6 +579,95 @@ extern void backpatch_zmachine_image_g(void)
     }
 }
 
+/* ------------------------------------------------------------------------- */
+/*   Validate code-area backpatches for unresolved symbols.                  */
+/*                                                                           */
+/*   In -y (index) mode, output_file() is skipped, so the code-area         */
+/*   backpatch table (zcode_backpatch_table) is never processed.  This       */
+/*   function replicates the SYMBOL_MV error-checking from output_file_z/g() */
+/*   so that "No such constant as" errors appear in the JSON output.         */
+/* ------------------------------------------------------------------------- */
+
+extern void backpatch_report_zcode_errors(void)
+{   int i;
+    int32 j = 0;
+
+    if (!glulx_mode)
+    {   /* Z-code: 3-byte entries [marker][offset_hi][offset_lo].
+           Marker byte: bit 7 = short (1B) vs long (2B);
+           bits 5-6 = high bits of offset (/0x10000); bits 0-4 = actual marker.
+           Entries are in increasing offset order; use rolling-window decode. */
+        for (i = 0; i < zcode_backpatch_size; i += 3)
+        {   int long_flag = TRUE;
+            int32 offset;
+            int marker;
+
+            marker = zcode_backpatch_table[i];
+            if (marker >= 0x80) long_flag = FALSE;
+            marker &= 0x7f;
+            offset = 256 * zcode_backpatch_table[i+1]
+                         + zcode_backpatch_table[i+2];
+            offset += (marker / 32) * 0x10000;
+            while (offset + 0x30000 < j)
+                offset += 0x40000;
+            marker &= 0x1f;
+
+            if (marker == SYMBOL_MV)
+            {   int32 sym = long_flag
+                    ? (256 * zcode_area[offset] + zcode_area[offset + 1])
+                    : zcode_area[offset];
+                if (sym >= 0 && sym < no_symbols
+                    && (symbols[sym].flags & UNKNOWN_SFLAG)
+                    && !(symbols[sym].flags & UERROR_SFLAG))
+                {   symbols[sym].flags |= UERROR_SFLAG;
+                    error_named_at("No such constant as",
+                        symbols[sym].name, symbols[sym].line);
+                }
+            }
+
+            j = offset + (long_flag ? 2 : 1);
+        }
+    }
+    else
+    {   /* Glulx: 6-byte entries [marker][data_len][offset 4 bytes BE]. */
+        for (i = 0; i < zcode_backpatch_size; i += 6)
+        {   int marker   = zcode_backpatch_table[i];
+            int data_len = zcode_backpatch_table[i+1];
+            int32 offset = ((int32)zcode_backpatch_table[i+2] << 24)
+                         | ((int32)zcode_backpatch_table[i+3] << 16)
+                         | ((int32)zcode_backpatch_table[i+4] << 8)
+                         |  (int32)zcode_backpatch_table[i+5];
+
+            if (marker == SYMBOL_MV)
+            {   int32 sym;
+                switch (data_len)
+                {   case 4:
+                        sym = ((int32)zcode_area[offset] << 24)
+                            | ((int32)zcode_area[offset+1] << 16)
+                            | ((int32)zcode_area[offset+2] << 8)
+                            |  (int32)zcode_area[offset+3];
+                        break;
+                    case 2:
+                        sym = (256 * zcode_area[offset])
+                              + zcode_area[offset + 1];
+                        break;
+                    default:
+                        sym = zcode_area[offset];
+                        break;
+                }
+                if (sym >= 0 && sym < no_symbols
+                    && (symbols[sym].flags & UNKNOWN_SFLAG)
+                    && !(symbols[sym].flags & UERROR_SFLAG))
+                {   symbols[sym].flags |= UERROR_SFLAG;
+                    error_named_at("No such constant as",
+                        symbols[sym].name, symbols[sym].line);
+                }
+            }
+            (void)data_len;
+        }
+    }
+}
+
 /* ========================================================================= */
 /*   Data structure management routines                                      */
 /* ------------------------------------------------------------------------- */

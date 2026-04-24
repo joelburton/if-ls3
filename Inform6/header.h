@@ -2362,6 +2362,7 @@ extern int32 backpatch_value(int32 value);
 extern void  backpatch_zmachine_image_z(void);
 extern void  backpatch_zmachine_image_g(void);
 extern void  backpatch_zmachine(int mv, int zmachine_area, int32 offset);
+extern void  backpatch_report_zcode_errors(void);
 
 /* ------------------------------------------------------------------------- */
 /*   Extern definitions for "chars"                                          */
@@ -2559,6 +2560,7 @@ extern void  index_note_object(char *name, int symbol, int is_class,
                  int parent, brief_location start);
 extern void  index_note_error(const char *file, int32 line,
                  const char *msg, int severity);
+extern void  index_note_grammar_action_ref(brief_location loc);
 extern int   index_get_verb_word_count(int verbnum);
 extern const char *index_get_verb_word(int verbnum, int which);
 extern int   index_get_dict_entry_count(void);

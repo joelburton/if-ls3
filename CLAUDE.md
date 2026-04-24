@@ -57,6 +57,11 @@ The index includes:
 - `verbs[]` — verb definitions with dictionary words, actions, file, line
 - `dictionary[]` — all dictionary words with flags (noun, verb, preposition, meta, plural)
 - `errors[]` — compilation errors/warnings with file, line, message, severity
+- `grammar_action_refs[]` — source locations (`{file, line}`) of every action-name
+  identifier after `->` in a Verb/Extend grammar line. Used by the language server
+  to distinguish the grammar-arrow `->` (action reference, navigate to `FoozleSub`)
+  from the array-fill operator `->` and property-access `->` (both use the same token
+  but must NOT trigger action navigation).
 
 JSON is always output even with compilation errors (partial index + diagnostics).
 

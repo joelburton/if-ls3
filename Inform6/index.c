@@ -95,6 +95,36 @@ static char *index_strdup(const char *s)
 }
 
 /* --------------------------------------------------------------------- */
+/*   Grammar action reference positions                                  */
+/*                                                                       */
+/*   Each entry records the source location of an action-name identifier */
+/*   that appears after -> in a Verb/Extend grammar line.  The language  */
+/*   server uses this list to distinguish grammar-arrow -> (action ref)  */
+/*   from array-operator -> (e.g. Array x -> Foozle).                   */
+/* --------------------------------------------------------------------- */
+
+#define MAX_INDEX_ACTION_REFS 2048
+
+typedef struct index_action_ref_s {
+    int32 line;
+    int   file_index;          /* 1-based index into InputFiles[] */
+} index_action_ref;
+
+static index_action_ref *action_refs;
+static int action_refs_count;
+static memory_list action_refs_memlist;
+
+extern void index_note_grammar_action_ref(brief_location loc)
+{   index_action_ref *r;
+    if (loc.file_index <= 0) return;
+    ensure_memory_list_available(&action_refs_memlist,
+        action_refs_count + 1);
+    r = &action_refs[action_refs_count++];
+    r->line = loc.line_number;
+    r->file_index = loc.file_index;
+}
+
+/* --------------------------------------------------------------------- */
 /*   Error/warning capture for JSON output                               */
 /* --------------------------------------------------------------------- */
 
@@ -909,6 +939,19 @@ extern void index_output_json(void)
         printf(", \"severity\": \"%s\"", sev);
         printf("}");
     }
+    printf("\n  ],\n");
+
+    /* --- grammar_action_refs --- */
+    printf("  \"grammar_action_refs\": [\n");
+    first = TRUE;
+    for (i = 0; i < action_refs_count; i++)
+    {   index_action_ref *r = &action_refs[i];
+        if (!first) printf(",\n");
+        first = FALSE;
+        printf("    {\"file\": ");
+        json_print_abs_path(InputFiles[r->file_index - 1].filename);
+        printf(", \"line\": %d}", (int)r->line);
+    }
     printf("\n  ]\n");
 
     printf("}\n");
@@ -933,9 +976,11 @@ extern void init_index_vars(void)
     symbol_docs = NULL;
     trailing_docs = NULL;
     errors_info = NULL;
+    action_refs = NULL;
     pending_object_doc = NULL;
     trailing_docs_count = 0;
     errors_info_count = 0;
+    action_refs_count = 0;
     routines_count = 0;
     locals_pool_count = 0;
     objects_info_count = 0;
@@ -965,6 +1010,7 @@ extern void index_begin_pass(void)
     trailing_doc_line = 0;
     trailing_docs_count = 0;
     errors_info_count = 0;
+    action_refs_count = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -1010,6 +1056,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&errors_info_memlist,
         sizeof(index_error), MAX_INDEX_ERRORS,
         (void **)&errors_info, "index errors");
+    initialise_memory_list(&action_refs_memlist,
+        sizeof(index_action_ref), MAX_INDEX_ACTION_REFS,
+        (void **)&action_refs, "index grammar action refs");
 }
 
 extern void index_free_arrays(void)
@@ -1060,4 +1109,5 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&symbol_docs_memlist);
     deallocate_memory_list(&trailing_docs_list_memlist);
     deallocate_memory_list(&errors_info_memlist);
+    deallocate_memory_list(&action_refs_memlist);
 }
