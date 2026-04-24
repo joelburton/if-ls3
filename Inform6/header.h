@@ -2561,6 +2561,9 @@ extern void  index_note_error(const char *file, int32 line,
                  const char *msg, int severity);
 extern int   index_get_verb_word_count(int verbnum);
 extern const char *index_get_verb_word(int verbnum, int which);
+extern int   index_get_dict_entry_count(void);
+extern void  index_get_dict_entry(int node, char *word_out, int word_max,
+                 int *flags_out);
 extern void  index_doc_comment_line(const char *text);
 extern void  index_doc_comment_trailing(const char *text, int32 line);
 extern void  index_doc_nontrivial_token(void);

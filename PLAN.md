@@ -92,11 +92,15 @@ commented-out ICL directives like `!!%`.
   data to `index.c`
 - [x] Actions extracted from grammar line binary data for each verb
 
-### 1h. Dictionary words
+### 1h. Dictionary words — DONE
 
-Add `dictionary[]` section with dict words and their flags. Parsed in
-`text.c`/`directs.c`. Useful for completions on dictionary words and for
-understanding what words the game recognizes.
+- [x] `dictionary[]` section in JSON with word text and boolean flags
+  (noun, verb, preposition, meta, plural)
+- [x] Helper functions `index_get_dict_entry_count()` and
+  `index_get_dict_entry()` in `text.c` to decode dictionary entries
+  for both Z-machine and Glulx formats
+- [x] Entries are in internal (node) order, not sorted — consumer
+  can sort if needed
 
 ## Phase 2: TypeScript language server (Sonnet, some Opus)
 

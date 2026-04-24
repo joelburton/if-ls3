@@ -745,6 +745,30 @@ extern void index_output_json(void)
     }
     printf("\n  ],\n");
 
+    /* --- dictionary --- */
+    {   int ndict = index_get_dict_entry_count();
+        printf("  \"dictionary\": [\n");
+        first = TRUE;
+        for (i = 0; i < ndict; i++)
+        {   char word[64];
+            int flags;
+            index_get_dict_entry(i, word, sizeof(word), &flags);
+
+            if (!first) printf(",\n");
+            first = FALSE;
+
+            printf("    {\"word\": ");
+            json_print_escaped_string(word);
+            if (flags & NOUN_DFLAG) printf(", \"noun\": true");
+            if (flags & VERB_DFLAG) printf(", \"verb\": true");
+            if (flags & PREP_DFLAG) printf(", \"preposition\": true");
+            if (flags & META_DFLAG) printf(", \"meta\": true");
+            if (flags & PLURAL_DFLAG) printf(", \"plural\": true");
+            printf("}");
+        }
+        printf("\n  ],\n");
+    }
+
     /* --- errors --- */
     printf("  \"errors\": [\n");
     first = TRUE;

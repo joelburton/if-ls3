@@ -2935,6 +2935,49 @@ extern void show_dictionary(int level)
     }
 }
 
+/* --------------------------------------------------------------------- */
+/*   Index helpers: expose dictionary entries to index.c                  */
+/* --------------------------------------------------------------------- */
+
+extern int index_get_dict_entry_count(void)
+{   return dict_entries;
+}
+
+extern void index_get_dict_entry(int node, char *word_out, int word_max,
+    int *flags_out)
+{   uchar *p;
+    if (node < 0 || node >= dict_entries)
+    {   word_out[0] = '\0';
+        *flags_out = 0;
+        return;
+    }
+    if (!glulx_mode)
+    {   int res = (version_number == 3) ? 4 : 6;
+        p = (uchar *)dictionary + 7 + DICT_ENTRY_BYTE_LENGTH * node;
+        dictword_to_text(p, word_out);
+        *flags_out = (int) p[res];
+    }
+    else
+    {   int i, cc = 0;
+        int flagpos;
+        p = (uchar *)dictionary + 4 + DICT_ENTRY_BYTE_LENGTH * node;
+        for (i = 0; i < DICT_WORD_SIZE && cc < word_max - 1; i++)
+        {   uint32 ch;
+            if (DICT_CHAR_SIZE == 1)
+                ch = p[1 + i];
+            else
+                ch = (p[4*i+4] << 24) | (p[4*i+5] << 16)
+                   | (p[4*i+6] << 8) | p[4*i+7];
+            if (!ch) break;
+            if (ch < 128) word_out[cc++] = (char)ch;
+        }
+        word_out[cc] = '\0';
+        flagpos = (DICT_CHAR_SIZE == 1)
+            ? (DICT_WORD_SIZE + 1) : (DICT_WORD_BYTES + 4);
+        *flags_out = (p[flagpos] << 8) | p[flagpos + 1];
+    }
+}
+
 extern void write_dictionary_to_transcript(void)
 {
     int last, pos;
