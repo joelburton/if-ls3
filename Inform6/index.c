@@ -62,13 +62,19 @@ typedef struct index_object_s {
 static index_object *objects_info;
 static int objects_info_count;
 
-static char **obj_attrs_pool;   /* attribute names */
+/* Property/attribute entry: name + line where it appears in the object body */
+typedef struct index_prop_entry_s {
+    char *name;
+    int32 line;
+} index_prop_entry;
+
+static index_prop_entry *obj_attrs_pool;   /* attribute entries */
 static int obj_attrs_pool_count;
 
-static char **obj_props_pool;   /* property names (public) */
+static index_prop_entry *obj_props_pool;   /* property entries (public) */
 static int obj_props_pool_count;
 
-static char **obj_private_props_pool;   /* property names (private) */
+static index_prop_entry *obj_private_props_pool;   /* property entries (private) */
 static int obj_private_props_pool_count;
 
 static memory_list objects_info_memlist;
@@ -268,16 +274,16 @@ static char *index_consume_doc(int32 def_line)
     return NULL;
 }
 
-/* Pending attribute/property names for current object being parsed */
-static char **pending_attrs;
+/* Pending attribute/property entries for current object being parsed */
+static index_prop_entry *pending_attrs;
 static int pending_attrs_count;
 static memory_list pending_attrs_memlist;
 
-static char **pending_props;
+static index_prop_entry *pending_props;
 static int pending_props_count;
 static memory_list pending_props_memlist;
 
-static char **pending_private_props;
+static index_prop_entry *pending_private_props;
 static int pending_private_props_count;
 static memory_list pending_private_props_memlist;
 
@@ -304,6 +310,16 @@ static void json_print_escaped_string(const char *s)
         }
     }
     putchar('"');
+}
+
+/* Resolve path to absolute before printing. Falls back to the original
+   if realpath() fails (e.g. file no longer exists at output time). */
+static void json_print_abs_path(const char *path)
+{   char resolved[4096];
+    if (path && realpath(path, resolved))
+        json_print_escaped_string(resolved);
+    else
+        json_print_escaped_string(path ? path : "");
 }
 
 static const char *array_type_name(int type)
@@ -388,23 +404,34 @@ extern void index_reset_object_props(void)
 }
 
 extern void index_note_attribute(char *name)
-{   ensure_memory_list_available(&pending_attrs_memlist,
+{   index_prop_entry *e;
+    brief_location loc;
+    report_errors_at_current_line();
+    loc = get_brief_location(&ErrorReport);
+    ensure_memory_list_available(&pending_attrs_memlist,
         pending_attrs_count + 1);
-    pending_attrs[pending_attrs_count++] = index_strdup(name);
+    e = &pending_attrs[pending_attrs_count++];
+    e->name = index_strdup(name);
+    e->line = loc.line_number;
 }
 
 extern void index_note_property(char *name, int is_private)
-{   if (is_private)
+{   index_prop_entry *e;
+    brief_location loc;
+    report_errors_at_current_line();
+    loc = get_brief_location(&ErrorReport);
+    if (is_private)
     {   ensure_memory_list_available(&pending_private_props_memlist,
             pending_private_props_count + 1);
-        pending_private_props[pending_private_props_count++] =
-            index_strdup(name);
+        e = &pending_private_props[pending_private_props_count++];
     }
     else
     {   ensure_memory_list_available(&pending_props_memlist,
             pending_props_count + 1);
-        pending_props[pending_props_count++] = index_strdup(name);
+        e = &pending_props[pending_props_count++];
     }
+    e->name = index_strdup(name);
+    e->line = loc.line_number;
 }
 
 extern void index_note_object(char *name, int symbol, int is_class,
@@ -478,7 +505,7 @@ extern void index_output_json(void)
     for (i = 0; i < total_input_files; i++)
     {   if (!first) printf(",\n");
         printf("    ");
-        json_print_escaped_string(InputFiles[i].filename);
+        json_print_abs_path(InputFiles[i].filename);
         first = FALSE;
     }
     printf("\n  ],\n");
@@ -504,7 +531,7 @@ extern void index_output_json(void)
 
         if (symbols[i].line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[symbols[i].line.file_index - 1].filename);
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
@@ -543,7 +570,7 @@ extern void index_output_json(void)
         /* Include source location */
         if (r->line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[r->line.file_index - 1].filename);
             printf(", \"start_line\": %d",
                 (int)r->line.line_number);
@@ -583,7 +610,7 @@ extern void index_output_json(void)
 
         if (o->line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[o->line.file_index - 1].filename);
             printf(", \"start_line\": %d",
                 (int)o->line.line_number);
@@ -610,9 +637,11 @@ extern void index_output_json(void)
 
         printf(", \"attributes\": [");
         for (j = 0; j < o->attrs_count; j++)
-        {   if (j > 0) printf(", ");
-            json_print_escaped_string(
-                obj_attrs_pool[o->attrs_start + j]);
+        {   index_prop_entry *a = &obj_attrs_pool[o->attrs_start + j];
+            if (j > 0) printf(", ");
+            printf("{\"name\": ");
+            json_print_escaped_string(a->name);
+            printf(", \"line\": %d}", (int)a->line);
         }
         printf("]");
 
@@ -623,17 +652,22 @@ extern void index_output_json(void)
 
         printf(", \"properties\": [");
         for (j = 0; j < o->props_count; j++)
-        {   if (j > 0) printf(", ");
-            json_print_escaped_string(
-                obj_props_pool[o->props_start + j]);
+        {   index_prop_entry *p = &obj_props_pool[o->props_start + j];
+            if (j > 0) printf(", ");
+            printf("{\"name\": ");
+            json_print_escaped_string(p->name);
+            printf(", \"line\": %d}", (int)p->line);
         }
         printf("]");
 
         printf(", \"private_properties\": [");
         for (j = 0; j < o->private_props_count; j++)
-        {   if (j > 0) printf(", ");
-            json_print_escaped_string(
-                obj_private_props_pool[o->private_props_start + j]);
+        {   index_prop_entry *p =
+                &obj_private_props_pool[o->private_props_start + j];
+            if (j > 0) printf(", ");
+            printf("{\"name\": ");
+            json_print_escaped_string(p->name);
+            printf(", \"line\": %d}", (int)p->line);
         }
         printf("]}");
     }
@@ -655,7 +689,7 @@ extern void index_output_json(void)
 
         if (symbols[i].line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[symbols[i].line.file_index - 1].filename);
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
@@ -692,7 +726,7 @@ extern void index_output_json(void)
 
         if (symbols[i].line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[symbols[i].line.file_index - 1].filename);
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
@@ -733,7 +767,7 @@ extern void index_output_json(void)
 
         if (symbols[sym].line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[symbols[sym].line.file_index - 1].filename);
             printf(", \"line\": %d",
                 (int)symbols[sym].line.line_number);
@@ -812,7 +846,7 @@ extern void index_output_json(void)
 
         if (Inform_verbs[i].line.file_index > 0)
         {   printf(", \"file\": ");
-            json_print_escaped_string(
+            json_print_abs_path(
                 InputFiles[Inform_verbs[i].line.file_index - 1].filename);
             printf(", \"line\": %d",
                 (int)Inform_verbs[i].line.line_number);
@@ -858,7 +892,7 @@ extern void index_output_json(void)
         printf("    {");
         if (e->file)
         {   printf("\"file\": ");
-            json_print_escaped_string(e->file);
+            json_print_abs_path(e->file);
             printf(", ");
         }
         printf("\"line\": %d", (int)e->line);
@@ -944,22 +978,22 @@ extern void index_allocate_arrays(void)
         sizeof(index_object), MAX_INDEX_OBJECTS,
         (void **)&objects_info, "index objects");
     initialise_memory_list(&obj_attrs_pool_memlist,
-        sizeof(char *), MAX_INDEX_OBJ_ATTRS,
+        sizeof(index_prop_entry), MAX_INDEX_OBJ_ATTRS,
         (void **)&obj_attrs_pool, "index object attrs");
     initialise_memory_list(&obj_props_pool_memlist,
-        sizeof(char *), MAX_INDEX_OBJ_PROPS,
+        sizeof(index_prop_entry), MAX_INDEX_OBJ_PROPS,
         (void **)&obj_props_pool, "index object props");
     initialise_memory_list(&obj_private_props_pool_memlist,
-        sizeof(char *), MAX_INDEX_OBJ_PROPS,
+        sizeof(index_prop_entry), MAX_INDEX_OBJ_PROPS,
         (void **)&obj_private_props_pool, "index object private props");
     initialise_memory_list(&pending_attrs_memlist,
-        sizeof(char *), 64,
+        sizeof(index_prop_entry), 64,
         (void **)&pending_attrs, "index pending attrs");
     initialise_memory_list(&pending_props_memlist,
-        sizeof(char *), 64,
+        sizeof(index_prop_entry), 64,
         (void **)&pending_props, "index pending props");
     initialise_memory_list(&pending_private_props_memlist,
-        sizeof(char *), 64,
+        sizeof(index_prop_entry), 64,
         (void **)&pending_private_props, "index pending private props");
     initialise_memory_list(&doc_buffer_memlist,
         sizeof(char), MAX_DOC_BUFFER,
@@ -991,18 +1025,18 @@ extern void index_free_arrays(void)
         if (objects_info[i].doc) free(objects_info[i].doc);
     }
     for (i = 0; i < obj_attrs_pool_count; i++)
-        free(obj_attrs_pool[i]);
+        free(obj_attrs_pool[i].name);
     for (i = 0; i < obj_props_pool_count; i++)
-        free(obj_props_pool[i]);
+        free(obj_props_pool[i].name);
     for (i = 0; i < obj_private_props_pool_count; i++)
-        free(obj_private_props_pool[i]);
+        free(obj_private_props_pool[i].name);
     /* pending pools are consumed by index_note_object, but clean up stragglers */
     for (i = 0; i < pending_attrs_count; i++)
-        free(pending_attrs[i]);
+        free(pending_attrs[i].name);
     for (i = 0; i < pending_props_count; i++)
-        free(pending_props[i]);
+        free(pending_props[i].name);
     for (i = 0; i < pending_private_props_count; i++)
-        free(pending_private_props[i]);
+        free(pending_private_props[i].name);
     for (i = 0; i < (int)symbol_docs_memlist.count; i++)
         if (symbol_docs[i]) free(symbol_docs[i]);
     for (i = 0; i < trailing_docs_count; i++)

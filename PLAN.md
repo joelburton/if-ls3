@@ -116,6 +116,20 @@ commented-out ICL directives like `!!%`.
 - [x] Verified: compiled Z-code output is byte-for-byte identical to
   upstream compiler (`40faabc`)
 
+### 1j. LS-prep refinements — DONE
+
+- [x] **Absolute paths**: all `file` fields in JSON are now resolved via
+  `realpath()` so the language server can build document URIs directly.
+  Previously the main source file was emitted as a bare relative path.
+- [x] **Per-property/attribute line numbers**: `attributes[]`,
+  `properties[]`, and `private_properties[]` in `objects[]` now emit
+  `{"name": "...", "line": N}` instead of bare strings. Line is the
+  source line within the object body where the entry appears, enabling
+  go-to-definition for `Object.property` expressions. Captured via
+  `report_errors_at_current_line()` in `index_note_attribute()` and
+  `index_note_property()` (ErrorReport is otherwise frozen at the
+  directive-start line while parsing object bodies).
+
 ## Future compiler enhancements (post-v1)
 
 - [ ] **References (use sites)**: Hook in `expressp.c` to record where
