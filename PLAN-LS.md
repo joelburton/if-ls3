@@ -204,8 +204,9 @@ find the parent for nesting.
 
 ## Future (post-phase-2)
 
-- Debounced reindex on keystrokes (not just save) — deliberately deferred;
-  save-only is correct given compiler needs on-disk file
+- Debounced reindex on keystrokes — deliberately deferred; compiler needs
+  on-disk content, so save-triggered reindex is the right model. VS Code
+  autosave means users already get near-real-time updates without explicit saves.
 - Find references (requires compiler-side reference tracking in `expressp.c`)
 - Completions (scope-aware: locals + globals + object properties)
 - Signature help for routine calls
