@@ -1,4 +1,7 @@
 !% +/Users/joel/if/inform6lib/
+!% $GRAMMAR_META_FLAG=1
+
+
 
 Include "Parser";
 
@@ -16,10 +19,18 @@ Object TheRoom "The Room"
     ],
 ;
 
+Object -> "So quiet";
+
+Class Room;
+Room OtherRoom;
+Object SimpleRoom;
+
+
 Constant NOPE;
 
 [Foo;
   if (action == ##Jump) print "hello";
+  Achieved(x);
 ];
 
 
@@ -30,13 +41,34 @@ Global c = 42;  !! Doc comment for c
 !! This is a doc comment for MyFunc.
 !! It goes over several lines.
 
-[ MyFunc a b;
+#IfDef UNKNOWN;
+Constant BAR_BAR;
+#EndIf;
+
+#IfDef IS_SET;
+Constant IS_SET_CONST;
+#EndIf;
+
+#IfDef NOT_SET;
+Constant NOT_SET_CONST;
+#EndIf;
+
+[ MyFunc a b if ;
     print a, b, "^";
+    if = 42;
+    #IfDef DEBUG;
+    print "debug";
+    #EndIf;
     Foo();
+    ! if (true) { print "true"; }
 ];
+
 
 [ Initialise;
     location = TheRoom;
+];
+
+[ MyScopeFunc;
 ];
 
 Include "VerbLib";
@@ -44,9 +76,20 @@ Include "Grammar";
 
 [ FoozleSub; print "hey"; ];
 
-Verb 'foozle' * noun -> Foozle;
+Verb meta 'foozle'
+  * noun scope=MyScopeFunc -> Foozle meta
+  * creature light -> Foozle meta;
 
 Constant Foozle 10;
 
+
 Array x --> Foozle;
 
+#IfDef DEBUG;  ! a known, active constant, should raise no warning
+#EndIf;
+
+#IfDef HAS_HINTS; ! an "understood" but not defined/active constant, should raise no warning
+#EndIf;
+
+#IfDef HASHINTS; ! not the right spelling, not "understood", should show a warning
+#EndIf;
