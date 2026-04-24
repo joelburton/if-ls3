@@ -114,6 +114,17 @@ static void json_print_escaped_string(const char *s)
     putchar('"');
 }
 
+static const char *array_type_name(int type)
+{   switch (type)
+    {   case BYTE_ARRAY:   return "byte";
+        case WORD_ARRAY:   return "word";
+        case STRING_ARRAY: return "string";
+        case TABLE_ARRAY:  return "table";
+        case BUFFER_ARRAY: return "buffer";
+        default:           return "unknown";
+    }
+}
+
 static const char *symbol_type_name(int type)
 {   switch (type)
     {   case ROUTINE_T:             return "routine";
@@ -374,6 +385,60 @@ extern void index_output_json(void)
                 obj_props_pool[o->props_start + j]);
         }
         printf("]}");
+    }
+    printf("\n  ],\n");
+
+    /* --- globals --- */
+    printf("  \"globals\": [\n");
+    first = TRUE;
+    for (i = 0; i < no_symbols; i++)
+    {   if (symbols[i].type != GLOBAL_VARIABLE_T) continue;
+        if (symbols[i].flags & UNKNOWN_SFLAG) continue;
+        if (symbols[i].flags & SYSTEM_SFLAG) continue;
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {\"name\": ");
+        json_print_escaped_string(symbols[i].name);
+
+        if (symbols[i].line.file_index > 0)
+        {   printf(", \"file\": ");
+            json_print_escaped_string(
+                InputFiles[symbols[i].line.file_index - 1].filename);
+            printf(", \"line\": %d",
+                (int)symbols[i].line.line_number);
+        }
+        printf("}");
+    }
+    printf("\n  ],\n");
+
+    /* --- arrays --- */
+    printf("  \"arrays\": [\n");
+    first = TRUE;
+    for (i = 0; i < no_arrays; i++)
+    {   int sym = arrays[i].symbol;
+
+        if (symbols[sym].flags & SYSTEM_SFLAG) continue;
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {\"name\": ");
+        json_print_escaped_string(symbols[sym].name);
+        printf(", \"array_type\": \"%s\"", array_type_name(arrays[i].type));
+        printf(", \"size\": %d", arrays[i].size);
+        if (arrays[i].loc)
+            printf(", \"is_static\": true");
+
+        if (symbols[sym].line.file_index > 0)
+        {   printf(", \"file\": ");
+            json_print_escaped_string(
+                InputFiles[symbols[sym].line.file_index - 1].filename);
+            printf(", \"line\": %d",
+                (int)symbols[sym].line.line_number);
+        }
+        printf("}");
     }
     printf("\n  ]\n");
 

@@ -45,11 +45,13 @@ choice.
   `index_note_object()` at end of `make_object()`/`make_class()`
 - [x] Metaclass objects (Class, Object, Routine, String) are excluded
 
-### 1d. Globals and arrays
+### 1d. Globals and arrays — DONE
 
-Add `globals[]` and `arrays[]` to the JSON with definition locations. These
-are already in the symbol table; we may just need to enrich the symbols
-output or add dedicated sections with more detail (array size, type).
+- [x] `globals[]` section: filtered from symbol table (non-system
+  `GLOBAL_VARIABLE_T` symbols) with name, file, line
+- [x] `arrays[]` section: from compiler's `arrays[]` tracking array with
+  name, array_type (byte/word/string/table/buffer), size, is_static, file, line
+- [x] No new hooks needed — reads existing compiler data structures directly
 
 ### 1e. Doc comments
 
