@@ -1168,6 +1168,9 @@ static void properties_segment_z(int this_segment)
             return;
         }
 
+        if (index_switch)
+            index_note_property(token_text);
+
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
         if (individual_property)
@@ -1438,6 +1441,9 @@ static void properties_segment_g(int this_segment)
             return;
         }
 
+        if (index_switch)
+            index_note_property(token_text);
+
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
         if (individual_property)
@@ -1694,6 +1700,9 @@ static void attributes_segment(void)
         attribute_number = symbols[token_value].value;
         symbols[token_value].flags |= USED_SFLAG;
 
+        if (index_switch && truth_state)
+            index_note_attribute(symbols[token_value].name);
+
         if (!glulx_mode) {
             bitmask = (1 << (7-attribute_number%8));
             attrbyte = &(full_object.atts[attribute_number/8]);
@@ -1866,11 +1875,17 @@ static void initialise_full_object(void)
 extern void make_class(char * metaclass_name)
 {   int n, duplicates_to_make = 0, class_number = no_objects+1,
         metaclass_flag = (metaclass_name != NULL);
+    brief_location index_start_line;
     debug_location_beginning beginning_debug_location =
         get_token_location_beginning();
 
     current_defn_is_class = TRUE; no_classes_to_inherit_from = 0;
     individual_prop_table_size = 0;
+
+    if (index_switch)
+    {   index_reset_object_props();
+        index_start_line = get_brief_location(&ErrorReport);
+    }
 
     ensure_memory_list_available(&class_info_memlist, no_classes+1);
 
@@ -2000,6 +2015,11 @@ inconvenience, please contact the maintainers.");
         debug_file_printf("</class>");
     }
 
+    if (index_switch && !metaclass_flag)
+        index_note_object(shortname_buffer,
+            current_classname_symbol, TRUE, parent_of_this_obj,
+            index_start_line);
+
     if (!glulx_mode)
         manufacture_object_z();
     else
@@ -2053,10 +2073,16 @@ extern void make_object(int nearby_flag,
         The last is used to create instances of a particular class.  */
 
     int i, tree_depth, internal_name_symbol = 0;
+    brief_location index_start_line;
     debug_location_beginning beginning_debug_location =
         get_token_location_beginning();
 
     directives.enabled = FALSE;
+
+    if (index_switch)
+    {   index_reset_object_props();
+        index_start_line = get_brief_location(&ErrorReport);
+    }
 
     ensure_memory_list_available(&current_object_name, 32);
     sprintf(current_object_name.data, "nameless_obj__%d", no_objects+1);
@@ -2268,6 +2294,11 @@ extern void make_object(int nearby_flag,
             (get_token_location_end(beginning_debug_location));
         debug_file_printf("</object>");
     }
+
+    if (index_switch)
+        index_note_object(current_object_name.data,
+            internal_name_symbol, FALSE, parent_of_this_obj,
+            index_start_line);
 
     if (!glulx_mode)
         manufacture_object_z();

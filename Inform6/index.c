@@ -20,6 +20,7 @@ typedef struct index_routine_s {
     int r_symbol;             /* symbol table index, or -1 */
     int embedded;             /* TRUE if embedded in object property */
     brief_location line;      /* source location */
+    int32 end_line;           /* line number of closing ] */
     int locals_start;         /* index into locals_pool */
     int locals_count;
 } index_routine;
@@ -32,6 +33,61 @@ static int locals_pool_count;
 
 static memory_list routines_info_memlist;
 static memory_list locals_pool_memlist;
+
+/* --------------------------------------------------------------------- */
+/*   Object info: captured during parsing for the objects[] JSON section  */
+/* --------------------------------------------------------------------- */
+
+#define MAX_INDEX_OBJECTS 2048
+#define MAX_INDEX_OBJ_ATTRS 4096
+#define MAX_INDEX_OBJ_PROPS 4096
+
+typedef struct index_object_s {
+    char *name;
+    int symbol;                /* symbol table index, or 0 */
+    int is_class;              /* TRUE if defined via Class directive */
+    int parent;                /* parent object number (0 = none) */
+    brief_location line;       /* source location */
+    int32 end_line;            /* line number of closing ; */
+    int attrs_start;           /* index into obj_attrs_pool */
+    int attrs_count;
+    int props_start;           /* index into obj_props_pool */
+    int props_count;
+} index_object;
+
+static index_object *objects_info;
+static int objects_info_count;
+
+static char **obj_attrs_pool;   /* attribute names */
+static int obj_attrs_pool_count;
+
+static char **obj_props_pool;   /* property names */
+static int obj_props_pool_count;
+
+static memory_list objects_info_memlist;
+static memory_list obj_attrs_pool_memlist;
+static memory_list obj_props_pool_memlist;
+
+/* ------------------------------------------------------------------------- */
+/*   String copy helper                                                      */
+/* ------------------------------------------------------------------------- */
+
+static char *index_strdup(const char *s)
+{   int len = strlen(s);
+    char *copy = malloc(len + 1);
+    if (!copy) fatalerror("out of memory in index");
+    memcpy(copy, s, len + 1);
+    return copy;
+}
+
+/* Pending attribute/property names for current object being parsed */
+static char **pending_attrs;
+static int pending_attrs_count;
+static memory_list pending_attrs_memlist;
+
+static char **pending_props;
+static int pending_props_count;
+static memory_list pending_props_memlist;
 
 /* ------------------------------------------------------------------------- */
 /*   JSON output helpers                                                     */
@@ -87,12 +143,7 @@ extern void index_note_routine(char *name, int embedded_flag, int r_symbol)
     ensure_memory_list_available(&routines_info_memlist, routines_count+1);
 
     r = &routines_info[routines_count];
-    {   int len = strlen(name);
-        char *copy = malloc(len + 1);
-        if (!copy) fatalerror("out of memory in index_note_routine");
-        memcpy(copy, name, len + 1);
-        r->name = copy;
-    }
+    r->name = index_strdup(name);
     r->r_symbol = r_symbol;
     r->embedded = embedded_flag;
     r->line = get_brief_location(&ErrorReport);
@@ -103,16 +154,80 @@ extern void index_note_routine(char *name, int embedded_flag, int r_symbol)
         locals_pool_count + no_locals);
 
     for (i = 0; i < no_locals; i++)
-    {   char *src = get_local_variable_name(i);
-        int len = strlen(src);
-        char *copy = malloc(len + 1);
-        if (!copy) fatalerror("out of memory in index_note_routine");
-        memcpy(copy, src, len + 1);
-        locals_pool[locals_pool_count + i] = copy;
-    }
+        locals_pool[locals_pool_count + i] =
+            index_strdup(get_local_variable_name(i));
 
     locals_pool_count += no_locals;
     routines_count++;
+}
+
+extern void index_note_routine_end(void)
+{   if (routines_count > 0)
+    {   brief_location loc = get_brief_location(&ErrorReport);
+        routines_info[routines_count - 1].end_line = loc.line_number;
+    }
+}
+
+/* ------------------------------------------------------------------------- */
+/*   Capture object info during parsing                                      */
+/* ------------------------------------------------------------------------- */
+
+extern void index_reset_object_props(void)
+{   pending_attrs_count = 0;
+    pending_props_count = 0;
+}
+
+extern void index_note_attribute(char *name)
+{   ensure_memory_list_available(&pending_attrs_memlist,
+        pending_attrs_count + 1);
+    pending_attrs[pending_attrs_count++] = index_strdup(name);
+}
+
+extern void index_note_property(char *name)
+{   ensure_memory_list_available(&pending_props_memlist,
+        pending_props_count + 1);
+    pending_props[pending_props_count++] = index_strdup(name);
+}
+
+extern void index_note_object(char *name, int symbol, int is_class,
+    int parent, brief_location start)
+{   int i;
+    index_object *o;
+    brief_location loc = get_brief_location(&ErrorReport);
+
+    ensure_memory_list_available(&objects_info_memlist,
+        objects_info_count + 1);
+
+    o = &objects_info[objects_info_count];
+    o->name = index_strdup(name);
+    o->symbol = symbol;
+    o->is_class = is_class;
+    o->parent = parent;
+    o->line = start;
+    o->end_line = loc.line_number;
+
+    /* Copy pending attributes */
+    o->attrs_start = obj_attrs_pool_count;
+    o->attrs_count = pending_attrs_count;
+    ensure_memory_list_available(&obj_attrs_pool_memlist,
+        obj_attrs_pool_count + pending_attrs_count);
+    for (i = 0; i < pending_attrs_count; i++)
+        obj_attrs_pool[obj_attrs_pool_count + i] = pending_attrs[i];
+    obj_attrs_pool_count += pending_attrs_count;
+
+    /* Copy pending properties */
+    o->props_start = obj_props_pool_count;
+    o->props_count = pending_props_count;
+    ensure_memory_list_available(&obj_props_pool_memlist,
+        obj_props_pool_count + pending_props_count);
+    for (i = 0; i < pending_props_count; i++)
+        obj_props_pool[obj_props_pool_count + i] = pending_props[i];
+    obj_props_pool_count += pending_props_count;
+
+    pending_attrs_count = 0;
+    pending_props_count = 0;
+
+    objects_info_count++;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -186,8 +301,10 @@ extern void index_output_json(void)
         {   printf(", \"file\": ");
             json_print_escaped_string(
                 InputFiles[r->line.file_index - 1].filename);
-            printf(", \"line\": %d",
+            printf(", \"start_line\": %d",
                 (int)r->line.line_number);
+            if (r->end_line > 0)
+                printf(", \"end_line\": %d", (int)r->end_line);
         }
 
         printf(", \"locals\": [");
@@ -195,6 +312,66 @@ extern void index_output_json(void)
         {   if (j > 0) printf(", ");
             json_print_escaped_string(
                 locals_pool[r->locals_start + j]);
+        }
+        printf("]}");
+    }
+    printf("\n  ],\n");
+
+    /* --- objects --- */
+    printf("  \"objects\": [\n");
+    first = TRUE;
+    for (i = 0; i < objects_info_count; i++)
+    {   index_object *o = &objects_info[i];
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {\"name\": ");
+        json_print_escaped_string(o->name);
+
+        if (o->is_class)
+            printf(", \"is_class\": true");
+
+        if (o->line.file_index > 0)
+        {   printf(", \"file\": ");
+            json_print_escaped_string(
+                InputFiles[o->line.file_index - 1].filename);
+            printf(", \"start_line\": %d",
+                (int)o->line.line_number);
+            if (o->end_line > 0)
+                printf(", \"end_line\": %d", (int)o->end_line);
+        }
+
+        if (o->parent > 0)
+        {   /* Find the parent's name from the symbol table */
+            int found = FALSE;
+            for (j = 0; j < no_symbols; j++)
+            {   if ((symbols[j].type == OBJECT_T
+                     || symbols[j].type == CLASS_T)
+                    && symbols[j].value == o->parent)
+                {   printf(", \"parent\": ");
+                    json_print_escaped_string(symbols[j].name);
+                    found = TRUE;
+                    break;
+                }
+            }
+            if (!found)
+                printf(", \"parent_id\": %d", o->parent);
+        }
+
+        printf(", \"attributes\": [");
+        for (j = 0; j < o->attrs_count; j++)
+        {   if (j > 0) printf(", ");
+            json_print_escaped_string(
+                obj_attrs_pool[o->attrs_start + j]);
+        }
+        printf("]");
+
+        printf(", \"properties\": [");
+        for (j = 0; j < o->props_count; j++)
+        {   if (j > 0) printf(", ");
+            json_print_escaped_string(
+                obj_props_pool[o->props_start + j]);
         }
         printf("]}");
     }
@@ -210,13 +387,28 @@ extern void index_output_json(void)
 extern void init_index_vars(void)
 {   routines_info = NULL;
     locals_pool = NULL;
+    objects_info = NULL;
+    obj_attrs_pool = NULL;
+    obj_props_pool = NULL;
+    pending_attrs = NULL;
+    pending_props = NULL;
     routines_count = 0;
     locals_pool_count = 0;
+    objects_info_count = 0;
+    obj_attrs_pool_count = 0;
+    obj_props_pool_count = 0;
+    pending_attrs_count = 0;
+    pending_props_count = 0;
 }
 
 extern void index_begin_pass(void)
 {   routines_count = 0;
     locals_pool_count = 0;
+    objects_info_count = 0;
+    obj_attrs_pool_count = 0;
+    obj_props_pool_count = 0;
+    pending_attrs_count = 0;
+    pending_props_count = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -226,6 +418,21 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&locals_pool_memlist,
         sizeof(char *), MAX_INDEX_LOCALS_TOTAL,
         (void **)&locals_pool, "index locals pool");
+    initialise_memory_list(&objects_info_memlist,
+        sizeof(index_object), MAX_INDEX_OBJECTS,
+        (void **)&objects_info, "index objects");
+    initialise_memory_list(&obj_attrs_pool_memlist,
+        sizeof(char *), MAX_INDEX_OBJ_ATTRS,
+        (void **)&obj_attrs_pool, "index object attrs");
+    initialise_memory_list(&obj_props_pool_memlist,
+        sizeof(char *), MAX_INDEX_OBJ_PROPS,
+        (void **)&obj_props_pool, "index object props");
+    initialise_memory_list(&pending_attrs_memlist,
+        sizeof(char *), 64,
+        (void **)&pending_attrs, "index pending attrs");
+    initialise_memory_list(&pending_props_memlist,
+        sizeof(char *), 64,
+        (void **)&pending_props, "index pending props");
 }
 
 extern void index_free_arrays(void)
@@ -234,6 +441,22 @@ extern void index_free_arrays(void)
         free(routines_info[i].name);
     for (i = 0; i < locals_pool_count; i++)
         free(locals_pool[i]);
+    for (i = 0; i < objects_info_count; i++)
+        free(objects_info[i].name);
+    for (i = 0; i < obj_attrs_pool_count; i++)
+        free(obj_attrs_pool[i]);
+    for (i = 0; i < obj_props_pool_count; i++)
+        free(obj_props_pool[i]);
+    /* pending pools are consumed by index_note_object, but clean up stragglers */
+    for (i = 0; i < pending_attrs_count; i++)
+        free(pending_attrs[i]);
+    for (i = 0; i < pending_props_count; i++)
+        free(pending_props[i]);
     deallocate_memory_list(&routines_info_memlist);
     deallocate_memory_list(&locals_pool_memlist);
+    deallocate_memory_list(&objects_info_memlist);
+    deallocate_memory_list(&obj_attrs_pool_memlist);
+    deallocate_memory_list(&obj_props_pool_memlist);
+    deallocate_memory_list(&pending_attrs_memlist);
+    deallocate_memory_list(&pending_props_memlist);
 }

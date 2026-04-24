@@ -28,40 +28,22 @@ choice.
 - [x] Local variable capture via `parse_routine()` hook in `syntax.c`
 - [x] Proper string copying for locals and embedded routine names
 
-### 1b. Ranges (start/end lines)
+### 1b. Ranges (start/end lines) — DONE
 
-Add end_line to routines (capture at `]` in `parse_routine`, `syntax.c:525-536`).
-Add start_line/end_line to object definitions (hook into `objects.c`).
-This enables folding in the language server.
+- [x] Routines have `start_line` / `end_line` (captured at `]` in
+  `parse_routine` via `index_note_routine_end()`)
+- [x] Objects have `start_line` / `end_line` (start captured at entry to
+  `make_object()`/`make_class()`, end at the terminating `;`)
 
-Target JSON:
-```json
-"routines": [
-    {"name": "MyFunc", "file": "small.inf",
-     "start_line": 15, "end_line": 18, "locals": ["a", "b"]}
-]
-```
+### 1c. Objects section — DONE
 
-### 1c. Objects section
-
-Add `objects[]` to the JSON. Objects are parsed in `objects.c`; the data we
-need is available during parsing:
-
-- name, parent, class
-- attributes (has ...)
-- properties (with ...) and their types (routine, string, value)
-- source location and range
-
-Target JSON:
-```json
-"objects": [
-    {"name": "TheRoom", "file": "small.inf",
-     "start_line": 5, "end_line": 12,
-     "class": "Object", "parent": null,
-     "attributes": ["light"],
-     "properties": ["description", "before"]}
-]
-```
+- [x] `objects[]` section in JSON with name, is_class, file, start/end
+  lines, parent name, attributes list, properties list
+- [x] Hooks in `objects.c`: `index_reset_object_props()` at start,
+  `index_note_attribute()` in `attributes_segment()`,
+  `index_note_property()` in both `properties_segment_z/g()`,
+  `index_note_object()` at end of `make_object()`/`make_class()`
+- [x] Metaclass objects (Class, Object, Routine, String) are excluded
 
 ### 1d. Globals and arrays
 

@@ -2,7 +2,9 @@
 
 Include "Parser";
 
-Object TheRoom
+!! This is the doc comment for TheRoom
+
+Object TheRoom "The Room"
   has light
   with
     description "The Room.",
@@ -11,6 +13,11 @@ Object TheRoom
         MyFunc(10, 20);
     ],
 ;
+
+Global c = 42;  !! Doc comment for c
+
+!! This is a doc comment for MyFunc.
+!! It goes over several lines.
 
 [ MyFunc a b;
     print a, b, "^";

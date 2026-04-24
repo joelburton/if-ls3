@@ -615,6 +615,9 @@ extern int32 parse_routine(char *source, int embedded_flag, char *name,
 
     } while (TRUE);
 
+    if (index_switch)
+        index_note_routine_end();
+
     return packed_address;
 }
 

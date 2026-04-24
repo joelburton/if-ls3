@@ -2551,6 +2551,12 @@ extern void  index_begin_pass(void);
 extern void  index_allocate_arrays(void);
 extern void  index_free_arrays(void);
 extern void  index_note_routine(char *name, int embedded_flag, int r_symbol);
+extern void  index_note_routine_end(void);
+extern void  index_reset_object_props(void);
+extern void  index_note_attribute(char *name);
+extern void  index_note_property(char *name);
+extern void  index_note_object(char *name, int symbol, int is_class,
+                 int parent, brief_location start);
 extern void  index_output_json(void);
 
 /* ------------------------------------------------------------------------- */
