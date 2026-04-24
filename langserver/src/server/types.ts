@@ -49,6 +49,7 @@ export interface PropertyRef {
 
 export interface ObjectInfo {
   name: string;
+  shortname?: string;
   file: string;
   start_line: number;
   end_line: number;

@@ -34,6 +34,7 @@ export function getDocumentSymbols(
     const range = makeRange(obj.start_line, obj.end_line);
     const sym: DocumentSymbol = {
       name: obj.name,
+      detail: obj.shortname,
       kind: obj.is_class ? SymbolKind.Class : SymbolKind.Object,
       range,
       selectionRange: range,

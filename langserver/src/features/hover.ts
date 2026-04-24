@@ -44,7 +44,10 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
   const obj = index.objects.find((o) => o.name.toLowerCase() === lower);
   if (obj) {
     const kind = obj.is_class ? "class" : "object";
-    const parts = [`**${obj.name}** (${kind})`];
+    const header = obj.shortname
+      ? `**${obj.name}** "${obj.shortname}" (${kind})`
+      : `**${obj.name}** (${kind})`;
+    const parts = [header];
     if (obj.parent) parts.push(`parent: ${obj.parent}`);
     if (obj.attributes.length > 0)
       parts.push(`attributes: ${obj.attributes.map((a) => a.name).join(", ")}`);

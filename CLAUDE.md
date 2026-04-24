@@ -50,7 +50,7 @@ The index includes:
 - `files[]` — all source files parsed (main + includes)
 - `symbols[]` — every defined symbol with name, type, value, flags, is_system, file, line, doc
 - `routines[]` — every routine with name, locals, start/end lines, embedded flag, doc
-- `objects[]` — every object/class with name, is_class, parent, attributes, properties, private_properties, start/end lines, doc; attributes and properties are `{name, line}` objects (line = source line within the object body)
+- `objects[]` — every object/class with name, shortname (quoted string name if given, e.g. `"The Room"`), is_class, parent, attributes, properties, private_properties, start/end lines, doc; attributes and properties are `{name, line}` objects (line = source line within the object body)
 - `globals[]` — non-system global variables with name, file, line, doc
 - `constants[]` — non-system constants with name, file, line, doc
 - `arrays[]` — arrays with name, array_type, size, is_static, file, line, doc

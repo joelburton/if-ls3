@@ -116,7 +116,7 @@ Build Markdown based on what the name resolves to:
 | Kind | Content |
 |---|---|
 | Routine | `**Name**(local1, local2, ...)` + doc + `*file:line*` |
-| Object | `**Name**` + parent + attributes + doc + `*file:line*` |
+| Object | `**Name** "shortname"` (if shortname present) + parent + attributes + doc + `*file:line*` |
 | Constant | `**NAME** = value` + doc + `*file:line*` |
 | Global | `**name** (global variable)` + doc + `*file:line*` |
 | Array | `**name** (array, N entries)` + doc + `*file:line*` |
@@ -211,6 +211,10 @@ find the parent for nesting.
   object's properties, private properties, and attributes; general completion
   returns locals of the enclosing routine followed by all routines (with
   parameter list as detail), objects, globals, constants, and arrays.
+- ✅ **Object shortname**: compiler emits `objects[].shortname` (the quoted
+  string name, e.g. `"The Room"`, when present; absent otherwise). Hover shows
+  it as `**TheRoom** "The Room" (object)`; outline shows it in the `detail`
+  slot (grayed text beside the identifier in VS Code's outline view).
 
 ## Known limitations / deferred
 
