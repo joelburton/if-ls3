@@ -2018,7 +2018,7 @@ inconvenience, please contact the maintainers.");
     }
 
     if (index_switch && !metaclass_flag)
-        index_note_object(shortname_buffer,
+        index_note_object(shortname_buffer, NULL,
             current_classname_symbol, TRUE, parent_of_this_obj,
             index_start_line);
 
@@ -2299,6 +2299,7 @@ extern void make_object(int nearby_flag,
 
     if (index_switch)
         index_note_object(current_object_name.data,
+            textual_name != NULL ? shortname_buffer : NULL,
             internal_name_symbol, FALSE, parent_of_this_obj,
             index_start_line);
 

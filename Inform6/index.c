@@ -45,6 +45,7 @@ static memory_list locals_pool_memlist;
 
 typedef struct index_object_s {
     char *name;
+    char *shortname;           /* quoted string name, or NULL if absent */
     int symbol;                /* symbol table index, or 0 */
     int is_class;              /* TRUE if defined via Class directive */
     int parent;                /* parent object number (0 = none) */
@@ -464,8 +465,8 @@ extern void index_note_property(char *name, int is_private)
     e->line = loc.line_number;
 }
 
-extern void index_note_object(char *name, int symbol, int is_class,
-    int parent, brief_location start)
+extern void index_note_object(char *name, const char *shortname, int symbol,
+    int is_class, int parent, brief_location start)
 {   int i;
     index_object *o;
     brief_location loc = get_brief_location(&ErrorReport);
@@ -475,6 +476,7 @@ extern void index_note_object(char *name, int symbol, int is_class,
 
     o = &objects_info[objects_info_count];
     o->name = index_strdup(name);
+    o->shortname = shortname ? index_strdup(shortname) : NULL;
     o->symbol = symbol;
     o->is_class = is_class;
     o->parent = parent;
@@ -634,6 +636,11 @@ extern void index_output_json(void)
 
         printf("    {\"name\": ");
         json_print_escaped_string(o->name);
+
+        if (o->shortname)
+        {   printf(", \"shortname\": ");
+            json_print_escaped_string(o->shortname);
+        }
 
         if (o->is_class)
             printf(", \"is_class\": true");
@@ -1071,6 +1078,7 @@ extern void index_free_arrays(void)
         free(locals_pool[i]);
     for (i = 0; i < objects_info_count; i++)
     {   free(objects_info[i].name);
+        if (objects_info[i].shortname) free(objects_info[i].shortname);
         if (objects_info[i].doc) free(objects_info[i].doc);
     }
     for (i = 0; i < obj_attrs_pool_count; i++)
