@@ -130,7 +130,7 @@ async function triggerReindex(): Promise<void> {
   const idx = await reindex(config, workspaceRoot, log);
   if (idx) {
     currentIndex = idx;
-    previousDiagnosticUris = pushDiagnostics(connection, currentIndex, previousDiagnosticUris);
+    previousDiagnosticUris = pushDiagnostics(connection, currentIndex, previousDiagnosticUris, config);
     // VS Code only re-requests document symbols on content change, not on save.
     // Notify the client so it can explicitly refresh the outline.
     connection.sendNotification("inform6/indexUpdated");

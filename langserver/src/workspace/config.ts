@@ -9,6 +9,7 @@ export interface Inform6Config {
   mainFile: string;
   switches: string;
   defines: string[];
+  externalDefines: string[];
 }
 
 function expandTilde(p: string): string {
@@ -34,9 +35,10 @@ export function loadConfig(workspaceRoot: string): Inform6Config | null {
   if (!raw || typeof raw !== "object") return null;
 
   const rawDefines = raw["defines"];
-  const defines = Array.isArray(rawDefines)
-    ? rawDefines.map(String)
-    : [];
+  const defines = Array.isArray(rawDefines) ? rawDefines.map(String) : [];
+
+  const rawExternal = raw["externalDefines"];
+  const externalDefines = Array.isArray(rawExternal) ? rawExternal.map(String) : [];
 
   return {
     compiler: expandTilde(String(raw["compiler"] ?? "inform6")),
@@ -44,5 +46,6 @@ export function loadConfig(workspaceRoot: string): Inform6Config | null {
     mainFile: String(raw["mainFile"] ?? ""),
     switches: String(raw["switches"] ?? ""),
     defines,
+    externalDefines,
   };
 }

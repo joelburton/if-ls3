@@ -38,10 +38,16 @@ switches: -~S
 defines:
   - GRAMMAR_META_FLAG=1
   - DEBUG
+
+# Constants your library/host looks for but that should NOT be passed to the
+# compiler.  #IfDef references to these names are silently accepted; any
+# #IfDef for a name not in this list, not in `defines`, and not otherwise
+# in the compiler's symbol table will produce a warning.
+externalDefines:
+  - HAS_HINTS
 ```
 
-Existing fields from the old server (`target`, `externalDefines`)
-are ignored but harmless if present.
+Existing fields from the old server (`target`) are ignored but harmless if present.
 
 ## Directory structure
 
@@ -219,6 +225,13 @@ find the parent for nesting.
   object's properties, private properties, and attributes; general completion
   returns locals of the enclosing routine followed by all routines (with
   parameter list as detail), objects, globals, constants, and arrays.
+- ✅ **`#IfDef` unknown-constant warnings**: after each reindex, the LS scans
+  all non-library source files for `#IfDef NAME` / `#IfNDef NAME` directives
+  where `NAME` is not in the compiler's symbol table and not listed in
+  `externalDefines`. Produces a Warning squiggle on the name with a message
+  suggesting to check spelling or add to `externalDefines`. The `externalDefines`
+  config field lists constants your library/host looks for but that you
+  deliberately do not pass to the compiler during indexing.
 - ✅ **Object shortname**: compiler emits `objects[].shortname` (the quoted
   string name, e.g. `"The Room"`, when present; absent otherwise). Hover shows
   it as `**TheRoom** "The Room" (object)`; outline shows it in the `detail`
