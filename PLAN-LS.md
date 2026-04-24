@@ -167,7 +167,9 @@ find the parent for nesting.
 5. ✅ **`definition.ts` + `hover.ts`** — hover shows relative paths from workspace root
 6. ✅ **`documentSymbols.ts`** — outline view with embedded routines nested under objects
 7. ✅ **`client/extension.ts` + `package.json`** — `.vsix` packaging, `inform6rc.yaml` watcher
-8. **Keyword/operator hover table** — not yet started
+8. ✅ **Keyword/operator hover table** — `keywords.ts`; checked as last fallback after all symbol lookups
+9. ✅ **Language configuration** — `language-configuration.json`; bracket matching (`[/]` `{/}` `(/)`),
+   comment toggling (`!`), auto-close, and surrounding pairs. Pure VS Code extension feature — no LS involvement.
 
 ## Notes on compiler JSON
 
@@ -224,4 +226,4 @@ find the parent for nesting.
 - Signature help for routine calls
 - Semantic token highlighting
 - Rename symbol
-- Keyword/operator hover table
+- TextMate grammar for syntax highlighting

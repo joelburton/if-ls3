@@ -1,6 +1,7 @@
 import * as path from "node:path";
 import { Hover, MarkupKind } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
+import { findKeywordHover } from "./keywords";
 
 function md(parts: string[]): Hover {
   return { contents: { kind: MarkupKind.Markdown, value: parts.join("\n\n") } };
@@ -85,6 +86,10 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
     if (sym.file) parts.push(`*${rel(sym.file, workspaceRoot)}:${sym.line}*`);
     return md(parts);
   }
+
+  // Keyword/directive fallback — checked last so user-defined symbols win
+  const kw = findKeywordHover(word);
+  if (kw) return md([kw]);
 
   return null;
 }
