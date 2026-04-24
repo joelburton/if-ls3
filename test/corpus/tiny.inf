@@ -1,0 +1,8 @@
+[ Main;
+    myfunc();
+];
+
+[ myfunc x; 
+    x = 42;
+    print x;
+];

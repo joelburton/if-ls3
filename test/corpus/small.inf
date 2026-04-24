@@ -1,0 +1,25 @@
+!% +/Users/joel/if/inform6lib/
+
+Include "Parser";
+
+Object TheRoom
+  has light
+  with
+    description "The Room.",
+    before [;
+      Jump:
+        MyFunc(10, 20);
+    ],
+;
+
+[ MyFunc a b;
+    print a, b, "^";
+];
+
+[ Initialise;
+    location = TheRoom;
+];
+
+Include "VerbLib";
+Include "Grammar";
+
