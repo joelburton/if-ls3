@@ -1,0 +1,3 @@
+compiler: ~/if/if-ls3/Inform6/inform6
+libraryPath: ~/if/inform6lib/
+mainFile: small.inf

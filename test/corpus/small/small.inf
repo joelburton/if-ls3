@@ -16,13 +16,26 @@ Object TheRoom "The Room"
     ],
 ;
 
+Constant NOPE;
+
+[Foo;
+  if (action == ##Jump) print "hello";
+  <<Jump var var>>;
+  if (x<12) { }
+];
+[Far; ];
+
+
+
 Global c = 42;  !! Doc comment for c
+
 
 !! This is a doc comment for MyFunc.
 !! It goes over several lines.
 
 [ MyFunc a b;
     print a, b, "^";
+    Bar();
 ];
 
 [ Initialise;

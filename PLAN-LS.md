@@ -14,10 +14,8 @@ VS Code extension.
 
 ## Pending compiler-side fix (before LS work begins)
 
-**Relative paths in JSON output.** The `file` field for the main source file
-is currently a bare relative path (e.g. `"small.inf"`) while included library
-files are absolute. The LS needs absolute paths to build document URIs. Fix:
-canonicalize all paths to absolute in `index.c` before emitting JSON.
+**Relative paths in JSON output.** ✅ Done — all `file` fields are now
+absolute paths via `realpath()` in `index.c`.
 
 ## Config file
 
@@ -162,15 +160,14 @@ find the parent for nesting.
 
 ## Build order
 
-1. **`types.ts`** — TypeScript interfaces for compiler JSON; everything depends on these
-2. **`config.ts` + `indexer.ts`** — core pipeline; test standalone with `ts-node`
-3. **`server.ts` scaffold** — minimal server returning empty results; verify
-   VS Code extension loads and server starts
-4. **`diagnostics.ts`** — first visible feature; validates the full pipeline
-5. **`definition.ts` + `hover.ts`** — main daily-use value
-6. **`documentSymbols.ts`** — outline view
-7. **`client/extension.ts` + `package.json`** — wire into VS Code as `.vsix`
-8. **Keyword/operator hover table** — after everything above works
+1. ✅ **`types.ts`** — TypeScript interfaces for compiler JSON
+2. ✅ **`config.ts` + `indexer.ts`** — core pipeline (async spawn, 10 s timeout, spawn counter)
+3. ✅ **`server.ts` scaffold** — minimal server; VS Code extension loads and starts
+4. ✅ **`diagnostics.ts`** — full pipeline validated
+5. ✅ **`definition.ts` + `hover.ts`** — hover shows relative paths from workspace root
+6. ✅ **`documentSymbols.ts`** — outline view with embedded routines nested under objects
+7. ✅ **`client/extension.ts` + `package.json`** — `.vsix` packaging, `inform6rc.yaml` watcher
+8. **Keyword/operator hover table** — not yet started
 
 ## Notes on compiler JSON
 
@@ -186,12 +183,33 @@ find the parent for nesting.
 - JSON is always emitted even on compilation errors (partial index +
   `errors[]`), so the LS degrades gracefully when code doesn't compile.
 
+## Added during phase-2 (not in original plan)
+
+- ✅ **Action navigation**: `Jump:` (action label), `##Jump` (action value),
+  `<Jump ...>` / `<<Jump ...>>` (action statements) all navigate to `JumpSub`.
+  `<` is distinguished from comparisons (`x<a`) by checking for a non-identifier
+  character before the `<`. Paren forms `<<(x)>>` are naturally excluded.
+  No fallthrough to a routine named `Jump` — action context is unambiguous.
+- ✅ **Relative paths in hover**: file references show paths relative to
+  workspace root (e.g. `small.inf:12` not `/Users/joel/.../small.inf:12`).
+- ✅ **Async compiler spawn**: `spawnSync` replaced with async `spawn` so
+  hover/definition/etc. remain responsive during the ~1–2 s compile window.
+
+## Known limitations / deferred
+
+- **Outline staleness after save**: VS Code's `documentSymbol` is pull-based
+  with no server-push refresh. Outline updates on the next keystroke after a
+  save+reindex, not immediately. Acceptable with autosave; may revisit with a
+  custom `TreeDataProvider` if it proves annoying.
+
 ## Future (post-phase-2)
 
-- Debounced reindex on keystrokes (not just save)
+- Debounced reindex on keystrokes (not just save) — deliberately deferred;
+  save-only is correct given compiler needs on-disk file
 - Find references (requires compiler-side reference tracking in `expressp.c`)
 - Completions (scope-aware: locals + globals + object properties)
 - Signature help for routine calls
 - Semantic token highlighting
 - Workspace symbol search
 - Rename symbol
+- Keyword/operator hover table

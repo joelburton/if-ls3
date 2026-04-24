@@ -1,0 +1,3 @@
+compiler: ~/if/if-ls3/Inform6/inform6
+libraryPath: ~/if/if-ls3/test/corpus/library-of-horror/lib-puny
+mainFile: library_of_horror.inf

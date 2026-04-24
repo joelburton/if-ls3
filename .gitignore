@@ -26,6 +26,7 @@ out/
 
 # VS Code extension packaging
 *.vsix
+bundled-server/
 
 # OS files
 .DS_Store
