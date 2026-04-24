@@ -14,9 +14,9 @@ import {
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import type { CompilerIndex } from "./types";
-import { loadConfig, type Inform6Config } from "../workspace/config";
+import { loadConfig, type WorkspaceConfig } from "../workspace/config";
 import { reindex } from "./indexer";
-import { pushDiagnostics } from "../features/diagnostics";
+import { pushDiagnostics, type Compilation } from "../features/diagnostics";
 import { findDefinition } from "../features/definition";
 import { findHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
@@ -28,12 +28,22 @@ const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
 
 let workspaceRoot: string | null = null;
-let config: Inform6Config | null = null;
-let currentIndex: CompilerIndex | null = null;
+let workspaceConfig: WorkspaceConfig | null = null;
+let currentIndices: Compilation[] = [];
 let previousDiagnosticUris = new Set<string>();
 
 function log(msg: string): void {
   connection.console.log(msg);
+}
+
+/**
+ * Return the best index for a given document URI: the first compilation whose
+ * file list includes this document.  Falls back to the first available index.
+ */
+function indexForDocument(documentUri: string): CompilerIndex | null {
+  const filePath = URI.parse(documentUri).fsPath;
+  const hit = currentIndices.find(c => c.index.files.includes(filePath));
+  return hit?.index ?? currentIndices[0]?.index ?? null;
 }
 
 /**
@@ -52,10 +62,6 @@ function buildGrammarActionPositions(index: CompilerIndex): Set<string> {
 /**
  * Returns true if `word` at `wordStart` is an action name following `->` in a
  * Verb directive grammar line (e.g. `* noun -> Foozle`).
- *
- * Requires `grammarActionPositions` (built from the compiler's
- * `grammar_action_refs` list) so that array-operator `->` (e.g.
- * `Array x --> Foozle`) and property-access `obj->prop` are NOT matched.
  */
 function isActionArrow(
   line: string,
@@ -64,42 +70,40 @@ function isActionArrow(
   filePath: string,
   grammarActionPositions: Set<string>,
 ): boolean {
-  // Quick syntactic pre-check: must be preceded by ->
   let i = wordStart - 1;
   while (i >= 0 && (line[i] === " " || line[i] === "\t")) i--;
   if (!(i >= 1 && line[i] === ">" && line[i - 1] === "-")) return false;
-  // Confirm via compiler data: only true when the compiler recorded this
-  // file+line as a grammar-line action reference.
   return grammarActionPositions.has(`${filePath}:${lineNumber + 1}`);
 }
 
 /**
  * Returns true if `word` at `wordStart` is the action name in `<Word ...>` or
- * `<<Word ...>>`. Distinguished from comparison expressions (e.g. `x<a`) by
- * checking that the character immediately before the `<` is not an identifier
- * character — action statements begin at whitespace or start-of-line.
+ * `<<Word ...>>`.
  */
 function isActionAngleBracket(line: string, wordStart: number): boolean {
   if (wordStart === 0 || line[wordStart - 1] !== "<") return false;
   const isIdChar = (c: string) => /\w/.test(c);
   const ltPos = wordStart - 1;
   const beforeLt = ltPos > 0 ? line[ltPos - 1] : "";
-  if (isIdChar(beforeLt)) return false;          // x<Word — comparison
-  if (beforeLt === "<") {                         // <<Word
+  if (isIdChar(beforeLt)) return false;
+  if (beforeLt === "<") {
     const beforeLtLt = ltPos > 1 ? line[ltPos - 2] : "";
     return !isIdChar(beforeLtLt);
   }
-  return true;                                    // <Word
+  return true;
 }
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   workspaceRoot = params.rootUri ? URI.parse(params.rootUri).fsPath : null;
   if (workspaceRoot) {
-    config = loadConfig(workspaceRoot);
-    if (!config) {
+    workspaceConfig = loadConfig(workspaceRoot);
+    if (!workspaceConfig) {
       log("[server] no inform6rc.yaml found — language server features disabled");
+    } else if (workspaceConfig.files.length === 0) {
+      log("[server] inform6rc.yaml has no main-file entries — nothing to compile");
     } else {
-      log(`[server] config: compiler=${config.compiler} lib=${config.libraryPath} main=${config.mainFile}`);
+      const names = workspaceConfig.files.map(f => URI.file(f.mainFile).fsPath.split("/").pop()).join(", ");
+      log(`[server] config: ${workspaceConfig.files.length} main file(s): ${names}`);
     }
   }
 
@@ -126,13 +130,22 @@ connection.onInitialized(async () => {
 });
 
 async function triggerReindex(): Promise<void> {
-  if (!config || !workspaceRoot) return;
-  const idx = await reindex(config, workspaceRoot, log);
-  if (idx) {
-    currentIndex = idx;
-    previousDiagnosticUris = pushDiagnostics(connection, currentIndex, previousDiagnosticUris, config);
-    // VS Code only re-requests document symbols on content change, not on save.
-    // Notify the client so it can explicitly refresh the outline.
+  if (!workspaceConfig || !workspaceRoot) return;
+  if (workspaceConfig.files.length === 0) return;
+
+  // Run all compilations in parallel.
+  const results = await Promise.all(
+    workspaceConfig.files.map(fc => reindex(fc, workspaceRoot!, log)),
+  );
+
+  currentIndices = [];
+  for (let i = 0; i < workspaceConfig.files.length; i++) {
+    const index = results[i];
+    if (index) currentIndices.push({ fileConfig: workspaceConfig.files[i], index });
+  }
+
+  if (currentIndices.length > 0) {
+    previousDiagnosticUris = pushDiagnostics(connection, currentIndices, previousDiagnosticUris);
     connection.sendNotification("inform6/indexUpdated");
   }
 }
@@ -145,11 +158,12 @@ documents.onDidSave(async (change) => {
 });
 
 documents.onDidOpen(async () => {
-  if (!currentIndex) await triggerReindex();
+  if (currentIndices.length === 0) await triggerReindex();
 });
 
 connection.onDefinition((params: DefinitionParams) => {
-  if (!currentIndex) return null;
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
@@ -157,51 +171,48 @@ connection.onDefinition((params: DefinitionParams) => {
   if (!hit) return null;
 
   const objCtx = objectBeforeDot(hit.lineText, hit.start);
-  // Action label:     Jump:      colon immediately after identifier
-  // Action value:     ##Jump     ## immediately before identifier
-  // Action statement: <Jump ...> or <<Jump ...>>
-  //   Distinguished from comparisons (x<a) by checking the char before < is not
-  //   an identifier character — statements start at whitespace/line-start.
-  // Grammar arrow:    * noun -> Foozle   (compiler-verified: checks grammar_action_refs)
   const filePath = URI.parse(params.textDocument.uri).fsPath;
-  const grammarActionPositions = buildGrammarActionPositions(currentIndex);
+  const grammarActionPositions = buildGrammarActionPositions(index);
   const isActionRef = hit.lineText[hit.end] === ":"
     || (hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#")
     || isActionAngleBracket(hit.lineText, hit.start)
     || isActionArrow(hit.lineText, hit.start, params.position.line, filePath, grammarActionPositions);
-  return findDefinition(currentIndex, hit.word, objCtx, isActionRef);
+  return findDefinition(index, hit.word, objCtx, isActionRef);
 });
 
 connection.onHover((params: HoverParams) => {
-  if (!currentIndex) return null;
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
   const hit = wordAtPosition(doc.getText(), params.position);
   if (!hit) return null;
 
-  return findHover(currentIndex, hit.word, workspaceRoot ?? "");
+  return findHover(index, hit.word, workspaceRoot ?? "");
 });
 
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {
-  if (!currentIndex) return [];
-  return getDocumentSymbols(currentIndex, params.textDocument.uri);
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return [];
+  return getDocumentSymbols(index, params.textDocument.uri);
 });
 
 connection.onWorkspaceSymbol((params: WorkspaceSymbolParams) => {
-  if (!currentIndex) return [];
-  return getWorkspaceSymbols(currentIndex, params.query);
+  if (currentIndices.length === 0) return [];
+  return getWorkspaceSymbols(currentIndices.map(c => c.index), params.query);
 });
 
 connection.onCompletion((params: CompletionParams) => {
-  if (!currentIndex) return null;
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
   const lines = doc.getText().split("\n");
   const lineText = lines[params.position.line] ?? "";
   const filePath = URI.parse(params.textDocument.uri).fsPath;
-  return getCompletions(currentIndex, filePath, params.position, lineText);
+  return getCompletions(index, filePath, params.position, lineText);
 });
 
 documents.listen(connection);

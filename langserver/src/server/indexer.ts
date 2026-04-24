@@ -1,37 +1,32 @@
 import * as path from "node:path";
 import { spawn } from "node:child_process";
 import type { CompilerIndex } from "./types";
-import type { Inform6Config } from "../workspace/config";
+import type { FileConfig } from "../workspace/config";
 
-let cachedIndex: CompilerIndex | null = null;
 let spawnCount = 0;
 
-export function getIndex(): CompilerIndex | null {
-  return cachedIndex;
-}
-
 /**
- * Invoke `inform6 -y +libpath mainFile`, parse JSON from stdout.
- * Returns the parsed index on success, null on spawn error or timeout.
+ * Invoke the compiler in index mode for a single main file, return the parsed
+ * JSON index.  Returns null on spawn failure, timeout, or JSON parse error.
  */
 export function reindex(
-  config: Inform6Config,
+  fileConfig: FileConfig,
   workspaceRoot: string,
   log: (msg: string) => void,
 ): Promise<CompilerIndex | null> {
-  const mainFilePath = path.resolve(workspaceRoot, config.mainFile);
+  const label = path.basename(fileConfig.mainFile);
 
   const args: string[] = ["-y"];
-  if (config.switches) args.push(...config.switches.trim().split(/\s+/));
-  if (config.libraryPath) args.push(`+${config.libraryPath}`);
-  for (const def of config.defines) args.push(`$${def}`);
-  args.push(mainFilePath);
+  if (fileConfig.switches) args.push(...fileConfig.switches.trim().split(/\s+/));
+  if (fileConfig.libraryPath) args.push(`+${fileConfig.libraryPath}`);
+  for (const def of fileConfig.defines) args.push(`$${def}`);
+  args.push(fileConfig.mainFile);
 
   spawnCount += 1;
-  log(`[indexer] spawning #${spawnCount}: ${config.compiler} ${args.join(" ")}`);
+  log(`[indexer] spawning #${spawnCount} (${label}): ${fileConfig.compiler} ${args.join(" ")}`);
 
   return new Promise((resolve) => {
-    const child = spawn(config.compiler, args, {
+    const child = spawn(fileConfig.compiler, args, {
       cwd: workspaceRoot,
       env: process.env,
     });
@@ -44,13 +39,13 @@ export function reindex(
 
     const timer = setTimeout(() => {
       child.kill();
-      log("[indexer] TIMEOUT: compiler did not finish within 10 s, killed");
+      log(`[indexer] TIMEOUT (${label}): compiler did not finish within 10 s, killed`);
       resolve(null);
     }, 10_000);
 
     child.on("error", (err) => {
       clearTimeout(timer);
-      log(`[indexer] FAILED to spawn compiler: ${err.message}`);
+      log(`[indexer] FAILED to spawn compiler (${label}): ${err.message}`);
       log(`[indexer]   check that 'compiler' path in inform6rc.yaml is correct`);
       resolve(null);
     });
@@ -63,35 +58,33 @@ export function reindex(
         return;
       }
 
-      log(`[indexer] compiler exited with status ${String(code)}`);
+      log(`[indexer] compiler exited with status ${String(code)} (${label})`);
 
       const stderr = Buffer.concat(stderrChunks).toString("utf-8");
       if (stderr) {
-        for (const line of stderr.trimEnd().split("\n")) {
+        for (const line of stderr.trimEnd().split("\n"))
           log(`[indexer] stderr: ${line}`);
-        }
       }
 
       const stdout = Buffer.concat(stdoutChunks).toString("utf-8");
       if (!stdout) {
-        log("[indexer] FAILED: no JSON on stdout — compiler ran but produced no index");
+        log(`[indexer] FAILED (${label}): no JSON on stdout — compiler ran but produced no index`);
         resolve(null);
         return;
       }
 
-      log(`[indexer] stdout: ${stdout.length} bytes`);
+      log(`[indexer] stdout: ${stdout.length} bytes (${label})`);
 
       try {
         const index = JSON.parse(stdout) as CompilerIndex;
         log(
-          `[indexer] OK: ${index.routines.length} routines, ${index.objects.length} objects, ` +
-          `${index.globals.length} globals, ${index.constants.length} constants, ` +
-          `${index.errors.length} diagnostic(s)`,
+          `[indexer] OK (${label}): ${index.routines.length} routines, ` +
+          `${index.objects.length} objects, ${index.globals.length} globals, ` +
+          `${index.constants.length} constants, ${index.errors.length} diagnostic(s)`,
         );
-        cachedIndex = index;
         resolve(index);
       } catch (e) {
-        log(`[indexer] FAILED: JSON parse error: ${String(e)}`);
+        log(`[indexer] FAILED (${label}): JSON parse error: ${String(e)}`);
         log(`[indexer]   first 200 chars of stdout: ${stdout.slice(0, 200)}`);
         resolve(null);
       }

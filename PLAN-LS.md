@@ -21,33 +21,44 @@ absolute paths via `realpath()` in `index.c`.
 
 `inform6rc.yaml` (no leading dot — visible, not hidden) in the workspace root.
 
+Top-level keys in the known set (`compiler`, `libraryPath`, `switches`,
+`defines`, `externalDefines`) are global defaults.  Any other key whose value
+is null or a plain object is treated as a main-file entry; its name is resolved
+relative to the workspace root.  Per-file scalars override the global value;
+list fields (`defines`, `externalDefines`) merge (global + per-file,
+deduplicated).  Multiple main files are compiled in parallel.
+
 ```yaml
-# Path to inform6 binary (supports ~)
+# Shared defaults
 compiler: ~/if/if-ls3/Inform6/inform6
-
-# Library include path (the +path argument)
-libraryPath: ~/if/puny/lib
-
-# Entry-point file for compilation (relative to workspace root)
-mainFile: horror.inf
-
-# Compiler switches (space-separated; no quoting needed for typical switch strings)
+libraryPath: ~/if/inform6lib/
 switches: -~S
-
-# Defines passed as $NAME or $NAME=VALUE (each becomes a $... argument)
-defines:
-  - GRAMMAR_META_FLAG=1
-  - DEBUG
-
-# Constants your library/host looks for but that should NOT be passed to the
-# compiler.  #IfDef references to these names are silently accepted; any
-# #IfDef for a name not in this list, not in `defines`, and not otherwise
-# in the compiler's symbol table will produce a warning.
 externalDefines:
-  - HAS_HINTS
+  - HAS_HINTS          # understood but not passed to compiler
+
+# Main-file entries (name = path relative to workspace root)
+one.inf:
+  defines:
+    - DEBUG
+
+two.inf:
+  switches: -~S -v8    # overrides global switches for this file
+  defines:
+    - RELEASE
 ```
 
-Existing fields from the old server (`target`) are ignored but harmless if present.
+Single-project example (just one main-file entry, no per-file overrides):
+
+```yaml
+compiler: ~/if/if-ls3/Inform6/inform6
+libraryPath: ~/if/inform6lib/
+externalDefines:
+  - HAS_HINTS
+
+horror.inf:
+  defines:
+    - DEBUG
+```
 
 ## Directory structure
 
@@ -225,6 +236,13 @@ find the parent for nesting.
   object's properties, private properties, and attributes; general completion
   returns locals of the enclosing routine followed by all routines (with
   parameter list as detail), objects, globals, constants, and arrays.
+- ✅ **Multi-file projects**: `inform6rc.yaml` supports multiple main-file
+  entries (any non-global top-level key). Each is compiled separately and in
+  parallel. Per-document features (hover, definition, completions, outline) use
+  the compilation that includes the open file; workspace symbols search all
+  compilations with deduplication. The `mainFile` single-entry format is
+  replaced by this structure; `defines`/`externalDefines` lists merge with
+  global defaults, scalars override.
 - ✅ **`#IfDef` unknown-constant warnings**: after each reindex, the LS scans
   all non-library source files for `#IfDef NAME` / `#IfNDef NAME` directives
   where `NAME` is not in the compiler's symbol table and not listed in

@@ -3,93 +3,113 @@ import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { URI } from "vscode-uri";
 import type { Connection } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
-import type { Inform6Config } from "../workspace/config";
+import type { FileConfig } from "../workspace/config";
+
+export interface Compilation {
+  fileConfig: FileConfig;
+  index: CompilerIndex;
+}
 
 /**
- * Convert `index.errors` to LSP Diagnostics and push them via the connection.
- * Also warns on `#IfDef`/`#IfNDef` references to unknown constants.
- * Clears diagnostics for files that had errors last run but are clean now.
+ * Convert compiler errors and #IfDef warnings to LSP Diagnostics and push
+ * them via the connection.  Clears diagnostics for files that were affected
+ * last run but are clean now.
  *
- * Returns the set of file URIs that received diagnostics this run (so the
- * caller can pass it back in `previousUris` next time).
+ * Returns the set of file URIs that received diagnostics this run.
  */
 export function pushDiagnostics(
   connection: Connection,
-  index: CompilerIndex,
+  compilations: Compilation[],
   previousUris: Set<string>,
-  config: Inform6Config,
 ): Set<string> {
   const byUri = new Map<string, Diagnostic[]>();
 
-  // --- Compiler errors ---
-  for (const error of index.errors) {
-    const uri = URI.file(error.file).toString();
-    if (!byUri.has(uri)) byUri.set(uri, []);
+  // --- Compiler errors (from all compilations) ---
+  for (const { index } of compilations) {
+    for (const error of index.errors) {
+      const uri = URI.file(error.file).toString();
+      if (!byUri.has(uri)) byUri.set(uri, []);
 
-    const severity =
-      error.severity === "warning"
-        ? DiagnosticSeverity.Warning
-        : DiagnosticSeverity.Error;
+      const severity =
+        error.severity === "warning"
+          ? DiagnosticSeverity.Warning
+          : DiagnosticSeverity.Error;
 
-    const line = Math.max(0, error.line - 1);
-    byUri.get(uri)!.push({
-      severity,
-      range: {
-        start: { line, character: 0 },
-        end: { line, character: Number.MAX_SAFE_INTEGER },
-      },
-      message: error.message,
-      source: "inform6",
-    });
+      const line = Math.max(0, error.line - 1);
+      byUri.get(uri)!.push({
+        severity,
+        range: {
+          start: { line, character: 0 },
+          end: { line, character: Number.MAX_SAFE_INTEGER },
+        },
+        message: error.message,
+        source: "inform6",
+      });
+    }
   }
 
   // --- #IfDef / #IfNDef unknown-constant warnings ---
-  const knownNames = buildKnownNames(index, config);
-  const libraryPath = config.libraryPath;
+  //
+  // "Known" = appears in ANY compilation's symbol table OR in any
+  // compilation's externalDefines.  A name known in at least one
+  // compilation is intentional; we only warn when it's unknown everywhere.
+  const knownNames = buildUnionKnownNames(compilations);
 
-  for (const filePath of index.files) {
-    // Skip library files — we only care about the user's project files.
-    if (libraryPath && filePath.startsWith(libraryPath)) continue;
+  // Collect all library paths so we can skip library files.
+  const libraryPaths = compilations
+    .map(c => c.fileConfig.libraryPath)
+    .filter(Boolean);
 
-    let content: string;
-    try {
-      content = fs.readFileSync(filePath, "utf-8");
-    } catch {
-      continue;
+  // Scan each project file once (skip duplicates across compilations).
+  const scanned = new Set<string>();
+  for (const { index } of compilations) {
+    for (const filePath of index.files) {
+      if (scanned.has(filePath)) continue;
+      scanned.add(filePath);
+
+      if (libraryPaths.some(lp => filePath.startsWith(lp))) continue;
+
+      let content: string;
+      try {
+        content = fs.readFileSync(filePath, "utf-8");
+      } catch {
+        continue;
+      }
+
+      const warnings = scanIfDefWarnings(content, knownNames);
+      if (warnings.length === 0) continue;
+
+      const uri = URI.file(filePath).toString();
+      if (!byUri.has(uri)) byUri.set(uri, []);
+      byUri.get(uri)!.push(...warnings);
     }
-
-    const warnings = scanIfDefWarnings(content, knownNames);
-    if (warnings.length === 0) continue;
-
-    const uri = URI.file(filePath).toString();
-    if (!byUri.has(uri)) byUri.set(uri, []);
-    byUri.get(uri)!.push(...warnings);
   }
 
-  // --- Send and reconcile ---
+  // --- Send and reconcile stale URIs ---
   const currentUris = new Set(byUri.keys());
 
-  for (const [uri, diagnostics] of byUri) {
+  for (const [uri, diagnostics] of byUri)
     connection.sendDiagnostics({ uri, diagnostics });
-  }
 
   for (const uri of previousUris) {
-    if (!currentUris.has(uri)) {
+    if (!currentUris.has(uri))
       connection.sendDiagnostics({ uri, diagnostics: [] });
-    }
   }
 
   return currentUris;
 }
 
 /**
- * Build the set of lowercase names that are "known" for #IfDef purposes:
- * every symbol the compiler defined, plus externalDefines from the config.
+ * Build a set of lowercase names that are "known" for #IfDef purposes across
+ * all compilations: every symbol the compiler defined in any compilation, plus
+ * every externalDefines entry from any compilation's config.
  */
-function buildKnownNames(index: CompilerIndex, config: Inform6Config): Set<string> {
+function buildUnionKnownNames(compilations: Compilation[]): Set<string> {
   const known = new Set<string>();
-  for (const sym of index.symbols) known.add(sym.name.toLowerCase());
-  for (const name of config.externalDefines) known.add(name.toLowerCase());
+  for (const { index, fileConfig } of compilations) {
+    for (const sym of index.symbols) known.add(sym.name.toLowerCase());
+    for (const name of fileConfig.externalDefines) known.add(name.toLowerCase());
+  }
   return known;
 }
 

@@ -1,3 +1,9 @@
 compiler: ~/if/if-ls3/Inform6/inform6
+switches: -DS -v8
 libraryPath: ~/if/inform6lib/
-mainFile: small.inf
+externalDefines:
+  - HAS_HINTS
+
+small.inf:
+  defines:
+    - DEBUG
