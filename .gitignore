@@ -28,6 +28,12 @@ out/
 *.vsix
 bundled-server/
 
+# IntelliJ TextMate bundle output
+textmate-dist/
+
+# IntelliJ project files
+.idea/
+
 # OS files
 .DS_Store
 Thumbs.db

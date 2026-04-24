@@ -2,6 +2,7 @@
     "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
     "name": "Inform 6",
     "scopeName": "source.inform6",
+    "fileTypes": ["inf", "h"],
     "patterns": [
         {
             "include": "#switchComment"

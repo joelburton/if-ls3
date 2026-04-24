@@ -62,7 +62,8 @@
   "scripts": {
     "compile": "tsc -p tsconfig.client.json",
     "build-server": "node scripts/build-server.mjs",
-    "build": "npm run compile && npm run build-server",
+    "build-textmate-dist": "node scripts/build-textmate-dist.mjs",
+    "build": "npm run compile && npm run build-server && npm run build-textmate-dist",
     "watch": "tsc -w -p tsconfig.client.json",
     "check": "tsc --noEmit -p tsconfig.json",
     "package-vsix": "npm run build && npx -y @vscode/vsce@latest package --allow-missing-repository --skip-license",
