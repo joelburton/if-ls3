@@ -1158,9 +1158,13 @@ disabling -X switch\n");
 
     run_pass();
 
-    if (no_errors==0) {
-        if (index_switch) { index_output_json(); }
-        else { output_file(); output_has_occurred = TRUE; }
+    if (index_switch) {
+        /* Always output JSON index, even with errors — the language
+           server needs partial results plus error diagnostics */
+        index_output_json();
+    }
+    else if (no_errors==0) {
+        output_file(); output_has_occurred = TRUE;
     }
     else { output_has_occurred = FALSE; }
 

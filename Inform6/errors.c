@@ -254,6 +254,13 @@ static void message(int style, char *s)
                 no_compiler_errors++; break;
     }
     fprintf(stderr, " %s\n", s);
+
+    if (index_switch && (style >= 1 && style <= 4))
+    {   int j = ErrorReport.file_number;
+        char *p = (j > 0 && j <= total_files)
+            ? InputFiles[j-1].filename : ErrorReport.source;
+        index_note_error(p, ErrorReport.line_number, s, style);
+    }
 #ifdef ARC_THROWBACK
     throwback(((style <= 2) ? style : 1), s);
 #endif

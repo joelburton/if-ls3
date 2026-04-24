@@ -83,6 +83,36 @@ static char *index_strdup(const char *s)
 }
 
 /* --------------------------------------------------------------------- */
+/*   Error/warning capture for JSON output                               */
+/* --------------------------------------------------------------------- */
+
+#define MAX_INDEX_ERRORS 256
+
+typedef struct index_error_s {
+    char *file;
+    int32 line;
+    char *message;
+    int severity;           /* 1=error, 2=warning, 3=linker error, 4=fatal */
+} index_error;
+
+static index_error *errors_info;
+static int errors_info_count;
+static memory_list errors_info_memlist;
+
+extern void index_note_error(const char *file, int32 line,
+    const char *msg, int severity)
+{   index_error *e;
+    ensure_memory_list_available(&errors_info_memlist,
+        errors_info_count + 1);
+    e = &errors_info[errors_info_count];
+    e->file = file ? index_strdup(file) : NULL;
+    e->line = line;
+    e->message = index_strdup(msg);
+    e->severity = severity;
+    errors_info_count++;
+}
+
+/* --------------------------------------------------------------------- */
 /*   Doc comment buffers                                                 */
 /*                                                                       */
 /*   Preceding doc: !! lines on their own line, before a definition.     */
@@ -646,6 +676,38 @@ extern void index_output_json(void)
         }
         printf("}");
     }
+    printf("\n  ],\n");
+
+    /* --- errors --- */
+    printf("  \"errors\": [\n");
+    first = TRUE;
+    for (i = 0; i < errors_info_count; i++)
+    {   index_error *e = &errors_info[i];
+        const char *sev;
+
+        if (!first) printf(",\n");
+        first = FALSE;
+
+        printf("    {");
+        if (e->file)
+        {   printf("\"file\": ");
+            json_print_escaped_string(e->file);
+            printf(", ");
+        }
+        printf("\"line\": %d", (int)e->line);
+        printf(", \"message\": ");
+        json_print_escaped_string(e->message);
+
+        switch (e->severity)
+        {   case 1: sev = "error"; break;
+            case 2: sev = "warning"; break;
+            case 3: sev = "error"; break;
+            case 4: sev = "fatal"; break;
+            default: sev = "error"; break;
+        }
+        printf(", \"severity\": \"%s\"", sev);
+        printf("}");
+    }
     printf("\n  ]\n");
 
     printf("}\n");
@@ -667,8 +729,10 @@ extern void init_index_vars(void)
     trailing_doc_text = NULL;
     symbol_docs = NULL;
     trailing_docs = NULL;
+    errors_info = NULL;
     pending_object_doc = NULL;
     trailing_docs_count = 0;
+    errors_info_count = 0;
     routines_count = 0;
     locals_pool_count = 0;
     objects_info_count = 0;
@@ -693,6 +757,7 @@ extern void index_begin_pass(void)
     doc_fresh = FALSE;
     trailing_doc_line = 0;
     trailing_docs_count = 0;
+    errors_info_count = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -729,6 +794,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&trailing_docs_list_memlist,
         sizeof(trailing_doc_entry), MAX_TRAILING_DOCS,
         (void **)&trailing_docs, "index trailing docs");
+    initialise_memory_list(&errors_info_memlist,
+        sizeof(index_error), MAX_INDEX_ERRORS,
+        (void **)&errors_info, "index errors");
 }
 
 extern void index_free_arrays(void)
@@ -756,6 +824,10 @@ extern void index_free_arrays(void)
         if (symbol_docs[i]) free(symbol_docs[i]);
     for (i = 0; i < trailing_docs_count; i++)
         free(trailing_docs[i].text);
+    for (i = 0; i < errors_info_count; i++)
+    {   if (errors_info[i].file) free(errors_info[i].file);
+        free(errors_info[i].message);
+    }
     if (pending_object_doc) free(pending_object_doc);
     deallocate_memory_list(&routines_info_memlist);
     deallocate_memory_list(&locals_pool_memlist);
@@ -768,4 +840,5 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&trailing_doc_memlist);
     deallocate_memory_list(&symbol_docs_memlist);
     deallocate_memory_list(&trailing_docs_list_memlist);
+    deallocate_memory_list(&errors_info_memlist);
 }

@@ -73,21 +73,15 @@ commented-out ICL directives like `!!%`.
 - [x] `"doc"` field in JSON for routines[], objects[], symbols[],
   globals[], arrays[]
 
-### 1f. Error output in JSON
+### 1f. Error output in JSON — DONE
 
-When compilation has errors, still output the index (with whatever was
-successfully parsed) plus an `errors[]` section:
-
-```json
-"errors": [
-    {"file": "game.inf", "line": 42,
-     "message": "Expected ';' after expression", "severity": "error"}
-]
-```
-
-This requires hooking into `errors.c` to capture messages instead of (or in
-addition to) printing them to stderr. Important for live editing — the file
-will often have errors.
+- [x] `errors[]` section in JSON with file, line, message, severity
+  (error/warning/fatal)
+- [x] Hook in `message()` in `errors.c` captures all errors and warnings
+- [x] JSON output always produced even with errors (partial index +
+  diagnostics) — changed `compile()` in `inform.c`
+- [x] Severity mapping: style 1/3 → "error", style 2 → "warning",
+  style 4 → "fatal"
 
 ### 1g. Verb/grammar table
 
