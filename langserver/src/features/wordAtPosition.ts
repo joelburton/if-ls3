@@ -2,6 +2,22 @@ import type { Position } from "vscode-languageserver";
 
 const isIdChar = (c: string): boolean => /[\w]/.test(c);
 
+/**
+ * Returns true if `col` on `lineText` falls inside an Inform6 `!` comment.
+ *
+ * Scans left-to-right tracking string state so that `!` inside a string
+ * literal (e.g. `print "hello!";`) is not mistaken for a comment opener.
+ */
+export function isInComment(lineText: string, col: number): boolean {
+  let inString = false;
+  for (let i = 0; i < lineText.length; i++) {
+    const c = lineText[i];
+    if (c === '"') { inString = !inString; continue; }
+    if (c === '!' && !inString) return col >= i;
+  }
+  return false;
+}
+
 /** Extract the Inform6 identifier under the cursor. */
 export function wordAtPosition(
   text: string,

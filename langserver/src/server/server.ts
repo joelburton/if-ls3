@@ -23,7 +23,7 @@ import { findHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
-import { wordAtPosition, objectBeforeDot } from "../features/wordAtPosition";
+import { wordAtPosition, objectBeforeDot, isInComment } from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
 
 const connection = createConnection(ProposedFeatures.all);
@@ -178,6 +178,7 @@ connection.onDefinition((params: DefinitionParams) => {
 
   const hit = wordAtPosition(doc.getText(), params.position);
   if (!hit) return null;
+  if (isInComment(hit.lineText, hit.start)) return null;
 
   const objCtx = objectBeforeDot(hit.lineText, hit.start);
   const filePath = URI.parse(params.textDocument.uri).fsPath;
@@ -197,6 +198,7 @@ connection.onHover((params: HoverParams) => {
 
   const hit = wordAtPosition(doc.getText(), params.position);
   if (!hit) return null;
+  if (isInComment(hit.lineText, hit.start)) return null;
 
   return findHover(index, hit.word, workspaceRoot ?? "");
 });
