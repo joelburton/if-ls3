@@ -260,3 +260,85 @@ describe("computeRename action/Sub tandem", () => {
     }
   });
 });
+
+// ---------------------------------------------------------------------------
+// computeRename — class rename (pseudo-directive class name)
+// ---------------------------------------------------------------------------
+
+describe("computeRename class rename", () => {
+  const CLASS_SRC = [
+    "Class Room;",    // line 1 — "Room" at col 6
+    "Room Closet;",   // line 2 — "Room" as pseudo-directive at col 0
+    "Room Kitchen;",  // line 3 — "Room" as pseudo-directive at col 0
+  ].join("\n");
+
+  const classIndex: CompilerIndex = {
+    ...testIndex,
+    files: [FILE],
+    globals: [],
+    routines: [],
+    objects: [
+      { name: "Room",    file: FILE, start_line: 1, end_line: 1,
+        is_class: true,  attributes: [], properties: [], private_properties: [] },
+      { name: "Closet",  file: FILE, start_line: 2, end_line: 2,
+        is_class: false, attributes: [], properties: [], private_properties: [] },
+      { name: "Kitchen", file: FILE, start_line: 3, end_line: 3,
+        is_class: false, attributes: [], properties: [], private_properties: [] },
+    ],
+    symbols: [
+      { name: "Room", type: "class", value: 5, flags: 4, is_system: false, file: FILE, line: 1 },
+    ],
+    // references[] has only pseudo-directive uses; definition is found via resolveSymbol
+    references: [
+      { sym: "Room", type: "class", locs: ["0:2:0", "0:3:0"] },
+    ],
+  };
+
+  const getClassText = (_path: string) => CLASS_SRC;
+
+  it("prepareRename accepts cursor on the pseudo-directive class name", () => {
+    // cursor inside "Room" at line 2 col 1 (0-based)
+    const result = prepareRename(classIndex, FILE, { line: 1, character: 1 }, CLASS_SRC);
+    expect(result).not.toBeNull();
+    expect(result!.placeholder).toBe("Room");
+    expect(result!.range.start).toEqual({ line: 1, character: 0 });
+    expect(result!.range.end).toEqual({ line: 1, character: 4 });
+  });
+
+  it("renaming a class from its definition renames the definition and all pseudo-directive uses", () => {
+    // cursor inside "Room" in "Class Room;" — line 0 (0-based), col 7
+    const edit = computeRename(classIndex, FILE, { line: 0, character: 7 }, "Hall", getClassText);
+    expect(edit).not.toBeNull();
+    const edits = edit!.changes![FILE_URI]!;
+
+    // definition "Class Room;" line 1 col 6
+    expect(edits.some(e =>
+      e.range.start.line === 0 && e.range.start.character === 6 && e.newText === "Hall"
+    )).toBe(true);
+    // pseudo-directive uses on lines 2 and 3 col 0
+    expect(edits.some(e =>
+      e.range.start.line === 1 && e.range.start.character === 0 && e.newText === "Hall"
+    )).toBe(true);
+    expect(edits.some(e =>
+      e.range.start.line === 2 && e.range.start.character === 0 && e.newText === "Hall"
+    )).toBe(true);
+  });
+
+  it("renaming from a pseudo-directive use renames the definition and all uses", () => {
+    // cursor on "Room" in "Room Closet;" — line 1 (0-based), col 1
+    const edit = computeRename(classIndex, FILE, { line: 1, character: 1 }, "Hall", getClassText);
+    expect(edit).not.toBeNull();
+    const edits = edit!.changes![FILE_URI]!;
+    expect(edits).toHaveLength(3); // definition + two pseudo-directive uses
+    expect(edits.every(e => e.newText === "Hall")).toBe(true);
+  });
+
+  it("edit range at pseudo-directive has correct width", () => {
+    const edit = computeRename(classIndex, FILE, { line: 1, character: 1 }, "Hall", getClassText);
+    const edits = edit!.changes![FILE_URI]!;
+    const useEdit = edits.find(e => e.range.start.line === 1);
+    expect(useEdit).toBeDefined();
+    // "Room" is 4 chars wide
+    expect(useEdit!.range.end.character - useEdit!.range.start.character).toBe(4);
+  });
+});
