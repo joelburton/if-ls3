@@ -32,6 +32,7 @@ export function findHover(
   wordStart?: number,
   filePath?: string,
   line1?: number,
+  objectContext?: string | null,
 ): Hover | null {
   const lower = word.toLowerCase();
 
@@ -48,6 +49,22 @@ export function findHover(
       const localMatch = enclosing.locals.find((l) => l.toLowerCase() === lower);
       if (localMatch) {
         return md([`**${localMatch}** (local variable in **${enclosing.name}**)`]);
+      }
+    }
+  }
+
+  // Object-context property lookup — ObjName.prop hover shows the property
+  // as it appears inside that specific object body, not the global declaration.
+  if (objectContext) {
+    const objLower = objectContext.toLowerCase();
+    const obj = index.objects.find((o) => o.name.toLowerCase() === objLower);
+    if (obj) {
+      const all = [...obj.properties, ...obj.private_properties, ...obj.attributes];
+      const prop = all.find((p) => p.name.toLowerCase() === lower);
+      if (prop) {
+        const parts = [`**${prop.name}** (property of **${obj.name}**)`];
+        parts.push(`*${rel(obj.file, workspaceRoot)}:${prop.line}*`);
+        return md(parts);
       }
     }
   }

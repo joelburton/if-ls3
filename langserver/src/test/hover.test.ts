@@ -98,6 +98,27 @@ describe("findHover", () => {
     });
   });
 
+  describe("object context (dot hover)", () => {
+    it("shows property in object context with body line, not declaration line", () => {
+      // my_test is at line 22 inside TheRoom, but line 4 in symbols[].
+      const text = md(findHover(testIndex, "my_test", ROOT, undefined, undefined, undefined, undefined, "TheRoom"));
+      expect(text).toContain("property of **TheRoom**");
+      expect(text).toContain("game.inf:22");
+      expect(text).not.toContain("game.inf:4");
+    });
+
+    it("falls back to normal hover when objectContext is null", () => {
+      const text = md(findHover(testIndex, "my_test", ROOT));
+      expect(text).toContain("individual_property");
+      expect(text).toContain("game.inf:4");
+    });
+
+    it("falls back to normal hover when object is not found", () => {
+      const text = md(findHover(testIndex, "MyFunc", ROOT, undefined, undefined, undefined, undefined, "Bogus"));
+      expect(text).toContain("**MyFunc**");
+    });
+  });
+
   describe("local variables", () => {
     it("returns local variable hover when cursor is inside a routine", () => {
       // MyFunc spans lines 58-66; cursor at line 60 (1-based).

@@ -201,9 +201,10 @@ connection.onHover((params: HoverParams) => {
   if (!hit) return null;
   if (isInComment(hit.lineText, hit.start)) return null;
 
+  const objCtx = objectBeforeDot(hit.lineText, hit.start);
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   const line1 = params.position.line + 1; // 1-based for compiler index
-  return findHover(index, hit.word, workspaceRoot ?? "", hit.lineText, hit.start, filePath, line1);
+  return findHover(index, hit.word, workspaceRoot ?? "", hit.lineText, hit.start, filePath, line1, objCtx);
 });
 
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {

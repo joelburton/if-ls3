@@ -64,6 +64,17 @@ describe("findDefinition", () => {
       expect(findDefinition(testIndex, "light", "TheRoom")).toEqual(loc(11));
     });
 
+    it("prefers the property line inside the object over the global declaration", () => {
+      // my_test is at line 22 inside TheRoom but line 4 in symbols[].
+      // objectContext must win over the symbols[] fallback.
+      expect(findDefinition(testIndex, "my_test", "TheRoom")).toEqual(loc(22));
+    });
+
+    it("falls back to symbols[] declaration when no objectContext", () => {
+      // Without context, my_test resolves to its declaration line.
+      expect(findDefinition(testIndex, "my_test", null)).toEqual(loc(4));
+    });
+
     it("falls through to normal lookup for unknown context object", () => {
       // Object "Bogus" does not exist — fall through to normal lookup.
       expect(findDefinition(testIndex, "MyFunc", "Bogus")).toEqual(loc(58));

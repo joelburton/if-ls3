@@ -31,6 +31,7 @@ export const testIndex: CompilerIndex = {
       properties: [
         { name: "description", line: 14 },
         { name: "before", line: 15 },
+        { name: "my_test", line: 22 }, // also in symbols[] at line 4 — tests objectContext discrimination
       ],
       private_properties: [{ name: "super_secret", line: 13 }],
       doc: "This is the doc comment for TheRoom",
@@ -68,6 +69,9 @@ export const testIndex: CompilerIndex = {
     { name: "Foozle", type: "constant", value: 10, flags: 1284, is_system: false, file: FILE, line: 95 },
     // Library property only in symbols[] (not in objects/routines/etc.).
     { name: "description", type: "property", value: 3, flags: 1284, is_system: false, file: FILE, line: 14 },
+    // Individual property: in TheRoom.properties at line 22, but declared at line 4.
+    // Used to verify objectContext path returns 22, not 4.
+    { name: "my_test", type: "individual_property", value: 72, flags: 4, is_system: false, file: FILE, line: 4 },
   ],
 
   verbs: [],
