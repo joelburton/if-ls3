@@ -13,7 +13,10 @@ import {
   SemanticTokensParams,
   ReferenceParams,
   FoldingRangeParams,
+  PrepareRenameParams,
+  RenameParams,
 } from "vscode-languageserver/node";
+import * as fs from "node:fs";
 import * as path from "node:path";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
@@ -32,6 +35,7 @@ import { getSemanticTokens } from "../features/semanticTokens";
 import { findReferences, refAtPosition } from "../features/references";
 import { getFoldingRanges } from "../features/foldingRanges";
 import { getConditionalsForFile } from "../features/conditionals";
+import { prepareRename, computeRename, affectedFiles, hasInactiveBranches } from "../features/rename";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -93,6 +97,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
         full: true,
       },
       foldingRangeProvider: true,
+      renameProvider: { prepareProvider: true },
     },
   };
 });
@@ -292,6 +297,38 @@ connection.onRequest("inform6/getConditionals", (params: { uri: string }) => {
   const index = indexForDocument(params.uri);
   if (!index) return [];
   return getConditionalsForFile(index, URI.parse(params.uri).fsPath);
+});
+
+connection.onPrepareRename((params: PrepareRenameParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return prepareRename(index, filePath, params.position, doc.getText());
+});
+
+connection.onRenameRequest(async (params: RenameParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+
+  const getFileText = (path: string): string | null => {
+    const doc = documents.get(URI.file(path).toString());
+    if (doc) return doc.getText();
+    try { return fs.readFileSync(path, "utf-8"); } catch { return null; }
+  };
+
+  const edit = computeRename(index, filePath, params.position, params.newName, getFileText);
+
+  if (edit && hasInactiveBranches(index, affectedFiles(edit))) {
+    void connection.window.showInformationMessage(
+      "Rename applied. Note: references inside inactive #IfDef branches were not renamed — " +
+      "re-run after recompiling with different defines if needed.",
+    );
+  }
+
+  return edit ?? null;
 });
 
 documents.listen(connection);

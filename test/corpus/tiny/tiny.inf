@@ -18,7 +18,7 @@ Room TheRoom "The Room"
   has my_attr
   with
     description "The description TheRoom if Room room theroom If verb Verb.",
-    before [;
+    before [; 
       self.Room::room_func();
       print self.description();
       Foozle: "You foozle!";
