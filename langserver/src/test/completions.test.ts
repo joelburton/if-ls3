@@ -307,6 +307,23 @@ describe("top-level completions", () => {
   it("does NOT include non-class objects", () => {
     expect(labels).not.toContain("TheRoom"); // is_class: false
   });
+
+  it("falls back to general completions mid-directive (content already on the line)", () => {
+    // "Global " before cursor → lineBeforeCursor is not empty → general completions.
+    const line = "Global ";
+    const midItems = getCompletions(testIndex, FILE, pos(4, line.length), line, singleLine(line));
+    const midLabels = midItems.map((i) => i.label);
+    expect(midLabels).toContain("MyFunc");
+    expect(midLabels).toContain("NOPE");
+  });
+
+  it("applies top-level filter when typing the first word (no prior content)", () => {
+    const line = "Ob";
+    const firstWordItems = getCompletions(testIndex, FILE, pos(4, line.length), line, singleLine(line));
+    const firstLabels = firstWordItems.map((i) => i.label);
+    expect(firstLabels).toContain("Object");
+    expect(firstLabels).not.toContain("MyFunc");
+  });
 });
 
 // ---------------------------------------------------------------------------

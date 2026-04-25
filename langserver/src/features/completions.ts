@@ -186,9 +186,11 @@ export function getCompletions(
   }
 
   // ── Top level: directives, pseudo-directive class names, snippets ────────
-  // Checked after expression-context guards above, which cannot fire at the
-  // real top level (has/provides only appear inside routines/objects).
-  if (isAtTopLevel(index, filePath, position.line + 1)) {
+  // Only when typing the first token on the line (nothing before the cursor
+  // except the partial word being typed) — mid-directive positions need the
+  // full symbol list.
+  const lineBeforeCursor = lineText.slice(0, col).replace(/\w*$/, "").trim();
+  if (lineBeforeCursor === "" && isAtTopLevel(index, filePath, position.line + 1)) {
     const items: CompletionItem[] = [...TOPLEVEL_SNIPPETS];
     const seen = new Set<string>(TOPLEVEL_SNIPPETS.map((s) => s.label.toLowerCase()));
 
