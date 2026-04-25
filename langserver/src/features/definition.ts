@@ -14,8 +14,12 @@ function loc(file: string, line: number): Location {
  * When `objectContext` is non-null (caller detected `ObjName.word`), we first
  * try to resolve the property/attribute line inside that specific object body.
  *
- * When `isActionRef` is true (caller detected `Word:` or `##Word`), we look up
- * `WordSub` — the action routine for action `Word`. No fallthrough on miss.
+ * When `isActionRef` is true (caller detected `Word:`, `##Word`, `<Word>`, or
+ * grammar `-> Word`), we look up `WordSub` — the action routine for action
+ * `Word`. When `isExplicitAction` is also true (`##`, `<>`, or `-> `), a miss
+ * returns null. When only the colon triggered the flag (`Word:` in a switch),
+ * a miss falls through to normal lookup so that value labels like object names
+ * still resolve.
  *
  * General lookup order: routines → objects → globals → constants → arrays →
  * symbols[] fallback (covers library properties/attributes).
@@ -25,6 +29,7 @@ export function findDefinition(
   word: string,
   objectContext: string | null,
   isActionRef = false,
+  isExplicitAction = false,
 ): Location | null {
   const lower = word.toLowerCase();
 
@@ -34,7 +39,9 @@ export function findDefinition(
       ?? index.symbols.find((s) => s.name.toLowerCase() === subLower && s.file);
     if (sub && "start_line" in sub) return loc(sub.file, sub.start_line);
     if (sub && "line" in sub && sub.file) return loc(sub.file, sub.line ?? 1);
-    return null;  // no fallthrough — Jump label has nothing to do with a Jump routine
+    // Fall through: `Word:` in a switch may be a value label (e.g. an object),
+    // not an action reference.  `##Word` is unambiguously an action, so stop.
+    if (isExplicitAction) return null;
   }
 
   if (objectContext) {

@@ -183,11 +183,13 @@ connection.onDefinition((params: DefinitionParams) => {
   const objCtx = objectBeforeDot(hit.lineText, hit.start);
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   const grammarActionPositions = buildGrammarActionPositions(index);
-  const isActionRef = hit.lineText[hit.end] === ":"
-    || (hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#")
-    || isActionAngleBracket(hit.lineText, hit.start)
-    || isActionArrow(hit.lineText, hit.start, params.position.line, filePath, grammarActionPositions);
-  return findDefinition(index, hit.word, objCtx, isActionRef);
+  const isHashHash = hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#";
+  const isAngle = isActionAngleBracket(hit.lineText, hit.start);
+  const isArrow = isActionArrow(hit.lineText, hit.start, params.position.line, filePath, grammarActionPositions);
+  const isColon = hit.lineText[hit.end] === ":";
+  const isActionRef = isColon || isHashHash || isAngle || isArrow;
+  const isExplicitAction = isHashHash || isAngle || isArrow;
+  return findDefinition(index, hit.word, objCtx, isActionRef, isExplicitAction);
 });
 
 connection.onHover((params: HoverParams) => {
@@ -224,6 +226,7 @@ connection.onCompletion((params: CompletionParams) => {
 
   const lines = doc.getText().split("\n");
   const lineText = lines[params.position.line] ?? "";
+  if (isInComment(lineText, params.position.character)) return null;
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   return getCompletions(index, filePath, params.position, lineText);
 });
