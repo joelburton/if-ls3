@@ -4,16 +4,68 @@ import { KEYWORD_COMPLETIONS } from "./keywords";
 
 const isIdChar = (c: string) => /\w/.test(c);
 
+// ---------------------------------------------------------------------------
+// has-clause detection
+// ---------------------------------------------------------------------------
+
+const SCAN_LIMIT = 15;
+
+function lastWordIndex(text: string, word: string): number {
+  const re = new RegExp(`\\b${word}\\b`, "gi");
+  let last = -1, m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) last = m.index;
+  return last;
+}
+
+/**
+ * True when the cursor appears to be inside an Inform 6 `has` attribute
+ * clause.  Scans backwards up to SCAN_LIMIT lines, stripping comments and
+ * string literals, then checks whether `has` appears more recently than any
+ * clause terminator (`;`, `with`, `private`, `class`).
+ */
+export function isInHasClause(
+  lines: string[],
+  cursorLine: number,
+  cursorCol: number,
+): boolean {
+  const startLine = Math.max(0, cursorLine - SCAN_LIMIT);
+  const chunks: string[] = [];
+  for (let i = startLine; i <= cursorLine; i++) {
+    let line = lines[i] ?? "";
+    if (i === cursorLine) line = line.slice(0, cursorCol);
+    const ci = line.indexOf("!");
+    if (ci !== -1) line = line.slice(0, ci);
+    line = line.replace(/"[^"]*"/g, "");
+    chunks.push(line);
+  }
+  const text = chunks.join("\n");
+  const hasIdx  = lastWordIndex(text, "has");
+  const termIdx = Math.max(
+    lastWordIndex(text, "with"),
+    lastWordIndex(text, "private"),
+    lastWordIndex(text, "class"),
+    text.lastIndexOf(";"),
+  );
+  return hasIdx !== -1 && hasIdx > termIdx;
+}
+
+// ---------------------------------------------------------------------------
+// Main entry point
+// ---------------------------------------------------------------------------
+
 /**
  * Return completion items for the cursor position.
  *
- * Two modes:
+ * Three modes:
  *
  * 1. **Dot completion** (`ObjName.`): the character immediately before the
  *    cursor is `.`.  Look up the object and return its properties, private
  *    properties, and attributes.
  *
- * 2. **General completion**: return all in-scope locals (from the enclosing
+ * 2. **Has clause**: cursor is inside a `has` attribute block.  Return only
+ *    attribute names (all objects' attributes + attribute symbols).
+ *
+ * 3. **General completion**: return all in-scope locals (from the enclosing
  *    routine) followed by every user-defined routine, object, global,
  *    constant, and array in the index.
  */
@@ -22,6 +74,7 @@ export function getCompletions(
   filePath: string,
   position: Position,
   lineText: string,
+  lines: string[],
 ): CompletionItem[] {
   const col = position.character;
 
@@ -39,6 +92,20 @@ export function getCompletions(
     for (const p of obj.properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
     for (const p of obj.private_properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
     for (const a of obj.attributes) items.push({ label: a.name, kind: CompletionItemKind.EnumMember });
+    return items;
+  }
+
+  // ── Has clause: attributes only ─────────────────────────────────────────
+  if (isInHasClause(lines, position.line, col)) {
+    const seen = new Set<string>();
+    const items: CompletionItem[] = [];
+    for (const s of index.symbols) {
+      if (s.type !== "attribute") continue;
+      const key = s.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: s.name, kind: CompletionItemKind.EnumMember });
+    }
     return items;
   }
 

@@ -72,6 +72,10 @@ export const testIndex: CompilerIndex = {
     // Individual property: in TheRoom.properties at line 22, but declared at line 4.
     // Used to verify objectContext path returns 22, not 4.
     { name: "my_test", type: "individual_property", value: 72, flags: 4, is_system: false, file: FILE, line: 4 },
+    // Attributes — system and user-defined.
+    { name: "light",     type: "attribute", value: 2, flags: 516, is_system: true  },
+    { name: "container", type: "attribute", value: 3, flags: 516, is_system: true  },
+    { name: "concealed", type: "attribute", value: 8, flags: 4,   is_system: false, file: FILE, line: 5 },
   ],
 
   verbs: [],

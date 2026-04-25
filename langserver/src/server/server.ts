@@ -274,7 +274,7 @@ connection.onCompletion((params: CompletionParams) => {
   const lineText = lines[params.position.line] ?? "";
   if (isInComment(lineText, params.position.character)) return null;
   const filePath = URI.parse(params.textDocument.uri).fsPath;
-  return getCompletions(index, filePath, params.position, lineText);
+  return getCompletions(index, filePath, params.position, lineText, lines);
 });
 
 connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
