@@ -45,7 +45,6 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
       "verbs",
       "dictionary",
       "errors",
-      "grammar_action_refs",
       "includes",
       "references",
       "conditionals",

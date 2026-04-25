@@ -77,5 +77,4 @@ export const testIndex: CompilerIndex = {
   verbs: [],
   dictionary: [],
   errors: [],
-  grammar_action_refs: [],
 };

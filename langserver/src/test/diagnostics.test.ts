@@ -132,7 +132,6 @@ describe("buildUnionKnownNames", () => {
       verbs: [],
       dictionary: [],
       errors: [],
-      grammar_action_refs: [],
       files: [],
     };
     const indexB = {
@@ -146,7 +145,6 @@ describe("buildUnionKnownNames", () => {
       verbs: [],
       dictionary: [],
       errors: [],
-      grammar_action_refs: [],
       files: [],
     };
 
@@ -189,7 +187,6 @@ describe("collectUndeclaredPropertyWarnings", () => {
       verbs: [],
       dictionary: [],
       errors: [],
-      grammar_action_refs: [],
       files: [FILE],
     };
   }

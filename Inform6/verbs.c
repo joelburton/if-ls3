@@ -1261,9 +1261,7 @@ tokens in any line (for grammar version 3)");
         if (j >= lowest_fake_action())
             error_named("This is a fake action, not a real one:", token_text);
         if (index_switch)
-        {   index_note_grammar_action_ref(get_brief_location(&ErrorReport));
             index_note_action_sym_ref(token_text);
-        }
     }
 
     reverse_action = FALSE;
