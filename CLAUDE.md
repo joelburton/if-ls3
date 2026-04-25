@@ -135,3 +135,122 @@ The language server lives at `langserver/` in this repo (TypeScript). The old
 prototype at `~/if/inform6-langserver/` is superseded and kept only for reference.
 The compiler fork is used as an out-of-process indexer, invoked by the language
 server on file save to provide semantic symbol data.
+
+---
+
+# Language Server (`langserver/`)
+
+## Architecture
+
+The server is **purely reactive** — no in-process Inform 6 parser, no
+incremental analysis. On every file save the indexer spawns `inform6 -y`,
+parses the JSON from stdout, and holds the resulting `CompilerIndex` in
+memory. All LSP requests are answered from that snapshot.
+
+One `CompilerIndex` per main file. A workspace with two entries in
+`inform6rc.yaml` has two independent compilations. Workspace-symbol search
+and diagnostics merge across all of them; hover/definition/completions use
+whichever index owns the file being edited.
+
+## Module map
+
+```
+langserver/src/
+  server/
+    server.ts       LSP wiring: creates connection, dispatches all requests.
+                    Also contains the action-reference detection helpers
+                    (see below). This is the only file that touches the
+                    LSP connection object.
+    indexer.ts      Spawns inform6 -y, handles timeouts and parse errors,
+                    returns CompilerIndex. Filters veneer routines
+                    (compiler-generated runtime support) from routines[].
+    types.ts        TypeScript interfaces matching the -y JSON schema.
+    main.ts         Entry point; just imports server.ts.
+
+  features/         Pure functions — each takes a CompilerIndex (or similar)
+                    and returns LSP types. No side effects, easy to test.
+    symbolLookup.ts Shared loc() helper and resolveSymbol() tagged-union
+                    lookup (routines → objects → globals → constants →
+                    arrays → non-system symbols). Add new symbol categories
+                    here; consumers switch on `kind`.
+    definition.ts   findDefinition() — uses resolveSymbol() for general
+                    lookup; handles action refs and object-context separately.
+    hover.ts        findHover() — similar lookup but constants before globals,
+                    system symbols included in fallback. Kept separate from
+                    resolveSymbol() for this reason.
+    completions.ts  getCompletions() — dot completion and general completion.
+    diagnostics.ts  pushDiagnostics() — compiler errors + #IfDef warnings.
+                    scanIfDefWarnings() scans source text for #IfDef names
+                    not in the known-symbol union; buildUnionKnownNames()
+                    builds that union across all compilations.
+    semanticTokens.ts getSemanticTokens() — returns LSP 5-integer delta-
+                    encoded token array. Locals shadow globals/constants.
+                    Tokens are sorted before encoding (local and global
+                    scans run separately and may produce out-of-order results).
+    documentSymbols.ts  Per-file outline; embedded routines nested under
+                    their parent object.
+    workspaceSymbols.ts Cross-index substring search; deduplicates by name.
+    wordAtPosition.ts   isInComment(), wordAtPosition(), objectBeforeDot().
+                    Used by server.ts to suppress features inside comments
+                    and detect ObjName.prop and ##Action contexts.
+    keywords.ts     Static keyword hover text and completion items.
+                    findPrintRuleHover() detects print (Rule) context.
+
+  workspace/
+    config.ts       loadConfig() — reads inform6rc.yaml, merges global
+                    defaults with per-file overrides, expands ~/ paths.
+
+  test/             vitest suite (153 tests). Pure-function modules are
+                    tested directly with fixture CompilerIndex objects.
+                    compiler-index.test.ts is an integration test that
+                    runs the real binary; skipped if binary is absent.
+```
+
+## Non-obvious behaviors
+
+**Action reference detection** (`server.ts`): The token `->` is used three
+ways in Inform 6 — grammar action (`* noun -> Take`), array fill (`x-->0`),
+and property access (`obj->prop`). The server uses `grammar_action_refs[]`
+from the index (source locations of every `->` action name in Verb/Extend
+lines) to distinguish them. `##Word` and `<Word>` are unambiguously action
+references. `Word:` in a switch may be an action OR a value label (e.g. an
+object name), so a miss falls through to normal lookup.
+
+**hover.ts vs resolveSymbol()**: hover looks up constants before globals
+(not the order in `resolveSymbol`), needs a second `symbols[]` find to get
+a constant's numeric value, and includes system symbols in its fallback so
+you can hover over `self`, `nothing`, etc. These differences make
+`resolveSymbol()` a poor fit; hover keeps its own find cascade.
+
+**Embedded routines**: Object property routines (e.g. `before [; ... ]`)
+appear in `routines[]` with `embedded: true`. They are excluded from
+general completions (not callable by bare name), excluded from workspace
+symbols, nested under their parent in document symbols, and their locals
+are still in scope for hover/completions when the cursor is inside them.
+
+**Semantic token encoding**: LSP requires 5 integers per token in delta
+format — `[deltaLine, deltaChar, length, tokenType, modifiers]`. `deltaChar`
+is relative to the previous token only when both are on the same line;
+otherwise it is absolute. Tokens must be sorted by position before encoding;
+the local-variable scan and global/constant scan run independently and can
+produce interleaved results, especially when embedded routines are listed
+out of order in the index.
+
+**#IfDef warnings**: The compiler itself does not warn about unknown names
+in `#IfDef`/`#IfNDef`. `scanIfDefWarnings()` handles this by scanning raw
+source text and checking names against the union of all symbol names and
+`externalDefines` across all compilations. A name known in any one
+compilation is not warned about (it may be intentionally absent in others).
+
+## Testing
+
+```bash
+cd langserver
+npm test          # run vitest suite
+npm run check     # TypeScript type-check only
+```
+
+Test files live in `src/test/`. `fixture.ts` defines a shared minimal
+`CompilerIndex` used by most unit tests. Each feature module has its own
+test file. The compiler integration test auto-skips when `Inform6/inform6`
+is absent.
