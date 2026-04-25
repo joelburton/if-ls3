@@ -53,13 +53,41 @@ const TOPLEVEL_SNIPPETS: CompletionItem[] = [
 // ---------------------------------------------------------------------------
 
 /**
- * True when the cursor immediately follows the `provides` keyword (with
- * optional whitespace and a partial identifier being typed).  Single-line
- * check only — `provides` is always an inline expression in Inform 6.
+ * Shared helper: strip the partial word being typed, trim trailing whitespace,
+ * then strip any trailing `identifier or` chains so that
+ * `obj provides p1 or p2 or ^` reduces to `obj provides`.
+ */
+function stripOrChain(lineText: string, col: number): string {
+  let s = lineText.slice(0, col).replace(/\w*$/, "").trimEnd();
+  // Remove zero or more trailing " word or" groups (right to left).
+  while (true) {
+    const m = s.match(/^(.*\S)\s+\w+\s+or$/s);
+    if (!m) break;
+    s = m[1];
+  }
+  return s;
+}
+
+/**
+ * True when the cursor is in a `provides` expression (including `or` chains).
+ * Single-line check only — `provides` is always an inline expression.
  */
 export function isAfterProvides(lineText: string, col: number): boolean {
-  const before = lineText.slice(0, col).replace(/\w+$/, "").trimEnd();
-  return /\bprovides$/.test(before);
+  return /\bprovides$/.test(stripOrChain(lineText, col));
+}
+
+/**
+ * True when the cursor is in an `ofclass` expression (including `or` chains).
+ */
+export function isAfterOfclass(lineText: string, col: number): boolean {
+  return /\bofclass$/.test(stripOrChain(lineText, col));
+}
+
+/**
+ * True when the cursor immediately follows `##` (Inform 6 action reference).
+ */
+export function isAfterHashHash(lineText: string, col: number): boolean {
+  return lineText.slice(0, col).replace(/\w*$/, "").endsWith("##");
 }
 
 // ---------------------------------------------------------------------------
@@ -116,17 +144,14 @@ export function isInHasClause(
  *
  * Modes (in priority order):
  *
- * 1. **Dot completion** (`ObjName.` / `self.`): return properties and
- *    attributes of the named (or enclosing) object.
- *
- * 2. **Provides expression**: after `obj provides`, return property names.
- *
- * 3. **Has clause**: inside a `has`/`hasnt` block, return attribute names.
- *
- * 4. **Top level**: outside all routines and objects, return directives,
- *    pseudo-directive class names, and snippet templates.
- *
- * 5. **General**: in-scope locals, then all user symbols and keywords.
+ * 1. **Dot completion** (`ObjName.` / `self.`): properties and attributes.
+ * 2. **`##`**: action names.
+ * 3. **`provides` / `provides … or`**: property names.
+ * 4. **`ofclass` / `ofclass … or`**: class names.
+ * 5. **`has`/`hasnt` clause**: attribute names.
+ * 6. **Top-top** (first token at col 0, outside all bodies): directives,
+ *    class names, snippet templates.
+ * 7. **General**: in-scope locals, then all user symbols and keywords.
  */
 export function getCompletions(
   index: CompilerIndex,
@@ -157,7 +182,21 @@ export function getCompletions(
     return items;
   }
 
-  // ── Provides expression: properties only ────────────────────────────────
+  // ── ## action reference ──────────────────────────────────────────────────
+  if (isAfterHashHash(lineText, col)) {
+    const seen = new Set<string>();
+    const items: CompletionItem[] = [];
+    for (const s of index.symbols) {
+      if (s.type !== "fake_action") continue;
+      const name = s.name.toLowerCase().endsWith("__a") ? s.name.slice(0, -3) : s.name;
+      if (seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase());
+      items.push({ label: name, kind: CompletionItemKind.EnumMember });
+    }
+    return items;
+  }
+
+  // ── Provides expression: properties only (supports `or` chains) ─────────
   if (isAfterProvides(lineText, col)) {
     const seen = new Set<string>();
     const items: CompletionItem[] = [];
@@ -167,6 +206,20 @@ export function getCompletions(
       if (seen.has(key)) continue;
       seen.add(key);
       items.push({ label: s.name, kind: CompletionItemKind.Field });
+    }
+    return items;
+  }
+
+  // ── Ofclass expression: class names only (supports `or` chains) ─────────
+  if (isAfterOfclass(lineText, col)) {
+    const seen = new Set<string>();
+    const items: CompletionItem[] = [];
+    for (const s of index.symbols) {
+      if (s.type !== "class") continue;
+      const key = s.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: s.name, kind: CompletionItemKind.Class });
     }
     return items;
   }

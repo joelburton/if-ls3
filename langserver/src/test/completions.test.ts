@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause, isAfterProvides, isAtTopLevel } from "../features/completions";
+import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAtTopLevel } from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -365,6 +365,74 @@ describe("provides completions", () => {
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((i) => i.kind === CompletionItemKind.Field)).toBe(true);
   });
+
+  it("still returns properties after an 'or' chain", () => {
+    const line = "if (o provides description or ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("description");
+    expect(labels).not.toContain("MyFunc");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ofclass completions
+// ---------------------------------------------------------------------------
+
+describe("ofclass completions", () => {
+  it("returns only class names after 'ofclass'", () => {
+    const line = "if (x ofclass ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Room");
+    expect(labels).not.toContain("TheRoom"); // not a class
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("still returns class names after an 'or' chain", () => {
+    const line = "if (x ofclass Room or ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Room");
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("returns Class kind for all items", () => {
+    const line = "if (x ofclass ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.kind === CompletionItemKind.Class)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ## action completions
+// ---------------------------------------------------------------------------
+
+describe("## action completions", () => {
+  it("returns action names after ##", () => {
+    const line = "if (action == ##";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Take");
+    expect(labels).toContain("Foozle");
+    expect(labels).not.toContain("Take__A"); // raw symbol name should not appear
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("works with partial action name typed", () => {
+    const line = "if (action == ##Foo";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Foozle");
+  });
+
+  it("returns EnumMember kind for all items", () => {
+    const line = "##";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.kind === CompletionItemKind.EnumMember)).toBe(true);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -384,6 +452,18 @@ describe("isAfterProvides", () => {
     expect(isAfterProvides("if (self provides ", 18)).toBe(true);
   });
 
+  it("true after 'provides p1 or '", () => {
+    expect(isAfterProvides("if (o provides p1 or ", 21)).toBe(true);
+  });
+
+  it("true after 'provides p1 or p2 or ' (two ors)", () => {
+    expect(isAfterProvides("if (o provides p1 or p2 or ", 27)).toBe(true);
+  });
+
+  it("true mid-word after 'provides p1 or p2 or part'", () => {
+    expect(isAfterProvides("if (o provides p1 or p2 or part", 31)).toBe(true);
+  });
+
   it("false when 'provides' is not the preceding keyword", () => {
     expect(isAfterProvides("if (obj has ", 12)).toBe(false);
   });
@@ -394,6 +474,58 @@ describe("isAfterProvides", () => {
 
   it("false when 'provides' appears only in a word (e.g. 'notprovides')", () => {
     expect(isAfterProvides("if (x notprovides ", 18)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAfterOfclass unit tests
+// ---------------------------------------------------------------------------
+
+describe("isAfterOfclass", () => {
+  it("true immediately after 'ofclass '", () => {
+    expect(isAfterOfclass("if (x ofclass ", 14)).toBe(true);
+  });
+
+  it("true with partial class name typed", () => {
+    expect(isAfterOfclass("if (x ofclass Ro", 16)).toBe(true);
+  });
+
+  it("true after 'ofclass C1 or '", () => {
+    expect(isAfterOfclass("if (x ofclass C1 or ", 20)).toBe(true);
+  });
+
+  it("true after 'ofclass C1 or C2 or '", () => {
+    expect(isAfterOfclass("if (x ofclass C1 or C2 or ", 26)).toBe(true);
+  });
+
+  it("false for unrelated keyword", () => {
+    expect(isAfterOfclass("if (x has ", 10)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAfterHashHash unit tests
+// ---------------------------------------------------------------------------
+
+describe("isAfterHashHash", () => {
+  it("true immediately after ##", () => {
+    expect(isAfterHashHash("##", 2)).toBe(true);
+  });
+
+  it("true with partial action name typed", () => {
+    expect(isAfterHashHash("##Foo", 5)).toBe(true);
+  });
+
+  it("true in expression context", () => {
+    expect(isAfterHashHash("if (action == ##", 16)).toBe(true);
+  });
+
+  it("false with only one #", () => {
+    expect(isAfterHashHash("#Foo", 4)).toBe(false);
+  });
+
+  it("false for unrelated content", () => {
+    expect(isAfterHashHash("if (x == ", 9)).toBe(false);
   });
 });
 
