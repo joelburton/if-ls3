@@ -146,14 +146,14 @@ Build Markdown based on what the name resolves to:
 | Global | `**name** (global variable)` + doc + `*file:line*` |
 | Array | `**name** (array, N entries)` + doc + `*file:line*` |
 | Property/Attribute | `**name** (property\|attribute)` + `*file:line*` |
-| Keyword/operator | static lookup table — **low priority** |
+| Local variable | `**x** (local variable in **myfunc**)` |
+| Print rule | `**print (The)** *obj*` — context-sensitive, case-sensitive |
+| Keyword/operator | static lookup table |
 
-Lookup order: `routines[]` first (richest data), then `objects[]`, then
-`symbols[]` for anything else (properties, attributes, etc.).
-
-Keyword and operator hover help is in scope but lower priority than the
-symbol-based hover above. The old ANTLR server (`~/if/inform6-langserver/`)
-has a good reference table for both.
+Lookup order: print-rule keywords (case-sensitive, only inside `print (…)`
+context) → local variables (matched by enclosing routine) → `routines[]`
+(richest data) → `objects[]` → `constants[]` → `globals[]` → `arrays[]` →
+`symbols[]` fallback → keyword/directive table.
 
 ## Feature: Document Symbols (Outline)
 
@@ -204,7 +204,12 @@ find the parent for nesting.
   the preferred lookup source.
 - `routines[].locals[]` is the full local variable list; in Inform6 all
   declared locals are also addressable as parameters, so this is the routine
-  signature.
+  signature. The LS uses locals for hover (showing the enclosing routine name)
+  and completions (offered first, so they shadow globals with the same name).
+- The compiler JSON includes compiler-generated "veneer" routines (runtime
+  support like `RT__Err`, `CA__Pr`, `DefArt`, etc.) which have no source file.
+  The indexer filters these out (`index.routines.filter(r => r.file)`) so
+  downstream features never encounter file-less routines.
 - `files[]` is a snapshot of all parsed files in parse order; after the
   absolute-path fix, each entry is an absolute path usable directly as a URI.
 - JSON is always emitted even on compilation errors (partial index +
@@ -235,7 +240,9 @@ find the parent for nesting.
 - ✅ **Completions**: two modes — dot-triggered (`ObjName.`) returns the
   object's properties, private properties, and attributes; general completion
   returns locals of the enclosing routine followed by all routines (with
-  parameter list as detail), objects, globals, constants, and arrays.
+  parameter list as detail), objects, globals, constants, arrays, and
+  language keywords/directives (e.g. `while`, `objectloop`, `Property`,
+  `#Ifdef`). Keywords are offered last so user-defined symbols take priority.
 - ✅ **Multi-file projects**: `inform6rc.yaml` supports multiple main-file
   entries (any non-global top-level key). Each is compiled separately and in
   parallel. Per-document features (hover, definition, completions, outline) use

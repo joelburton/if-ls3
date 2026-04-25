@@ -1,7 +1,7 @@
 import * as path from "node:path";
 import { Hover, MarkupKind } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
-import { findKeywordHover } from "./keywords";
+import { findKeywordHover, findPrintRuleHover } from "./keywords";
 
 function md(parts: string[]): Hover {
   return { contents: { kind: MarkupKind.Markdown, value: parts.join("\n\n") } };
@@ -24,8 +24,27 @@ function rel(filePath: string, workspaceRoot: string): string {
   return leadingUps > 2 ? filePath : relative;
 }
 
-export function findHover(index: CompilerIndex, word: string, workspaceRoot: string): Hover | null {
+export function findHover(index: CompilerIndex, word: string, workspaceRoot: string, lineText?: string, wordStart?: number, filePath?: string, line1?: number): Hover | null {
   const lower = word.toLowerCase();
+
+  // Print-rule keywords — checked first because in `print (The) obj` the
+  // compiler always treats `The` as a print rule, regardless of any symbol
+  // with that name.
+  const printRuleHelp = findPrintRuleHover(word, lineText, wordStart);
+  if (printRuleHelp) return md([printRuleHelp]);
+
+  // Local variables — checked before globals so locals shadow outer names.
+  if (filePath && line1 != null) {
+    const enclosing = index.routines.find(
+      r => r.file === filePath && line1 >= r.start_line && line1 <= r.end_line,
+    );
+    if (enclosing) {
+      const localMatch = enclosing.locals.find(l => l.toLowerCase() === lower);
+      if (localMatch) {
+        return md([`**${localMatch}** (local variable in **${enclosing.name}**)`]);
+      }
+    }
+  }
 
   // Routines
   const routine = index.routines.find((r) => r.name.toLowerCase() === lower);

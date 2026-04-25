@@ -80,6 +80,8 @@ export function reindex(
 
       try {
         const index = JSON.parse(stdout) as CompilerIndex;
+        // Drop compiler-generated veneer routines (no source file).
+        index.routines = index.routines.filter(r => r.file);
         log(
           `[indexer] OK (${label}): ${index.routines.length} routines, ` +
           `${index.objects.length} objects, ${index.globals.length} globals, ` +

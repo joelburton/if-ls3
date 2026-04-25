@@ -103,6 +103,127 @@ export const KEYWORD_HELP: Record<string, string> = {
   false: "**false** — the integer constant 0.",
 };
 
+/**
+ * Print-rule keywords recognised inside `print (…) expr`.
+ * Keys are **case-sensitive** because `The` ≠ `the` and `A` ≠ `a`.
+ * Each value is user-facing Markdown.
+ */
+const PRINT_RULE_HELP: Record<string, string> = {
+  char:
+    "**print (char)** *expr*\n\nPrint *expr* as a single ZSCII/Unicode character (like `@print_char`).",
+  name:
+    "**print (name)** *obj*\n\nPrint the short name of *obj* (the internal name, without articles).",
+  the:
+    "**print (the)** *obj*\n\nPrint the definite article + short name of *obj*, e.g. `\"the sword\"`.\n\nHandled by the library's `DefArt` routine, which respects `proper`, `pluralname`, etc.",
+  The:
+    "**print (The)** *obj*\n\nLike `(the)` but capitalised: `\"The sword\"`. Uses the library's `CDefArt` routine.",
+  a:
+    "**print (a)** *obj*\n\nPrint the indefinite article + short name, e.g. `\"a sword\"` or `\"some coins\"`.\n\nUses the library's `InDefArt` routine.",
+  A:
+    "**print (A)** *obj*\n\nLike `(a)` but capitalised: `\"A sword\"`. Uses the library's `CInDefArt` routine.",
+  an:
+    "**print (an)** *obj*\n\nSynonym for `(a)` — the library chooses the correct article regardless.",
+  number:
+    "**print (number)** *expr*\n\nPrint *expr* as a decimal number in words (e.g. `\"twelve\"`).\n\nUses the library's `EnglishNumber` routine.",
+  address:
+    "**print (address)** *expr*\n\nPrint a dictionary word given its packed address.",
+  string:
+    "**print (string)** *expr*\n\nPrint a string given its packed address (like `@print_paddr`).",
+  object:
+    "**print (object)** *expr*\n\nPrint an object's internal (hardware) name given its object number (like `@print_obj`).",
+  property:
+    "**print (property)** *expr*\n\nPrint the name of a property given its property number.",
+};
+
+/**
+ * Return true if `col` in `lineText` is inside a `print (…)` print-rule
+ * context — i.e. the word is preceded by `(` and there's a `print` or
+ * `print_ret` earlier on the line.
+ */
+function isPrintRuleContext(lineText: string, wordStart: number): boolean {
+  // Walk back from wordStart past optional whitespace to find '('
+  let i = wordStart - 1;
+  while (i >= 0 && lineText[i] === " ") i--;
+  if (i < 0 || lineText[i] !== "(") return false;
+
+  // Walk back past whitespace/commas to find 'print' or 'print_ret'
+  // (could be preceded by other print items, e.g.  print "x", (The) obj)
+  const before = lineText.slice(0, i).trimEnd();
+  return /\bprint_ret\b/.test(before) || /\bprint\b/.test(before);
+}
+
+/**
+ * Return hover Markdown for a print-rule keyword (case-sensitive), or null
+ * if the word is not a print rule or is not in a `print (…)` context.
+ */
+export function findPrintRuleHover(word: string, lineText?: string, wordStart?: number): string | null {
+  if (lineText == null || wordStart == null) return null;
+  if (!isPrintRuleContext(lineText, wordStart)) return null;
+  return PRINT_RULE_HELP[word] ?? null;
+}
+
+/** Keyword completion entries with display labels and CompletionItemKind values. */
+export const KEYWORD_COMPLETIONS: { label: string; kind: "keyword" | "directive" }[] = [
+  // Statements
+  { label: "if", kind: "keyword" },
+  { label: "else", kind: "keyword" },
+  { label: "for", kind: "keyword" },
+  { label: "while", kind: "keyword" },
+  { label: "do", kind: "keyword" },
+  { label: "until", kind: "keyword" },
+  { label: "switch", kind: "keyword" },
+  { label: "break", kind: "keyword" },
+  { label: "continue", kind: "keyword" },
+  { label: "return", kind: "keyword" },
+  { label: "rtrue", kind: "keyword" },
+  { label: "rfalse", kind: "keyword" },
+  { label: "jump", kind: "keyword" },
+  { label: "quit", kind: "keyword" },
+  { label: "restart", kind: "keyword" },
+  { label: "restore", kind: "keyword" },
+  { label: "save", kind: "keyword" },
+  { label: "move", kind: "keyword" },
+  { label: "remove", kind: "keyword" },
+  { label: "give", kind: "keyword" },
+  { label: "has", kind: "keyword" },
+  { label: "hasnt", kind: "keyword" },
+  { label: "in", kind: "keyword" },
+  { label: "notin", kind: "keyword" },
+  { label: "ofclass", kind: "keyword" },
+  { label: "objectloop", kind: "keyword" },
+  { label: "print", kind: "keyword" },
+  { label: "print_ret", kind: "keyword" },
+  { label: "new_line", kind: "keyword" },
+  { label: "read", kind: "keyword" },
+  { label: "self", kind: "keyword" },
+  { label: "nothing", kind: "keyword" },
+  { label: "true", kind: "keyword" },
+  { label: "false", kind: "keyword" },
+  // Directives (capitalised as conventionally written)
+  { label: "Array", kind: "directive" },
+  { label: "Attribute", kind: "directive" },
+  { label: "Class", kind: "directive" },
+  { label: "Constant", kind: "directive" },
+  { label: "Default", kind: "directive" },
+  { label: "Extend", kind: "directive" },
+  { label: "Fake_Action", kind: "directive" },
+  { label: "Global", kind: "directive" },
+  { label: "Include", kind: "directive" },
+  { label: "Message", kind: "directive" },
+  { label: "Nearby", kind: "directive" },
+  { label: "Object", kind: "directive" },
+  { label: "Property", kind: "directive" },
+  { label: "Replace", kind: "directive" },
+  { label: "Stub", kind: "directive" },
+  { label: "Verb", kind: "directive" },
+  { label: "#Ifdef", kind: "directive" },
+  { label: "#Ifndef", kind: "directive" },
+  { label: "#Ifnot", kind: "directive" },
+  { label: "#Endif", kind: "directive" },
+  { label: "#Ifv3", kind: "directive" },
+  { label: "#Ifv5", kind: "directive" },
+];
+
 /** Return hover Markdown for a keyword, or null if not a keyword. */
 export function findKeywordHover(word: string): string | null {
   return KEYWORD_HELP[word.toLowerCase()] ?? null;

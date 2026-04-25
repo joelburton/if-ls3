@@ -1,5 +1,6 @@
 import { CompletionItem, CompletionItemKind, Position } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
+import { KEYWORD_COMPLETIONS } from "./keywords";
 
 const isIdChar = (c: string) => /\w/.test(c);
 
@@ -89,6 +90,10 @@ export function getCompletions(
   // Arrays.
   for (const a of index.arrays)
     add(a.name, CompletionItemKind.Variable);
+
+  // Language keywords and directives.
+  for (const kw of KEYWORD_COMPLETIONS)
+    add(kw.label, kw.kind === "keyword" ? CompletionItemKind.Keyword : CompletionItemKind.Struct);
 
   return items;
 }
