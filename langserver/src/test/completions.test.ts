@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAtTopLevel } from "../features/completions";
+import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAfterClassKeyword, isAtTopLevel } from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -500,6 +500,66 @@ describe("isAfterOfclass", () => {
 
   it("false for unrelated keyword", () => {
     expect(isAfterOfclass("if (x has ", 10)).toBe(false);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAfterClassKeyword unit tests
+// ---------------------------------------------------------------------------
+
+describe("isAfterClassKeyword", () => {
+  it("true immediately after 'class '", () => {
+    expect(isAfterClassKeyword("Object Foo class ", 17)).toBe(true);
+  });
+
+  it("true with partial class name typed", () => {
+    expect(isAfterClassKeyword("Object Foo class Ro", 19)).toBe(true);
+  });
+
+  it("true after first class name (space-separated list)", () => {
+    expect(isAfterClassKeyword("Object Foo class Room ", 22)).toBe(true);
+  });
+
+  it("true after two class names already typed", () => {
+    expect(isAfterClassKeyword("Object Foo class Room Container ", 32)).toBe(true);
+  });
+
+  it("true when 'class' is the first word (Class definition)", () => {
+    expect(isAfterClassKeyword("class Room ", 11)).toBe(true);
+  });
+
+  it("false when keyword is not 'class'", () => {
+    expect(isAfterClassKeyword("Object Foo with ", 16)).toBe(false);
+  });
+
+  it("false when nothing precedes partial word", () => {
+    expect(isAfterClassKeyword("Room", 4)).toBe(false);
+  });
+});
+
+describe("class keyword completions", () => {
+  it("returns only class names after 'class'", () => {
+    const line = "Object Foo class ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Room");
+    expect(labels).not.toContain("TheRoom");
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("still returns class names after first class name", () => {
+    const line = "Object Foo class Room ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("Room");
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("returns Class kind for all items", () => {
+    const line = "Object Foo class ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.kind === CompletionItemKind.Class)).toBe(true);
   });
 });
 

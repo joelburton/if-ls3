@@ -84,6 +84,16 @@ export function isAfterOfclass(lineText: string, col: number): boolean {
 }
 
 /**
+ * True when the cursor is in a `class` clause of an object/class header,
+ * including after multiple space-separated class names already typed
+ * (e.g. `Object Foo class Room ^` or `class Room Container ^`).
+ */
+export function isAfterClassKeyword(lineText: string, col: number): boolean {
+  const before = lineText.slice(0, col).replace(/\w*$/, "").trimEnd();
+  return /\bclass(\s+\w+)*$/.test(before);
+}
+
+/**
  * True when the cursor immediately follows `##` (Inform 6 action reference).
  */
 export function isAfterHashHash(lineText: string, col: number): boolean {
@@ -148,7 +158,8 @@ export function isInHasClause(
  * 2. **`##`**: action names.
  * 3. **`provides` / `provides … or`**: property names.
  * 4. **`ofclass` / `ofclass … or`**: class names.
- * 5. **`has`/`hasnt` clause**: attribute names.
+ * 5. **`class` clause in object header**: class names (space-separated list).
+ * 6. **`has`/`hasnt` clause**: attribute names.
  * 6. **Top-top** (first token at col 0, outside all bodies): directives,
  *    class names, snippet templates.
  * 7. **General**: in-scope locals, then all user symbols and keywords.
@@ -212,6 +223,20 @@ export function getCompletions(
 
   // ── Ofclass expression: class names only (supports `or` chains) ─────────
   if (isAfterOfclass(lineText, col)) {
+    const seen = new Set<string>();
+    const items: CompletionItem[] = [];
+    for (const s of index.symbols) {
+      if (s.type !== "class") continue;
+      const key = s.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: s.name, kind: CompletionItemKind.Class });
+    }
+    return items;
+  }
+
+  // ── class clause in object header: class names only ─────────────────────
+  if (isAfterClassKeyword(lineText, col)) {
     const seen = new Set<string>();
     const items: CompletionItem[] = [];
     for (const s of index.symbols) {
