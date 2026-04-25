@@ -143,52 +143,36 @@ handles put-back tokens, which don't advance `circle_position`.
 | `objects.c` | In `classes_segment` | Class inheritance refs |
 | `objects.c` | In object header parsing (`SpecParent`) | Parent object refs |
 
-## TODO: Language Server Changes
+## Language Server Changes — COMPLETE
 
-### Step 5: Parse references in LS
+### Step 5: Parse references in LS — DONE
 
-**File: `langserver/src/server/types.ts`**
-- Add interface:
-  ```typescript
-  export interface SymbolReference {
-    sym: string;
-    type: string;
-    locs: string[];  // "fileIndex:line:col"
-  }
-  ```
-- Add `references?: SymbolReference[]` to `CompilerIndex`.
+- `langserver/src/server/types.ts` — `SymbolReference` interface and
+  `references?: SymbolReference[]` on `CompilerIndex`
+- Tolerant of absence (older binary): all consumers check for the field.
 
-**File: `langserver/src/server/indexer.ts`**
-- Parse the new `references` array from JSON (tolerant of its absence
-  for older compiler binaries).
+### Step 6: Consume references in LS features — DONE
 
-### Step 6 (later PRs): Consume references in LS features
-
-- **Hover/Definition**: If there's a reference at cursor position, use its
-  sym/type directly instead of word-at-position heuristics.
-- **Go-to-references**: New feature — find all locs for a symbol.
-- **Semantic tokens**: Use references instead of name-matching scanner.
-- **Action detection**: References with type "action" replace `##`/`<>`/`:`
-  heuristics and `grammar_action_refs`.
-
-A helper is needed to find a reference entry by position:
-```typescript
-function refAtPosition(
-  index: CompilerIndex,
-  fileIndex: number,
-  line: number,   // 1-based
-  col: number     // 0-based
-): SymbolReference | undefined
-```
-
-Since locs are stored as `"f:l:c"` strings sorted by symbol (not position),
-a lookup-by-position requires scanning `references[]`. For the corpus sizes
-typical of Inform6 games this is fast enough; an inverted index (Map keyed
-by loc string) can be built once per compilation if needed.
+- **`references.ts`**: `refAtPosition()` (cursor hit-test) and
+  `findReferences()` (go-to-references); both tolerant of absent field.
+- **`server.ts` `onDefinition`**: uses `refAtPosition`; resolves `self` to
+  enclosing object; passes `isAction`/`isExplicitAction` from `ref.type`.
+- **`server.ts` `onHover`**: uses `refAtPosition` for the primary path;
+  falls through to keyword/local/print-rule heuristics for things not in
+  `references[]`.
+- **`server.ts` `onReferences`**: full go-to-references via `findReferences()`.
+- **`semanticTokens.ts`**: when `references[]` is present, tokens are derived
+  from exact compiler positions (global_variable → PROP, constant → ENUM,
+  property/individual_property/attribute → PROP).  Locals are still collected
+  via text scan (not in references).  Falls back to text scanner for older
+  binaries.  Properties and attributes are now highlighted — a new capability
+  vs the old text-only path.
+- **Action detection**: `ref.type === "action"` replaces all `##`/`<>`/`:`
+  heuristics and `grammar_action_refs[]` lookups.
 
 ## Files Modified
 
-### Compiler (C)
+### Compiler (C) — COMPLETE
 - `Inform6/header.h` — declared `get_last_token_start_location()`,
   `index_note_symbol_ref()`, `index_note_action_sym_ref()`
 - `Inform6/lexer.c` — implemented `get_last_token_start_location()`;
@@ -200,6 +184,8 @@ by loc string) can be built once per compilation if needed.
 - `Inform6/states.c` — hook at `<action>` statement
 - `Inform6/verbs.c` — hooks at `->` action, `noun=`, `scope=`, GPR/attribute tokens
 
-### Language Server (TypeScript) — TODO
-- `langserver/src/server/types.ts` — add SymbolReference interface
-- `langserver/src/server/indexer.ts` — parse references
+### Language Server (TypeScript) — COMPLETE
+- `langserver/src/server/types.ts` — SymbolReference interface, references field
+- `langserver/src/features/references.ts` — refAtPosition, findReferences
+- `langserver/src/server/server.ts` — onDefinition, onHover, onReferences wired
+- `langserver/src/features/semanticTokens.ts` — references path + text-scan fallback

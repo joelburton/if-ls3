@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { getSemanticTokens } from "../features/semanticTokens";
 import { FILE, testIndex } from "./fixture";
+import type { CompilerIndex } from "../server/types";
 
 // Token type indices from semanticTokens.ts (must match the legend in server.ts).
 const VAR = 0; // local variable
@@ -255,6 +256,171 @@ describe("getSemanticTokens", () => {
       // Just verify no locals from MyFunc (which is on FILE) bleed into other files.
       const vars = tokens.filter((t) => t.type === VAR);
       expect(vars).toHaveLength(0);
+    });
+  });
+});
+
+// ── References-path tests ────────────────────────────────────────────────────
+//
+// These tests use an index that includes `references[]`, triggering the
+// accurate compiler-driven path instead of the text scanner fallback.
+
+describe("getSemanticTokens (references path)", () => {
+  const FILE2 = "/project/other.inf";
+
+  // Source text with one symbol per line at known columns.
+  // Line 1 (0-based 0): "  location = 0;"  — global at col 2, len 8
+  // Line 2 (0-based 1): "  NOPE = 1;"      — constant at col 2, len 4
+  // Line 3 (0-based 2): "  description,"   — property at col 2, len 11
+  // Line 4 (0-based 3): "  light,"         — attribute at col 2, len 5
+  // Line 5 (0-based 4): "  MyFunc();"      — routine at col 2 (not highlighted)
+  // Line 6 (0-based 5): "  TheRoom,"       — object at col 2 (not highlighted)
+  const SOURCE = [
+    "  location = 0;",
+    "  NOPE = 1;",
+    "  description,",
+    "  light,",
+    "  MyFunc();",
+    "  TheRoom,",
+  ].join("\n");
+
+  // Matching references[] for FILE at file index 0.
+  const refIndex: CompilerIndex = {
+    ...testIndex,
+    files: [FILE, FILE2],
+    references: [
+      { sym: "location",    type: "global_variable", locs: ["0:1:2"] },
+      { sym: "NOPE",        type: "constant",         locs: ["0:2:2"] },
+      { sym: "description", type: "property",         locs: ["0:3:2"] },
+      { sym: "light",       type: "attribute",        locs: ["0:4:2"] },
+      { sym: "MyFunc",      type: "routine",          locs: ["0:5:2"] },
+      { sym: "TheRoom",     type: "object",           locs: ["0:6:2"] },
+    ],
+  };
+
+  it("selects the references path when index.references is present and file is known", () => {
+    // If the references path is taken, only the reference positions are colored —
+    // no scan of the full source.  We verify that exactly the expected token types
+    // appear at the expected positions.
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    // location → PROP (line 0, col 2, len 8)
+    // NOPE     → ENUM (line 1, col 2, len 4)
+    // description → PROP (line 2, col 2, len 11)
+    // light    → PROP (line 3, col 2, len 5)
+    // MyFunc   → skipped (routine)
+    // TheRoom  → skipped (object)
+    expect(tokens).toHaveLength(4);
+  });
+
+  it("emits PROP for a global_variable reference at the exact column", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    expect(tokens).toContainEqual({ line: 0, char: 2, len: 8, type: PROP });
+  });
+
+  it("emits ENUM for a constant reference at the exact column", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    expect(tokens).toContainEqual({ line: 1, char: 2, len: 4, type: ENUM });
+  });
+
+  it("emits PROP for a property reference (new behavior vs text scan)", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    expect(tokens).toContainEqual({ line: 2, char: 2, len: 11, type: PROP });
+  });
+
+  it("emits PROP for an attribute reference (new behavior vs text scan)", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    expect(tokens).toContainEqual({ line: 3, char: 2, len: 5, type: PROP });
+  });
+
+  it("does not emit a token for a routine reference", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    const routineTokens = tokens.filter((t) => t.line === 4);
+    expect(routineTokens).toHaveLength(0);
+  });
+
+  it("does not emit a token for an object reference", () => {
+    const tokens = decode(getSemanticTokens(refIndex, FILE, SOURCE));
+    const objectTokens = tokens.filter((t) => t.line === 5);
+    expect(objectTokens).toHaveLength(0);
+  });
+
+  it("does not emit tokens for references belonging to a different file", () => {
+    // Refs for FILE2 (index 1) should not appear when querying FILE (index 0).
+    const idx: CompilerIndex = {
+      ...refIndex,
+      references: [
+        { sym: "location", type: "global_variable", locs: ["1:1:2"] }, // FILE2 only
+      ],
+    };
+    expect(getSemanticTokens(idx, FILE, SOURCE)).toEqual([]);
+  });
+
+  it("handles multiple locs for the same symbol across lines", () => {
+    const idx: CompilerIndex = {
+      ...refIndex,
+      references: [
+        { sym: "location", type: "global_variable", locs: ["0:1:2", "0:3:0", "0:5:4"] },
+      ],
+    };
+    const tokens = decode(getSemanticTokens(idx, FILE, SOURCE));
+    expect(tokens).toHaveLength(3);
+    const lines = tokens.map((t) => t.line).sort((a, b) => a - b);
+    expect(lines).toEqual([0, 2, 4]);
+  });
+
+  it("falls back to text scan when references[] is absent", () => {
+    // testIndex has no references field — must still highlight globals/constants.
+    const src = "location = NOPE;\n";
+    const tokens = decode(getSemanticTokens(testIndex, FILE, src));
+    expect(tokens.some((t) => t.type === PROP)).toBe(true);  // location
+    expect(tokens.some((t) => t.type === ENUM)).toBe(true);  // NOPE
+  });
+
+  it("falls back to text scan when the file is not in index.files[]", () => {
+    // references[] is present but the file path is unknown → fileIndex = -1 → text scan.
+    const unknownFile = "/unknown/game.inf";
+    const src = "location = 1;\n"; // "location" is a global in testIndex
+    const tokens = decode(getSemanticTokens(refIndex, unknownFile, src));
+    // text-scan fallback finds "location" as a global
+    expect(tokens.some((t) => t.type === PROP)).toBe(true);
+  });
+
+  describe("locals still work via text scan in references path", () => {
+    // MyFunc spans lines 58-66 (1-based) = 57-65 (0-based). Its locals are a, b, x.
+    it("emits VAR tokens for locals within the routine range", () => {
+      const src = "\n".repeat(57) + "  a = b;\n";
+      const tokens = decode(getSemanticTokens(refIndex, FILE, src));
+      const vars = tokens.filter((t) => t.type === VAR);
+      expect(vars.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it("local shadows a reference with the same name at the same line", () => {
+      // Add a reference for "a" as a global_variable landing inside MyFunc's range.
+      // The local "a" should win — only one VAR token, no PROP.
+      const shadowIdx: CompilerIndex = {
+        ...refIndex,
+        references: [
+          { sym: "a", type: "global_variable", locs: [`0:58:2`] }, // line 58, col 2 — inside MyFunc
+        ],
+      };
+      const src = "\n".repeat(57) + "  a = 1;\n";
+      const tokens = decode(getSemanticTokens(shadowIdx, FILE, src));
+      expect(tokens).toHaveLength(1);
+      expect(tokens[0]).toMatchObject({ type: VAR });
+    });
+  });
+
+  describe("individual_property reference", () => {
+    it("emits PROP for an individual_property reference", () => {
+      const idx: CompilerIndex = {
+        ...refIndex,
+        references: [
+          { sym: "before", type: "individual_property", locs: ["0:1:4"] },
+        ],
+      };
+      const src = "    before 0,\n";
+      const tokens = decode(getSemanticTokens(idx, FILE, src));
+      expect(tokens).toContainEqual({ line: 0, char: 4, len: 6, type: PROP });
     });
   });
 });

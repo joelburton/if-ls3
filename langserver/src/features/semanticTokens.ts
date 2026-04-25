@@ -5,7 +5,7 @@ import type { CompilerIndex, RoutineInfo } from "../server/types";
  *   ["variable", "property", "enumMember"]
  */
 const TOKEN_TYPE_VARIABLE = 0; // local variables
-const TOKEN_TYPE_PROPERTY = 1; // global variables
+const TOKEN_TYPE_PROPERTY = 1; // globals, properties, attributes
 const TOKEN_TYPE_ENUM_MEMBER = 2; // constants
 
 interface TokenPos {
@@ -16,28 +16,62 @@ interface TokenPos {
 }
 
 /**
- * Return encoded LSP semantic token data for:
- *   - local variables (type "variable") — within each routine's line range
- *   - global variables (type "property") — everywhere in the file
- *   - constants (type "enumMember") — everywhere in the file
+ * Return encoded LSP semantic token data for the given file.
  *
- * Locals shadow globals/constants: if an identifier on a line is a local of
- * the enclosing routine, it is emitted as a local and not re-emitted as a
- * global or constant even if the same name exists at module level.
+ * When the index includes `references[]` (compiler binary ≥ the version that
+ * added them) and the file appears in `index.files[]`, tokens are derived from
+ * the compiler's exact reference positions.  This is more accurate than text
+ * scanning: inactive `#IfDef` branches, string literals, and comments are never
+ * highlighted because the compiler never emits references for them.  In
+ * addition to globals and constants, properties and attributes are now also
+ * highlighted as TOKEN_TYPE_PROPERTY.
  *
- * Limitation: multi-line string literals are not tracked across lines, so a
- * symbol name inside a multi-line string may be incorrectly colored.
- * Single-line strings and ! comments are handled correctly.
+ * When `references[]` is absent (older binary), the function falls back to the
+ * original text-scanning approach, which covers globals and constants only.
+ *
+ * Local variables are always found via text scanning within each routine's
+ * range — locals are not included in `references[]`.
  */
 export function getSemanticTokens(index: CompilerIndex, filePath: string, sourceText: string): number[] {
   const lines = sourceText.split("\n");
   const tokens: TokenPos[] = [];
 
-  // Build name sets for globals and constants (lowercased for case-insensitive match).
-  const globalNames = new Set(index.globals.map((g) => g.name.toLowerCase()));
-  const constantNames = new Set(index.constants.map((c) => c.name.toLowerCase()));
+  const fileIndex = index.files.indexOf(filePath);
+  if (index.references && fileIndex !== -1) {
+    collectTokensViaReferences(index, fileIndex, filePath, lines, tokens);
+  } else {
+    collectTokensViaTextScan(index, filePath, lines, tokens);
+  }
 
-  // Build a line→localSet map so the global/constant scanner can skip locals.
+  tokens.sort((a, b) => (a.line !== b.line ? a.line - b.line : a.char - b.char));
+  return encode(tokens);
+}
+
+// ── References path ───────────────────────────────────────────────────────────
+
+/** Map a compiler reference type string to a token type index, or -1 to skip. */
+function refTypeToTokenType(type: string): number {
+  switch (type) {
+    case "global_variable":
+    case "property":
+    case "individual_property":
+    case "attribute":
+      return TOKEN_TYPE_PROPERTY;
+    case "constant":
+      return TOKEN_TYPE_ENUM_MEMBER;
+    default:
+      return -1; // routine, object, action, array, etc. — not highlighted
+  }
+}
+
+function collectTokensViaReferences(
+  index: CompilerIndex,
+  fileIndex: number,
+  filePath: string,
+  lines: string[],
+  out: TokenPos[],
+): void {
+  // Collect local tokens and build a per-line local-name set for shadowing.
   const lineToLocals = new Map<number, Set<string>>();
   for (const routine of index.routines) {
     if (routine.file !== filePath || routine.locals.length === 0) continue;
@@ -45,10 +79,53 @@ export function getSemanticTokens(index: CompilerIndex, filePath: string, source
     const startLine = Math.max(0, routine.start_line - 1);
     const endLine = Math.min(routine.end_line - 1, lines.length - 1);
     for (let li = startLine; li <= endLine; li++) lineToLocals.set(li, localSet);
-    collectLocalTokens(routine, lines, tokens);
+    collectLocalTokens(routine, lines, out);
   }
 
-  // Scan every line for globals and constants.
+  // Emit one token per reference that belongs to this file.
+  const prefix = `${fileIndex}:`;
+  for (const ref of index.references!) {
+    const tokenType = refTypeToTokenType(ref.type);
+    if (tokenType === -1) continue;
+
+    for (const locStr of ref.locs) {
+      if (!locStr.startsWith(prefix)) continue;
+      const rest = locStr.slice(prefix.length);
+      const sep = rest.indexOf(":");
+      if (sep === -1) continue;
+      const line1 = parseInt(rest.slice(0, sep), 10);
+      const col = parseInt(rest.slice(sep + 1), 10);
+      if (isNaN(line1) || isNaN(col)) continue;
+
+      const lineIdx = line1 - 1; // 0-based
+      if (lineToLocals.get(lineIdx)?.has(ref.sym.toLowerCase())) continue;
+
+      out.push({ line: lineIdx, char: col, length: ref.sym.length, tokenType });
+    }
+  }
+}
+
+// ── Text-scan fallback ────────────────────────────────────────────────────────
+
+function collectTokensViaTextScan(
+  index: CompilerIndex,
+  filePath: string,
+  lines: string[],
+  out: TokenPos[],
+): void {
+  const globalNames = new Set(index.globals.map((g) => g.name.toLowerCase()));
+  const constantNames = new Set(index.constants.map((c) => c.name.toLowerCase()));
+
+  const lineToLocals = new Map<number, Set<string>>();
+  for (const routine of index.routines) {
+    if (routine.file !== filePath || routine.locals.length === 0) continue;
+    const localSet = new Set(routine.locals.map((l) => l.toLowerCase()));
+    const startLine = Math.max(0, routine.start_line - 1);
+    const endLine = Math.min(routine.end_line - 1, lines.length - 1);
+    for (let li = startLine; li <= endLine; li++) lineToLocals.set(li, localSet);
+    collectLocalTokens(routine, lines, out);
+  }
+
   for (let lineIdx = 0; lineIdx < lines.length; lineIdx++) {
     scanLineForGlobalsAndConstants(
       lines[lineIdx] ?? "",
@@ -56,14 +133,14 @@ export function getSemanticTokens(index: CompilerIndex, filePath: string, source
       globalNames,
       constantNames,
       lineToLocals.get(lineIdx),
-      tokens,
+      out,
     );
   }
+}
 
-  // Routines may be out of order (embedded), so sort before encoding.
-  tokens.sort((a, b) => (a.line !== b.line ? a.line - b.line : a.char - b.char));
+// ── Shared helpers ────────────────────────────────────────────────────────────
 
-  // Encode as LSP delta format: 5 integers per token.
+function encode(tokens: TokenPos[]): number[] {
   const data: number[] = [];
   let prevLine = 0;
   let prevChar = 0;
@@ -100,7 +177,7 @@ function scanLineForGlobalsAndConstants(
 ): void {
   scanLine(line, lineIdx, (name, start) => {
     const lower = name.toLowerCase();
-    if (localSet?.has(lower)) return; // shadowed by a local — already emitted
+    if (localSet?.has(lower)) return;
     if (globalNames.has(lower))
       out.push({ line: lineIdx, char: start, length: name.length, tokenType: TOKEN_TYPE_PROPERTY });
     else if (constantNames.has(lower))
