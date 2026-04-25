@@ -10,6 +10,21 @@ import type {
   SymbolInfo,
 } from "../server/types";
 
+/**
+ * Return the object/class whose source body contains the given position.
+ * Used to resolve `self` inside embedded routines — `self` refers to the
+ * object that owns the routine.
+ */
+export function enclosingObject(
+  index: CompilerIndex,
+  filePath: string,
+  line: number, // 1-based
+): ObjectInfo | undefined {
+  return index.objects.find(
+    (o) => o.file === filePath && o.start_line <= line && line <= o.end_line,
+  );
+}
+
 /** Build an LSP Location from an absolute file path and a 1-based line number. */
 export function loc(file: string, line: number): Location {
   const uri = URI.file(file).toString();

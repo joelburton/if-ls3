@@ -1,9 +1,12 @@
-Class Room
-  with name 'my-name'
- ;
-
+Property room_func;
 Property description;
 Attribute my_attr;
+
+Class Room
+  with
+    name 'my-name',
+    room_func [; ],
+ ;
 
 Array arr --> 10 20 30;
 Constant MY_CONST 42;
@@ -12,8 +15,10 @@ Global foo 13;   !! A docstring for foo
 Room TheRoom "The Room"
   has my_attr
   with
-    description "The description.",
+    description "The description TheRoom if Room room theroom If verb Verb.",
     before [;
+      self.Room::room_func();
+      print self.description();
       Foozle: "You foozle!";
     ]
 ;

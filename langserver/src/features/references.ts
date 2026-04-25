@@ -1,6 +1,6 @@
 import { Location, Range } from "vscode-languageserver";
 import { URI } from "vscode-uri";
-import type { CompilerIndex } from "../server/types";
+import type { CompilerIndex, SymbolReference } from "../server/types";
 
 /**
  * Parse a loc string `"fileIndex:line:col"` into an LSP Location.
@@ -19,6 +19,34 @@ function locFromRef(files: string[], locStr: string): Location | null {
   const uri = URI.file(file).toString();
   const pos = { line: line - 1, character: col };
   return Location.create(uri, Range.create(pos, pos));
+}
+
+/**
+ * Find the reference entry whose token span covers the cursor position.
+ *
+ * fileIndex is 0-based (matching files[]), line is 1-based, col is 0-based.
+ * A reference at column C spans [C, C + sym.length), so any cursor column
+ * within that range is a hit.
+ *
+ * Returns undefined when references[] is absent (older binary) or no token
+ * covers the position.
+ */
+export function refAtPosition(
+  index: CompilerIndex,
+  fileIndex: number,
+  line: number,
+  col: number,
+): SymbolReference | undefined {
+  if (!index.references) return undefined;
+  const locPrefix = `${fileIndex}:${line}:`;
+  for (const ref of index.references) {
+    for (const locStr of ref.locs) {
+      if (!locStr.startsWith(locPrefix)) continue;
+      const refCol = parseInt(locStr.slice(locPrefix.length), 10);
+      if (col >= refCol && col < refCol + ref.sym.length) return ref;
+    }
+  }
+  return undefined;
 }
 
 /**

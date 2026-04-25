@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { findHover } from "../features/hover";
+import { enclosingObject } from "../features/symbolLookup";
 import { FILE, testIndex } from "./fixture";
 
 const ROOT = "/project";
@@ -144,6 +145,76 @@ describe("findHover", () => {
       // "c" is a global — should get global hover, not keyword help.
       const text = md(findHover(testIndex, "c", ROOT));
       expect(text).toContain("(global variable)");
+    });
+
+    it("keywords are case-sensitive: uppercase first letter gets no match", () => {
+      expect(findHover(testIndex, "If", ROOT)).toBeNull();
+      expect(findHover(testIndex, "IF", ROOT)).toBeNull();
+    });
+
+    it("directives match only with lead-cap", () => {
+      const upper = md(findHover(testIndex, "Verb", ROOT));
+      expect(upper).toContain("**Verb**");
+      expect(findHover(testIndex, "verb", ROOT)).toBeNull();
+    });
+  });
+
+  describe("self hover (enclosingObject)", () => {
+    // TheRoom spans lines 10-20 in the fixture; TheRoom_before (embedded) 16-19.
+
+    it("enclosingObject returns the object containing the line", () => {
+      const obj = enclosingObject(testIndex, FILE, 15);
+      expect(obj?.name).toBe("TheRoom");
+    });
+
+    it("enclosingObject returns undefined outside any object", () => {
+      expect(enclosingObject(testIndex, FILE, 5)).toBeUndefined();
+    });
+
+    it("enclosingObject returns undefined for a different file", () => {
+      expect(enclosingObject(testIndex, "/other/file.inf", 15)).toBeUndefined();
+    });
+
+    it("hovering 'self' inside an object body shows the object hover", () => {
+      // Simulate the resolution server.ts does: look up obj.name instead of "self".
+      const obj = enclosingObject(testIndex, FILE, 15)!;
+      const text = md(findHover(testIndex, obj.name, ROOT));
+      expect(text).toContain('**TheRoom** "The Room" (object)');
+    });
+
+    it("hovering a property with self-context shows property-of-object info", () => {
+      // "description" with objectContext resolved from "self" → "TheRoom".
+      const obj = enclosingObject(testIndex, FILE, 15)!;
+      const text = md(findHover(testIndex, "description", ROOT, undefined, undefined, undefined, undefined, obj.name));
+      expect(text).toContain("property of **TheRoom**");
+    });
+  });
+
+  describe("skipSymbols flag", () => {
+    it("returns null for a known symbol when skipSymbols=true", () => {
+      // "description" is in symbols[] — should be hidden in fallback path.
+      expect(findHover(testIndex, "description", ROOT, undefined, undefined, undefined, undefined, undefined, true)).toBeNull();
+    });
+
+    it("still returns keyword help when skipSymbols=true", () => {
+      const text = md(findHover(testIndex, "if", ROOT, undefined, undefined, undefined, undefined, undefined, true));
+      expect(text).toContain("**if**");
+    });
+
+    it("still returns local variable hover when skipSymbols=true", () => {
+      // Local "a" in MyFunc (lines 58-66), filePath and line1 still provided.
+      const text = md(
+        findHover(testIndex, "a", ROOT, undefined, undefined, FILE, 60, undefined, true),
+      );
+      expect(text).toContain("**a** (local variable in **MyFunc**)");
+    });
+
+    it("still returns print-rule hover when skipSymbols=true", () => {
+      const lineText = 'print (string) x;';
+      const text = md(
+        findHover(testIndex, "string", ROOT, lineText, 7, undefined, undefined, undefined, true),
+      );
+      expect(text).toContain("**print (string)**");
     });
   });
 });

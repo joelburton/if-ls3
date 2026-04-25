@@ -21,13 +21,14 @@ import { loadConfig, type WorkspaceConfig } from "../workspace/config";
 import { reindex } from "./indexer";
 import { pushDiagnostics, type Compilation } from "../features/diagnostics";
 import { findDefinition } from "../features/definition";
+import { enclosingObject } from "../features/symbolLookup";
 import { findHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
-import { wordAtPosition, objectBeforeDot, isInComment } from "../features/wordAtPosition";
+import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment } from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
-import { findReferences } from "../features/references";
+import { findReferences, refAtPosition } from "../features/references";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -51,52 +52,6 @@ function indexForDocument(documentUri: string): CompilerIndex | null {
   return hit?.index ?? currentIndices[0]?.index ?? null;
 }
 
-/**
- * Build a Set of "filePath:lineNumber" (1-based) strings from the compiler's
- * grammar_action_refs list.  Used to distinguish grammar-arrow -> from
- * array-operator -> and property-access ->.
- */
-function buildGrammarActionPositions(index: CompilerIndex): Set<string> {
-  const set = new Set<string>();
-  for (const ref of index.grammar_action_refs ?? []) {
-    set.add(`${ref.file}:${ref.line}`);
-  }
-  return set;
-}
-
-/**
- * Returns true if `word` at `wordStart` is an action name following `->` in a
- * Verb directive grammar line (e.g. `* noun -> Foozle`).
- */
-function isActionArrow(
-  line: string,
-  wordStart: number,
-  lineNumber: number,
-  filePath: string,
-  grammarActionPositions: Set<string>,
-): boolean {
-  let i = wordStart - 1;
-  while (i >= 0 && (line[i] === " " || line[i] === "\t")) i--;
-  if (!(i >= 1 && line[i] === ">" && line[i - 1] === "-")) return false;
-  return grammarActionPositions.has(`${filePath}:${lineNumber + 1}`);
-}
-
-/**
- * Returns true if `word` at `wordStart` is the action name in `<Word ...>` or
- * `<<Word ...>>`.
- */
-function isActionAngleBracket(line: string, wordStart: number): boolean {
-  if (wordStart === 0 || line[wordStart - 1] !== "<") return false;
-  const isIdChar = (c: string) => /\w/.test(c);
-  const ltPos = wordStart - 1;
-  const beforeLt = ltPos > 0 ? line[ltPos - 1] : "";
-  if (isIdChar(beforeLt)) return false;
-  if (beforeLt === "<") {
-    const beforeLtLt = ltPos > 1 ? line[ltPos - 2] : "";
-    return !isIdChar(beforeLtLt);
-  }
-  return true;
-}
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   workspaceRoot = params.rootUri ? URI.parse(params.rootUri).fsPath : null;
@@ -175,23 +130,44 @@ documents.onDidOpen(async () => {
 connection.onDefinition((params: DefinitionParams) => {
   const index = indexForDocument(params.textDocument.uri);
   if (!index) return null;
-  const doc = documents.get(params.textDocument.uri);
-  if (!doc) return null;
 
-  const hit = wordAtPosition(doc.getText(), params.position);
-  if (!hit) return null;
-  if (isInComment(hit.lineText, hit.start)) return null;
-
-  const objCtx = objectBeforeDot(hit.lineText, hit.start);
   const filePath = URI.parse(params.textDocument.uri).fsPath;
-  const grammarActionPositions = buildGrammarActionPositions(index);
-  const isHashHash = hit.start >= 2 && hit.lineText[hit.start - 1] === "#" && hit.lineText[hit.start - 2] === "#";
-  const isAngle = isActionAngleBracket(hit.lineText, hit.start);
-  const isArrow = isActionArrow(hit.lineText, hit.start, params.position.line, filePath, grammarActionPositions);
-  const isColon = hit.lineText[hit.end] === ":";
-  const isActionRef = isColon || isHashHash || isAngle || isArrow;
-  const isExplicitAction = isHashHash || isAngle || isArrow;
-  return findDefinition(index, hit.word, objCtx, isActionRef, isExplicitAction);
+  const fileIndex = index.files.indexOf(filePath);
+  if (fileIndex === -1) return null;
+
+  const line1 = params.position.line + 1;
+  const ref = refAtPosition(index, fileIndex, line1, params.position.character);
+
+  // Extract word and object/class context from source text — needed for both
+  // the self-navigation case and ObjName.prop / ClassName::prop context.
+  const doc = documents.get(params.textDocument.uri);
+  const hit = doc ? wordAtPosition(doc.getText(), params.position) : null;
+  const rawCtx = hit
+    ? (objectBeforeDot(hit.lineText, hit.start) ?? classBeforeColonColon(hit.lineText, hit.start))
+    : null;
+  // Resolve "self" in the object context to the actual enclosing object name.
+  const objCtx =
+    rawCtx?.toLowerCase() === "self"
+      ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx)
+      : rawCtx;
+
+  if (!ref) {
+    // "self" with no compiler ref: navigate to the enclosing object.
+    if (hit?.word.toLowerCase() === "self") {
+      const obj = enclosingObject(index, filePath, line1);
+      if (obj) return findDefinition(index, obj.name, null);
+    }
+    return null;
+  }
+
+  // If the ref symbol is "self", resolve it to the enclosing object name.
+  const sym =
+    ref.sym.toLowerCase() === "self"
+      ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym)
+      : ref.sym;
+
+  const isAction = ref.type === "action";
+  return findDefinition(index, sym, objCtx, isAction, isAction);
 });
 
 connection.onReferences((params: ReferenceParams) => {
@@ -213,14 +189,47 @@ connection.onHover((params: HoverParams) => {
   const doc = documents.get(params.textDocument.uri);
   if (!doc) return null;
 
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  const line1 = params.position.line + 1;
+
+  // If the cursor is on a compiler-tracked reference, use the exact symbol
+  // name directly — no comment check or word-boundary heuristics needed.
+  const fileIndex = index.files.indexOf(filePath);
+  if (fileIndex !== -1) {
+    const ref = refAtPosition(index, fileIndex, line1, params.position.character);
+    if (ref) {
+      const hit = wordAtPosition(doc.getText(), params.position);
+      const rawCtx = hit
+        ? (objectBeforeDot(hit.lineText, hit.start) ?? classBeforeColonColon(hit.lineText, hit.start))
+        : null;
+      // Resolve "self" in context and in the symbol name itself.
+      const objCtx =
+        rawCtx?.toLowerCase() === "self"
+          ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx)
+          : rawCtx;
+      const sym =
+        ref.sym.toLowerCase() === "self"
+          ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym)
+          : ref.sym;
+      return findHover(index, sym, workspaceRoot ?? "", undefined, undefined, filePath, line1, objCtx);
+    }
+  }
+
+  // Fall through to heuristic path for keywords, directives, local variables,
+  // and print rules — none of which appear in references[].
+  // Symbol lookups are skipped (skipSymbols=true) so that words inside string
+  // literals don't produce false-positive symbol hover.
   const hit = wordAtPosition(doc.getText(), params.position);
   if (!hit) return null;
   if (isInComment(hit.lineText, hit.start)) return null;
 
-  const objCtx = objectBeforeDot(hit.lineText, hit.start);
-  const filePath = URI.parse(params.textDocument.uri).fsPath;
-  const line1 = params.position.line + 1; // 1-based for compiler index
-  return findHover(index, hit.word, workspaceRoot ?? "", hit.lineText, hit.start, filePath, line1, objCtx);
+  // "self" inside an object body hovers as the enclosing object.
+  if (hit.word.toLowerCase() === "self") {
+    const obj = enclosingObject(index, filePath, line1);
+    if (obj) return findHover(index, obj.name, workspaceRoot ?? "");
+  }
+
+  return findHover(index, hit.word, workspaceRoot ?? "", hit.lineText, hit.start, filePath, line1, undefined, true);
 });
 
 connection.onDocumentSymbol((params: DocumentSymbolParams) => {

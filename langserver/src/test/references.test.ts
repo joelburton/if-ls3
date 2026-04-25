@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { URI } from "vscode-uri";
-import { findReferences } from "../features/references";
+import { findReferences, refAtPosition } from "../features/references";
 import type { CompilerIndex } from "../server/types";
 import { FILE, testIndex } from "./fixture";
 
@@ -107,5 +107,74 @@ describe("findReferences", () => {
       references: [{ sym: "Empty", type: "routine", locs: [] }],
     };
     expect(findReferences(idx, "Empty")).toEqual([]);
+  });
+});
+
+describe("refAtPosition", () => {
+  // indexWithRefs has files: [FILE, FILE2] and refs:
+  //   MyFunc      routine   "0:30:2"          (length 6, cols 2..7)
+  //   description property  "0:15:4","0:25:24" (length 11, cols 4..14 / 24..34)
+  //   NOPE        constant  "0:29:13"          (length 4, cols 13..16)
+  //   TheRoom     object    "0:40:0","1:7:3"   (length 7, cols 0..6 / 3..9)
+  //   c           global    "0:50:8"           (length 1, col 8)
+
+  it("returns undefined when references field is absent", () => {
+    expect(refAtPosition(testIndex, 0, 30, 2)).toBeUndefined();
+  });
+
+  it("finds a ref when cursor is at the token start", () => {
+    expect(refAtPosition(indexWithRefs, 0, 30, 2)).toMatchObject({ sym: "MyFunc", type: "routine" });
+  });
+
+  it("finds a ref when cursor is in the middle of the token", () => {
+    // "MyFunc" starts at col 2, length 6 → cols 2..7; col 5 is inside
+    expect(refAtPosition(indexWithRefs, 0, 30, 5)).toMatchObject({ sym: "MyFunc" });
+  });
+
+  it("finds a ref when cursor is on the last character of the token", () => {
+    // "MyFunc" length 6 at col 2 → span [2, 8); col 7 is last char, col 8 is outside
+    expect(refAtPosition(indexWithRefs, 0, 30, 7)).toMatchObject({ sym: "MyFunc" });
+    expect(refAtPosition(indexWithRefs, 0, 30, 8)).toBeUndefined();
+  });
+
+  it("returns undefined when cursor is just past the end of the token", () => {
+    // "NOPE" at col 13, length 4 → cols 13..16; col 17 is past the end
+    expect(refAtPosition(indexWithRefs, 0, 29, 17)).toBeUndefined();
+  });
+
+  it("returns undefined when cursor is before the token start", () => {
+    expect(refAtPosition(indexWithRefs, 0, 30, 1)).toBeUndefined();
+  });
+
+  it("handles a single-character symbol", () => {
+    // "c" at col 8, length 1 → only col 8 matches
+    expect(refAtPosition(indexWithRefs, 0, 50, 8)).toMatchObject({ sym: "c" });
+    expect(refAtPosition(indexWithRefs, 0, 50, 9)).toBeUndefined();
+    expect(refAtPosition(indexWithRefs, 0, 50, 7)).toBeUndefined();
+  });
+
+  it("disambiguates by line — wrong line returns undefined", () => {
+    expect(refAtPosition(indexWithRefs, 0, 31, 2)).toBeUndefined();
+  });
+
+  it("disambiguates by file index — wrong file returns undefined", () => {
+    // MyFunc ref is only in file 0
+    expect(refAtPosition(indexWithRefs, 1, 30, 2)).toBeUndefined();
+  });
+
+  it("finds a ref in a second file", () => {
+    // TheRoom has a ref in file 1 at line 7, col 3
+    expect(refAtPosition(indexWithRefs, 1, 7, 3)).toMatchObject({ sym: "TheRoom", type: "object" });
+  });
+
+  it("picks up the correct one of two locs for the same symbol", () => {
+    // description: "0:15:4" and "0:25:24"
+    expect(refAtPosition(indexWithRefs, 0, 15, 4)).toMatchObject({ sym: "description" });
+    expect(refAtPosition(indexWithRefs, 0, 25, 24)).toMatchObject({ sym: "description" });
+    expect(refAtPosition(indexWithRefs, 0, 15, 15)).toBeUndefined();
+  });
+
+  it("returns undefined when no ref covers the position", () => {
+    expect(refAtPosition(indexWithRefs, 0, 99, 0)).toBeUndefined();
   });
 });

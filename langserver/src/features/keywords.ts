@@ -6,7 +6,11 @@
  * To add an entirely new keyword category, add entries to KEYWORD_HELP and/or
  * KEYWORD_COMPLETIONS following the existing patterns.
  *
- * Keys are lowercase. Lookup is case-insensitive.
+ * Keys are lowercase. Lookup is case-sensitive:
+ * - Statement keywords (if, else, for, …) match only all-lowercase spellings.
+ * - Directives (Verb, Array, #Ifdef, …) match only lead-cap spellings (first
+ *   character uppercase).  This prevents directive names from triggering hover
+ *   when they appear as words inside string literals (e.g. "verb").
  * Directive entries are keyable without the leading `#` because wordAtPosition
  * extracts only `\w` characters (e.g. hovering `#Ifdef` yields "Ifdef").
  */
@@ -205,7 +209,50 @@ export const KEYWORD_COMPLETIONS: { label: string; kind: "keyword" | "directive"
   { label: "#Ifv5", kind: "directive" },
 ];
 
-/** Return hover Markdown for a keyword, or null if not a keyword. */
+/**
+ * Lowercase keys in KEYWORD_HELP that are compiler directives.
+ * Directives are written with lead-cap in Inform 6 (Verb, Array, #Ifdef, …)
+ * and only match when the hovered word starts with an uppercase letter.
+ */
+const DIRECTIVE_KEYS = new Set([
+  "array",
+  "attribute",
+  "class",
+  "constant",
+  "default",
+  "extend",
+  "fake_action",
+  "global",
+  "ifdef",
+  "ifndef",
+  "ifnot",
+  "endif",
+  "ifv3",
+  "ifv5",
+  "include",
+  "message",
+  "nearby",
+  "object",
+  "property",
+  "replace",
+  "stub",
+  "verb",
+]);
+
+/**
+ * Return hover Markdown for a keyword or directive, or null if not matched.
+ *
+ * Case rules:
+ * - Directive keywords (Verb, Array, #Ifdef, …) require a lead-cap first
+ *   character so that e.g. "verb" inside a string literal doesn't trigger.
+ * - Statement keywords (if, else, for, …) require an exact all-lowercase
+ *   match — Inform 6 keywords are case-sensitive identifiers.
+ */
 export function findKeywordHover(word: string): string | null {
-  return KEYWORD_HELP[word.toLowerCase()] ?? null;
+  const lower = word.toLowerCase();
+  if (DIRECTIVE_KEYS.has(lower)) {
+    return /^[A-Z]/.test(word) ? (KEYWORD_HELP[lower] ?? null) : null;
+  }
+  // Statement keywords, built-in constants, implicit locals — all-lowercase only.
+  return word === lower ? (KEYWORD_HELP[lower] ?? null) : null;
 }

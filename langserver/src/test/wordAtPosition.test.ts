@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isInComment, wordAtPosition, objectBeforeDot } from "../features/wordAtPosition";
+import { isInComment, wordAtPosition, objectBeforeDot, classBeforeColonColon } from "../features/wordAtPosition";
 
 // ── isInComment ──────────────────────────────────────────────────────────────
 
@@ -143,5 +143,51 @@ describe("objectBeforeDot", () => {
   it("ignores dots further left on the line", () => {
     // "a.b.c" — wordStart=4 (the 'c'), dot at 3, object is 'b'
     expect(objectBeforeDot("a.b.c", 4)).toBe("b");
+  });
+});
+
+// ── classBeforeColonColon ─────────────────────────────────────────────────────
+
+describe("classBeforeColonColon", () => {
+  it("returns the class name for ClassName::prop", () => {
+    //        0123456789012345
+    const line = "Room::room_func";
+    expect(classBeforeColonColon(line, 6)).toBe("Room");
+  });
+
+  it("returns the class name when preceded by obj.Class:: (self.Room::room_func)", () => {
+    //        01234567890123456789012
+    const line = "self.Room::room_func()";
+    // s(0)e(1)l(2)f(3).(4)R(5)o(6)o(7)m(8):(9):(10)r(11) — 'r' of room_func is at index 11
+    expect(classBeforeColonColon(line, 11)).toBe("Room");
+  });
+
+  it("returns null when preceded by a dot, not ::", () => {
+    expect(classBeforeColonColon("TheRoom.description", 8)).toBeNull();
+  });
+
+  it("returns null when preceded by only one colon", () => {
+    expect(classBeforeColonColon("Room:room_func", 5)).toBeNull();
+  });
+
+  it("returns null when wordStart is 0", () => {
+    expect(classBeforeColonColon("room_func", 0)).toBeNull();
+  });
+
+  it("returns null when wordStart is 1 (not enough room for ::)", () => {
+    expect(classBeforeColonColon(":room_func", 1)).toBeNull();
+  });
+
+  it("returns null when :: is at position 0 with no class name before it", () => {
+    // "::room_func" — :: at 0, nothing before it
+    expect(classBeforeColonColon("::room_func", 2)).toBeNull();
+  });
+
+  it("handles a single-character class name", () => {
+    expect(classBeforeColonColon("R::prop", 3)).toBe("R");
+  });
+
+  it("returns null when there is no :: before the word", () => {
+    expect(classBeforeColonColon("room_func", 5)).toBeNull();
   });
 });

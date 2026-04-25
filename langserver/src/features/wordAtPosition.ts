@@ -61,3 +61,24 @@ export function objectBeforeDot(line: string, wordStart: number): string | null 
   const obj = line.slice(objStart, objEnd);
   return obj.length > 0 ? obj : null;
 }
+
+/**
+ * If the word starting at `wordStart` on `line` is preceded by `ClassName::`,
+ * return `ClassName`; otherwise return null.
+ *
+ * Handles: `self.Room::room_func` → "Room" (cursor on `room_func`)
+ *          `Room::room_func`      → "Room"
+ */
+export function classBeforeColonColon(line: string, wordStart: number): string | null {
+  if (wordStart < 2 || line[wordStart - 1] !== ":" || line[wordStart - 2] !== ":") return null;
+
+  const ccPos = wordStart - 2; // position of first ":"
+  if (ccPos === 0) return null;
+
+  let classEnd = ccPos;
+  let classStart = classEnd;
+  while (classStart > 0 && isIdChar(line[classStart - 1])) classStart--;
+
+  const cls = line.slice(classStart, classEnd);
+  return cls.length > 0 ? cls : null;
+}
