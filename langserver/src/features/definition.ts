@@ -29,8 +29,9 @@ export function findDefinition(
 
   if (isActionRef) {
     const subLower = lower + "sub";
-    const sub = index.routines.find((r) => r.name.toLowerCase() === subLower)
-      ?? index.symbols.find((s) => s.name.toLowerCase() === subLower && s.file);
+    const sub =
+      index.routines.find((r) => r.name.toLowerCase() === subLower) ??
+      index.symbols.find((s) => s.name.toLowerCase() === subLower && s.file);
     if (sub && "start_line" in sub) return loc(sub.file, sub.start_line);
     if (sub && "line" in sub && sub.file) return loc(sub.file, sub.line ?? 1);
     // Fall through: `Word:` in a switch may be a value label (e.g. an object),
@@ -52,13 +53,17 @@ export function findDefinition(
   if (!resolved) return null;
 
   switch (resolved.kind) {
-    case "routine":  return loc(resolved.item.file, resolved.item.start_line);
-    case "object":   return loc(resolved.item.file, resolved.item.start_line);
-    case "global":   return loc(resolved.item.file, resolved.item.line);
-    case "constant": return loc(resolved.item.file, resolved.item.line);
-    case "array":    return loc(resolved.item.file, resolved.item.line);
-    case "symbol":   return resolved.item.file
-      ? loc(resolved.item.file, resolved.item.line ?? 1)
-      : null;
+    case "routine":
+      return loc(resolved.item.file, resolved.item.start_line);
+    case "object":
+      return loc(resolved.item.file, resolved.item.start_line);
+    case "global":
+      return loc(resolved.item.file, resolved.item.line);
+    case "constant":
+      return loc(resolved.item.file, resolved.item.line);
+    case "array":
+      return loc(resolved.item.file, resolved.item.line);
+    case "symbol":
+      return resolved.item.file ? loc(resolved.item.file, resolved.item.line ?? 1) : null;
   }
 }

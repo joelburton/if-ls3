@@ -20,11 +20,19 @@ function md(parts: string[]): Hover {
  */
 function rel(filePath: string, workspaceRoot: string): string {
   const relative = path.relative(workspaceRoot, filePath);
-  const leadingUps = relative.split(path.sep).filter(s => s === "..").length;
+  const leadingUps = relative.split(path.sep).filter((s) => s === "..").length;
   return leadingUps > 2 ? filePath : relative;
 }
 
-export function findHover(index: CompilerIndex, word: string, workspaceRoot: string, lineText?: string, wordStart?: number, filePath?: string, line1?: number): Hover | null {
+export function findHover(
+  index: CompilerIndex,
+  word: string,
+  workspaceRoot: string,
+  lineText?: string,
+  wordStart?: number,
+  filePath?: string,
+  line1?: number,
+): Hover | null {
   const lower = word.toLowerCase();
 
   // Print-rule keywords — checked first because in `print (The) obj` the
@@ -35,11 +43,9 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
 
   // Local variables — checked before globals so locals shadow outer names.
   if (filePath && line1 != null) {
-    const enclosing = index.routines.find(
-      r => r.file === filePath && line1 >= r.start_line && line1 <= r.end_line,
-    );
+    const enclosing = index.routines.find((r) => r.file === filePath && line1 >= r.start_line && line1 <= r.end_line);
     if (enclosing) {
-      const localMatch = enclosing.locals.find(l => l.toLowerCase() === lower);
+      const localMatch = enclosing.locals.find((l) => l.toLowerCase() === lower);
       if (localMatch) {
         return md([`**${localMatch}** (local variable in **${enclosing.name}**)`]);
       }
@@ -50,9 +56,7 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
   const routine = index.routines.find((r) => r.name.toLowerCase() === lower);
   if (routine) {
     const sig =
-      routine.locals.length > 0
-        ? `**${routine.name}**(${routine.locals.join(", ")})`
-        : `**${routine.name}**()`;
+      routine.locals.length > 0 ? `**${routine.name}**(${routine.locals.join(", ")})` : `**${routine.name}**()`;
     const parts = [sig];
     if (routine.doc) parts.push(routine.doc);
     parts.push(`*${rel(routine.file, workspaceRoot)}:${routine.start_line}*`);
@@ -63,13 +67,10 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
   const obj = index.objects.find((o) => o.name.toLowerCase() === lower);
   if (obj) {
     const kind = obj.is_class ? "class" : "object";
-    const header = obj.shortname
-      ? `**${obj.name}** "${obj.shortname}" (${kind})`
-      : `**${obj.name}** (${kind})`;
+    const header = obj.shortname ? `**${obj.name}** "${obj.shortname}" (${kind})` : `**${obj.name}** (${kind})`;
     const parts = [header];
     if (obj.parent) parts.push(`parent: ${obj.parent}`);
-    if (obj.attributes.length > 0)
-      parts.push(`attributes: ${obj.attributes.map((a) => a.name).join(", ")}`);
+    if (obj.attributes.length > 0) parts.push(`attributes: ${obj.attributes.map((a) => a.name).join(", ")}`);
     if (obj.doc) parts.push(obj.doc);
     parts.push(`*${rel(obj.file, workspaceRoot)}:${obj.start_line}*`);
     return md(parts);
@@ -79,10 +80,7 @@ export function findHover(index: CompilerIndex, word: string, workspaceRoot: str
   const constant = index.constants.find((c) => c.name.toLowerCase() === lower);
   if (constant) {
     const sym = index.symbols.find((s) => s.name.toLowerCase() === lower);
-    const header =
-      sym !== undefined
-        ? `**${constant.name}** = ${sym.value}`
-        : `**${constant.name}** (constant)`;
+    const header = sym !== undefined ? `**${constant.name}** = ${sym.value}` : `**${constant.name}** (constant)`;
     const parts = [header];
     if (constant.doc) parts.push(constant.doc);
     parts.push(`*${rel(constant.file, workspaceRoot)}:${constant.line}*`);

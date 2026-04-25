@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  isInComment,
-  wordAtPosition,
-  objectBeforeDot,
-} from "../features/wordAtPosition";
+import { isInComment, wordAtPosition, objectBeforeDot } from "../features/wordAtPosition";
 
 // ── isInComment ──────────────────────────────────────────────────────────────
 

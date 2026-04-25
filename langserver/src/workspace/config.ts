@@ -5,7 +5,7 @@ import * as yaml from "js-yaml";
 
 /** Resolved, merged config for one main file compilation. */
 export interface FileConfig {
-  mainFile: string;      /* absolute path */
+  mainFile: string; /* absolute path */
   compiler: string;
   libraryPath: string;
   switches: string;
@@ -30,9 +30,7 @@ function dedup(arr: string[]): string[] {
   return [...new Set(arr)];
 }
 
-const GLOBAL_KEYS = new Set([
-  "compiler", "libraryPath", "switches", "defines", "externalDefines",
-]);
+const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "externalDefines"]);
 
 /**
  * Load `inform6rc.yaml` from the workspace root.
@@ -59,10 +57,10 @@ export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
   if (!raw || typeof raw !== "object") return null;
 
   /* Global defaults */
-  const globalCompiler       = String(raw["compiler"]       ?? "inform6");
-  const globalLibraryPath    = String(raw["libraryPath"]    ?? "");
-  const globalSwitches       = String(raw["switches"]       ?? "");
-  const globalDefines        = toStringArray(raw["defines"]);
+  const globalCompiler = String(raw["compiler"] ?? "inform6");
+  const globalLibraryPath = String(raw["libraryPath"] ?? "");
+  const globalSwitches = String(raw["switches"] ?? "");
+  const globalDefines = toStringArray(raw["defines"]);
   const globalExternalDefines = toStringArray(raw["externalDefines"]);
 
   /* Per-file entries: any non-global key with a null or plain-object value */
@@ -74,11 +72,11 @@ export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
     const perFile = (value ?? {}) as Record<string, unknown>;
 
     files.push({
-      mainFile:       path.resolve(workspaceRoot, key),
-      compiler:       expandTilde(String(perFile["compiler"]    ?? globalCompiler)),
-      libraryPath:    expandTilde(String(perFile["libraryPath"] ?? globalLibraryPath)),
-      switches:       String(perFile["switches"] ?? globalSwitches),
-      defines:        dedup([...globalDefines,        ...toStringArray(perFile["defines"])]),
+      mainFile: path.resolve(workspaceRoot, key),
+      compiler: expandTilde(String(perFile["compiler"] ?? globalCompiler)),
+      libraryPath: expandTilde(String(perFile["libraryPath"] ?? globalLibraryPath)),
+      switches: String(perFile["switches"] ?? globalSwitches),
+      defines: dedup([...globalDefines, ...toStringArray(perFile["defines"])]),
       externalDefines: dedup([...globalExternalDefines, ...toStringArray(perFile["externalDefines"])]),
     });
   }

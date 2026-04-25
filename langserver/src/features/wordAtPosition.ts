@@ -12,8 +12,11 @@ export function isInComment(lineText: string, col: number): boolean {
   let inString = false;
   for (let i = 0; i < lineText.length; i++) {
     const c = lineText[i];
-    if (c === '"') { inString = !inString; continue; }
-    if (c === '!' && !inString) return col >= i;
+    if (c === '"') {
+      inString = !inString;
+      continue;
+    }
+    if (c === "!" && !inString) return col >= i;
   }
   return false;
 }
@@ -51,7 +54,7 @@ export function objectBeforeDot(line: string, wordStart: number): string | null 
   const dotPos = wordStart - 1;
   if (dotPos === 0) return null;
 
-  let objEnd = dotPos;
+  const objEnd = dotPos;
   let objStart = objEnd;
   while (objStart > 0 && isIdChar(line[objStart - 1])) objStart--;
 

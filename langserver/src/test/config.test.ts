@@ -108,7 +108,7 @@ describe("loadConfig", () => {
       // "bad.inf: 42" — value is a number, not null or object → skipped.
       const dir = writeConfig("good.inf:\nbad.inf: 42\n");
       const cfg = loadConfig(dir)!;
-      const names = cfg.files.map(f => path.basename(f.mainFile));
+      const names = cfg.files.map((f) => path.basename(f.mainFile));
       expect(names).toContain("good.inf");
       expect(names).not.toContain("bad.inf");
     });
@@ -116,7 +116,7 @@ describe("loadConfig", () => {
     it("ignores keys whose value is a list", () => {
       const dir = writeConfig("good.inf:\nbad.inf:\n  - item\n");
       const cfg = loadConfig(dir)!;
-      const names = cfg.files.map(f => path.basename(f.mainFile));
+      const names = cfg.files.map((f) => path.basename(f.mainFile));
       expect(names).not.toContain("bad.inf");
     });
   });
@@ -146,16 +146,12 @@ describe("loadConfig", () => {
 
   describe("per-file scalar overrides", () => {
     it("per-file compiler overrides the global compiler", () => {
-      const dir = writeConfig(
-        "compiler: global-compiler\ngame.inf:\n  compiler: per-file-compiler\n",
-      );
+      const dir = writeConfig("compiler: global-compiler\ngame.inf:\n  compiler: per-file-compiler\n");
       expect(loadConfig(dir)!.files[0].compiler).toBe("per-file-compiler");
     });
 
     it("per-file libraryPath overrides the global libraryPath", () => {
-      const dir = writeConfig(
-        "libraryPath: /global/lib\ngame.inf:\n  libraryPath: /local/lib\n",
-      );
+      const dir = writeConfig("libraryPath: /global/lib\ngame.inf:\n  libraryPath: /local/lib\n");
       expect(loadConfig(dir)!.files[0].libraryPath).toBe("/local/lib");
     });
 
@@ -165,12 +161,10 @@ describe("loadConfig", () => {
     });
 
     it("a second file entry that has no overrides still gets the global value", () => {
-      const dir = writeConfig(
-        "compiler: global-compiler\na.inf:\n  compiler: override\nb.inf:\n",
-      );
+      const dir = writeConfig("compiler: global-compiler\na.inf:\n  compiler: override\nb.inf:\n");
       const cfg = loadConfig(dir)!;
-      const a = cfg.files.find(f => f.mainFile.endsWith("a.inf"))!;
-      const b = cfg.files.find(f => f.mainFile.endsWith("b.inf"))!;
+      const a = cfg.files.find((f) => f.mainFile.endsWith("a.inf"))!;
+      const b = cfg.files.find((f) => f.mainFile.endsWith("b.inf"))!;
       expect(a.compiler).toBe("override");
       expect(b.compiler).toBe("global-compiler");
     });
@@ -185,16 +179,12 @@ describe("loadConfig", () => {
     });
 
     it("appends per-file defines after global defines", () => {
-      const dir = writeConfig(
-        "defines:\n  - GLOBAL\ngame.inf:\n  defines:\n    - LOCAL\n",
-      );
+      const dir = writeConfig("defines:\n  - GLOBAL\ngame.inf:\n  defines:\n    - LOCAL\n");
       expect(loadConfig(dir)!.files[0].defines).toEqual(["GLOBAL", "LOCAL"]);
     });
 
     it("deduplicates defines that appear in both global and per-file lists", () => {
-      const dir = writeConfig(
-        "defines:\n  - SHARED\ngame.inf:\n  defines:\n    - SHARED\n    - LOCAL\n",
-      );
+      const dir = writeConfig("defines:\n  - SHARED\ngame.inf:\n  defines:\n    - SHARED\n    - LOCAL\n");
       expect(loadConfig(dir)!.files[0].defines).toEqual(["SHARED", "LOCAL"]);
     });
 
@@ -211,16 +201,12 @@ describe("loadConfig", () => {
     });
 
     it("appends per-file externalDefines after global ones", () => {
-      const dir = writeConfig(
-        "externalDefines:\n  - GLOBAL\ngame.inf:\n  externalDefines:\n    - LOCAL\n",
-      );
+      const dir = writeConfig("externalDefines:\n  - GLOBAL\ngame.inf:\n  externalDefines:\n    - LOCAL\n");
       expect(loadConfig(dir)!.files[0].externalDefines).toEqual(["GLOBAL", "LOCAL"]);
     });
 
     it("deduplicates externalDefines", () => {
-      const dir = writeConfig(
-        "externalDefines:\n  - SHARED\ngame.inf:\n  externalDefines:\n    - SHARED\n",
-      );
+      const dir = writeConfig("externalDefines:\n  - SHARED\ngame.inf:\n  externalDefines:\n    - SHARED\n");
       expect(loadConfig(dir)!.files[0].externalDefines).toEqual(["SHARED"]);
     });
   });

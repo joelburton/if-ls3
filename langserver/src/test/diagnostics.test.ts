@@ -62,7 +62,7 @@ describe("scanIfDefWarnings", () => {
     const src = line + "\n#EndIf;\n";
     const warnings = scanIfDefWarnings(src, known);
     const start = warnings[0].range.start.character;
-    const end   = warnings[0].range.end.character;
+    const end = warnings[0].range.end.character;
     expect(start).toBe(line.indexOf("MYSTERY"));
     expect(end).toBe(start + "MYSTERY".length);
   });
@@ -76,9 +76,9 @@ describe("scanIfDefWarnings", () => {
     const src = "#IfDef FOO;\n#IfNDef BAR;\n#IfDef DEBUG;\n";
     const warnings = scanIfDefWarnings(src, known);
     expect(warnings).toHaveLength(2); // FOO and BAR are unknown; DEBUG is known
-    const names = warnings.map(w => w.message);
-    expect(names.some(m => m.includes("FOO"))).toBe(true);
-    expect(names.some(m => m.includes("BAR"))).toBe(true);
+    const names = warnings.map((w) => w.message);
+    expect(names.some((m) => m.includes("FOO"))).toBe(true);
+    expect(names.some((m) => m.includes("BAR"))).toBe(true);
   });
 
   it("does not warn for non-IfDef directives like #IfNot", () => {
@@ -119,14 +119,34 @@ describe("buildUnionKnownNames", () => {
   });
 
   it("takes the union across multiple compilations", () => {
-    const indexA = { ...testIndex, symbols: [
-      { name: "ONLY_IN_A", type: "constant", value: 0, flags: 0, is_system: false },
-    ], routines: [], objects: [], globals: [], constants: [], arrays: [],
-       verbs: [], dictionary: [], errors: [], grammar_action_refs: [], files: [] };
-    const indexB = { ...testIndex, symbols: [
-      { name: "ONLY_IN_B", type: "constant", value: 0, flags: 0, is_system: false },
-    ], routines: [], objects: [], globals: [], constants: [], arrays: [],
-       verbs: [], dictionary: [], errors: [], grammar_action_refs: [], files: [] };
+    const indexA = {
+      ...testIndex,
+      symbols: [{ name: "ONLY_IN_A", type: "constant", value: 0, flags: 0, is_system: false }],
+      routines: [],
+      objects: [],
+      globals: [],
+      constants: [],
+      arrays: [],
+      verbs: [],
+      dictionary: [],
+      errors: [],
+      grammar_action_refs: [],
+      files: [],
+    };
+    const indexB = {
+      ...testIndex,
+      symbols: [{ name: "ONLY_IN_B", type: "constant", value: 0, flags: 0, is_system: false }],
+      routines: [],
+      objects: [],
+      globals: [],
+      constants: [],
+      arrays: [],
+      verbs: [],
+      dictionary: [],
+      errors: [],
+      grammar_action_refs: [],
+      files: [],
+    };
 
     const result = buildUnionKnownNames([
       { index: indexA, fileConfig: emptyConfig },

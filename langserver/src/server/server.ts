@@ -45,7 +45,7 @@ function log(msg: string): void {
  */
 function indexForDocument(documentUri: string): CompilerIndex | null {
   const filePath = URI.parse(documentUri).fsPath;
-  const hit = currentIndices.find(c => c.index.files.includes(filePath));
+  const hit = currentIndices.find((c) => c.index.files.includes(filePath));
   return hit?.index ?? currentIndices[0]?.index ?? null;
 }
 
@@ -105,7 +105,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
     } else if (workspaceConfig.files.length === 0) {
       log("[server] inform6rc.yaml has no main-file entries — nothing to compile");
     } else {
-      const names = workspaceConfig.files.map(f => path.basename(URI.file(f.mainFile).fsPath)).join(", ");
+      const names = workspaceConfig.files.map((f) => path.basename(URI.file(f.mainFile).fsPath)).join(", ");
       log(`[server] config: ${workspaceConfig.files.length} main file(s): ${names}`);
     }
   }
@@ -144,9 +144,7 @@ async function triggerReindex(): Promise<void> {
   if (workspaceConfig.files.length === 0) return;
 
   // Run all compilations in parallel.
-  const results = await Promise.all(
-    workspaceConfig.files.map(fc => reindex(fc, workspaceRoot!, log)),
-  );
+  const results = await Promise.all(workspaceConfig.files.map((fc) => reindex(fc, workspaceRoot!, log)));
 
   currentIndices = [];
   for (let i = 0; i < workspaceConfig.files.length; i++) {
@@ -216,7 +214,10 @@ connection.onDocumentSymbol((params: DocumentSymbolParams) => {
 
 connection.onWorkspaceSymbol((params: WorkspaceSymbolParams) => {
   if (currentIndices.length === 0) return [];
-  return getWorkspaceSymbols(currentIndices.map(c => c.index), params.query);
+  return getWorkspaceSymbols(
+    currentIndices.map((c) => c.index),
+    params.query,
+  );
 });
 
 connection.onCompletion((params: CompletionParams) => {

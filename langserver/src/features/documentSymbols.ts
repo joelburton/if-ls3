@@ -3,12 +3,7 @@ import { URI } from "vscode-uri";
 import type { CompilerIndex } from "../server/types";
 
 function makeRange(startLine: number, endLine: number): Range {
-  return Range.create(
-    Math.max(0, startLine - 1),
-    0,
-    Math.max(0, endLine - 1),
-    0,
-  );
+  return Range.create(Math.max(0, startLine - 1), 0, Math.max(0, endLine - 1), 0);
 }
 
 /**
@@ -20,10 +15,7 @@ function makeRange(startLine: number, endLine: number): Range {
  * - Globals → SymbolKind.Variable
  * - Constants → SymbolKind.Constant
  */
-export function getDocumentSymbols(
-  index: CompilerIndex,
-  documentUri: string,
-): DocumentSymbol[] {
+export function getDocumentSymbols(index: CompilerIndex, documentUri: string): DocumentSymbol[] {
   const filePath = URI.parse(documentUri).fsPath;
   const result: DocumentSymbol[] = [];
 
@@ -58,9 +50,7 @@ export function getDocumentSymbols(
 
     if (routine.embedded) {
       // Name is "ObjName::prop" (class-defined) or "ObjName.prop" (object)
-      const sep = routine.name.includes("::")
-        ? routine.name.indexOf("::")
-        : routine.name.indexOf(".");
+      const sep = routine.name.includes("::") ? routine.name.indexOf("::") : routine.name.indexOf(".");
       if (sep >= 0) {
         const parentName = routine.name.slice(0, sep);
         const parent = objectSymbols.get(parentName);

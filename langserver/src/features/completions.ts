@@ -27,7 +27,7 @@ export function getCompletions(
 
   // ── Dot completion ──────────────────────────────────────────────────────
   if (col > 0 && lineText[col - 1] === ".") {
-    let end = col - 1;
+    const end = col - 1;
     let start = end;
     while (start > 0 && isIdChar(lineText[start - 1])) start--;
     const objName = lineText.slice(start, end).toLowerCase();
@@ -36,12 +36,9 @@ export function getCompletions(
     if (!obj) return [];
 
     const items: CompletionItem[] = [];
-    for (const p of obj.properties)
-      items.push({ label: p.name, kind: CompletionItemKind.Field });
-    for (const p of obj.private_properties)
-      items.push({ label: p.name, kind: CompletionItemKind.Field });
-    for (const a of obj.attributes)
-      items.push({ label: a.name, kind: CompletionItemKind.EnumMember });
+    for (const p of obj.properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
+    for (const p of obj.private_properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
+    for (const a of obj.attributes) items.push({ label: a.name, kind: CompletionItemKind.EnumMember });
     return items;
   }
 
@@ -61,35 +58,28 @@ export function getCompletions(
   for (const r of index.routines) {
     if (r.file !== filePath) continue;
     if (curLine < r.start_line || curLine > r.end_line) continue;
-    for (const local of r.locals)
-      add(local, CompletionItemKind.Variable);
+    for (const local of r.locals) add(local, CompletionItemKind.Variable);
     break; // only one routine can enclose the cursor
   }
 
   // Routines (non-embedded only — embedded are not callable by bare name).
   for (const r of index.routines) {
     if (r.embedded) continue;
-    const detail = r.locals.length
-      ? `(${r.locals.join(", ")})`
-      : undefined;
+    const detail = r.locals.length ? `(${r.locals.join(", ")})` : undefined;
     add(r.name, CompletionItemKind.Function, detail);
   }
 
   // Objects and classes.
-  for (const o of index.objects)
-    add(o.name, o.is_class ? CompletionItemKind.Class : CompletionItemKind.Module);
+  for (const o of index.objects) add(o.name, o.is_class ? CompletionItemKind.Class : CompletionItemKind.Module);
 
   // Globals.
-  for (const g of index.globals)
-    add(g.name, CompletionItemKind.Variable);
+  for (const g of index.globals) add(g.name, CompletionItemKind.Variable);
 
   // Constants.
-  for (const c of index.constants)
-    add(c.name, CompletionItemKind.Constant);
+  for (const c of index.constants) add(c.name, CompletionItemKind.Constant);
 
   // Arrays.
-  for (const a of index.arrays)
-    add(a.name, CompletionItemKind.Variable);
+  for (const a of index.arrays) add(a.name, CompletionItemKind.Variable);
 
   // Language keywords and directives.
   for (const kw of KEYWORD_COMPLETIONS)

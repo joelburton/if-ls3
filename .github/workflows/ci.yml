@@ -30,6 +30,14 @@ jobs:
         run: npm run check
         working-directory: langserver
 
+      - name: Lint
+        run: npm run lint
+        working-directory: langserver
+
+      - name: Format check
+        run: npm run format:check
+        working-directory: langserver
+
       - name: Run tests
         run: npm test
         working-directory: langserver

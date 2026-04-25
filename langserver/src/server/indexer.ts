@@ -65,8 +65,7 @@ export function reindex(
 
       const stderr = Buffer.concat(stderrChunks).toString("utf-8");
       if (stderr) {
-        for (const line of stderr.trimEnd().split("\n"))
-          log(`[indexer] stderr: ${line}`);
+        for (const line of stderr.trimEnd().split("\n")) log(`[indexer] stderr: ${line}`);
       }
 
       const stdout = Buffer.concat(stdoutChunks).toString("utf-8");
@@ -83,11 +82,11 @@ export function reindex(
         // Drop compiler-generated veneer routines — runtime support code that
         // the compiler injects with no corresponding source location.  They are
         // not user-callable and would clutter completions and workspace search.
-        index.routines = index.routines.filter(r => r.file);
+        index.routines = index.routines.filter((r) => r.file);
         log(
           `[indexer] OK (${label}): ${index.routines.length} routines, ` +
-          `${index.objects.length} objects, ${index.globals.length} globals, ` +
-          `${index.constants.length} constants, ${index.errors.length} diagnostic(s)`,
+            `${index.objects.length} objects, ${index.globals.length} globals, ` +
+            `${index.constants.length} constants, ${index.errors.length} diagnostic(s)`,
         );
         resolve(index);
       } catch (e) {

@@ -12,7 +12,7 @@ import { existsSync } from "node:fs";
 import * as path from "node:path";
 
 const REPO_ROOT = path.join(__dirname, "../../..");
-const INFORM6  = path.join(REPO_ROOT, "Inform6/inform6");
+const INFORM6 = path.join(REPO_ROOT, "Inform6/inform6");
 const TINY_INF = path.join(REPO_ROOT, "test/corpus/tiny.inf");
 
 describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
@@ -32,9 +32,20 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
 
   it("has required top-level keys", () => {
     const idx = JSON.parse(output);
-    for (const key of ["version", "files", "symbols", "routines", "objects",
-                        "globals", "constants", "arrays", "verbs", "dictionary",
-                        "errors", "grammar_action_refs"]) {
+    for (const key of [
+      "version",
+      "files",
+      "symbols",
+      "routines",
+      "objects",
+      "globals",
+      "constants",
+      "arrays",
+      "verbs",
+      "dictionary",
+      "errors",
+      "grammar_action_refs",
+    ]) {
       expect(idx).toHaveProperty(key);
     }
   });

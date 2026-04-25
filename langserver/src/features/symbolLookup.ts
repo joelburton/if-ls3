@@ -18,12 +18,12 @@ export function loc(file: string, line: number): Location {
 }
 
 export type ResolvedSymbol =
-  | { kind: "routine";  item: RoutineInfo }
-  | { kind: "object";   item: ObjectInfo }
-  | { kind: "global";   item: GlobalInfo }
+  | { kind: "routine"; item: RoutineInfo }
+  | { kind: "object"; item: ObjectInfo }
+  | { kind: "global"; item: GlobalInfo }
   | { kind: "constant"; item: ConstantInfo }
-  | { kind: "array";    item: ArrayInfo }
-  | { kind: "symbol";   item: SymbolInfo };
+  | { kind: "array"; item: ArrayInfo }
+  | { kind: "symbol"; item: SymbolInfo };
 
 /**
  * Find the first user-visible symbol whose name matches `word`
@@ -38,10 +38,7 @@ export type ResolvedSymbol =
  * one find() here, then handle the new `kind` in each consumer (definition.ts,
  * workspaceSymbols.ts) rather than updating each file independently.
  */
-export function resolveSymbol(
-  index: CompilerIndex,
-  word: string,
-): ResolvedSymbol | null {
+export function resolveSymbol(index: CompilerIndex, word: string): ResolvedSymbol | null {
   const lower = word.toLowerCase();
 
   const routine = index.routines.find((r) => r.name.toLowerCase() === lower);
@@ -59,9 +56,7 @@ export function resolveSymbol(
   const array = index.arrays.find((a) => a.name.toLowerCase() === lower);
   if (array) return { kind: "array", item: array };
 
-  const sym = index.symbols.find(
-    (s) => !s.is_system && s.name.toLowerCase() === lower && s.file,
-  );
+  const sym = index.symbols.find((s) => !s.is_system && s.name.toLowerCase() === lower && s.file);
   if (sym) return { kind: "symbol", item: sym };
 
   return null;

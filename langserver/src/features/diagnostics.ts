@@ -23,7 +23,7 @@ export function pushDiagnostics(
   previousUris: Set<string>,
 ): Set<string> {
   const byUri = new Map<string, Diagnostic[]>();
-  const fileLines = new Map<string, string[]>();  // path → lines cache
+  const fileLines = new Map<string, string[]>(); // path → lines cache
 
   // --- Compiler errors (from all compilations) ---
   for (const { index } of compilations) {
@@ -31,10 +31,7 @@ export function pushDiagnostics(
       const uri = URI.file(error.file).toString();
       if (!byUri.has(uri)) byUri.set(uri, []);
 
-      const severity =
-        error.severity === "warning"
-          ? DiagnosticSeverity.Warning
-          : DiagnosticSeverity.Error;
+      const severity = error.severity === "warning" ? DiagnosticSeverity.Warning : DiagnosticSeverity.Error;
 
       const line = Math.max(0, error.line - 1);
 
@@ -88,9 +85,7 @@ export function pushDiagnostics(
   const knownNames = buildUnionKnownNames(compilations);
 
   // Collect all library paths so we can skip library files.
-  const libraryPaths = compilations
-    .map(c => c.fileConfig.libraryPath)
-    .filter(Boolean);
+  const libraryPaths = compilations.map((c) => c.fileConfig.libraryPath).filter(Boolean);
 
   // Scan each project file once (skip duplicates across compilations).
   const scanned = new Set<string>();
@@ -99,7 +94,7 @@ export function pushDiagnostics(
       if (scanned.has(filePath)) continue;
       scanned.add(filePath);
 
-      if (libraryPaths.some(lp => filePath.startsWith(lp))) continue;
+      if (libraryPaths.some((lp) => filePath.startsWith(lp))) continue;
 
       let content: string;
       try {
@@ -120,12 +115,10 @@ export function pushDiagnostics(
   // --- Send and reconcile stale URIs ---
   const currentUris = new Set(byUri.keys());
 
-  for (const [uri, diagnostics] of byUri)
-    connection.sendDiagnostics({ uri, diagnostics });
+  for (const [uri, diagnostics] of byUri) connection.sendDiagnostics({ uri, diagnostics });
 
   for (const uri of previousUris) {
-    if (!currentUris.has(uri))
-      connection.sendDiagnostics({ uri, diagnostics: [] });
+    if (!currentUris.has(uri)) connection.sendDiagnostics({ uri, diagnostics: [] });
   }
 
   return currentUris;

@@ -48,56 +48,42 @@ export const KEYWORD_HELP: Record<string, string> = {
 
   // ── Print / I/O ───────────────────────────────────────────────────────────
   print:
-    "**print** *item*, …\n\nPrint one or more items. Items may be:\n- A string literal: `\"text\"`\n- An expression: `(expr)`\n- A print rule: `(name) obj`, `(The) obj`, `(a) obj`, `(number) n`, etc.",
-  print_ret:
-    "**print_ret** *item*, …\n\nPrint items followed by a newline, then return `true`.",
+    '**print** *item*, …\n\nPrint one or more items. Items may be:\n- A string literal: `"text"`\n- An expression: `(expr)`\n- A print rule: `(name) obj`, `(The) obj`, `(a) obj`, `(number) n`, etc.',
+  print_ret: "**print_ret** *item*, …\n\nPrint items followed by a newline, then return `true`.",
   new_line: "**new_line** — print a newline character.",
-  read:
-    "**read** *buffer* *parse*\n\nRead a line of player input into *buffer* and parse it into *parse*.",
+  read: "**read** *buffer* *parse*\n\nRead a line of player input into *buffer* and parse it into *parse*.",
 
   // ── Directives (keyed without leading `#`) ────────────────────────────────
   array:
     "**Array** *name* *type* *size/values*\n\nDeclare an array.\n\nTypes:\n- `->` byte array\n- `-->` word array\n- `string` Z-string\n- `table` length-prefixed word array\n- `buffer` length-prefixed byte array",
-  attribute:
-    "**Attribute** *name* [**alias** *name*]\n\nDeclare a new object attribute (up to 48 attributes allowed).",
+  attribute: "**Attribute** *name* [**alias** *name*]\n\nDeclare a new object attribute (up to 48 attributes allowed).",
   class:
     "**Class** *Name* [(*n*)] [*classes*] … ;\n\nDefine an object class. The optional (*n*) pre-allocates *n* instances.",
-  constant:
-    "**Constant** *NAME* [= *value*]\n\nDeclare a compile-time constant.",
-  default:
-    "**Default** *Name* *value*\n\nDeclare a constant only if *Name* has not already been defined.",
+  constant: "**Constant** *NAME* [= *value*]\n\nDeclare a compile-time constant.",
+  default: "**Default** *Name* *value*\n\nDeclare a constant only if *Name* has not already been defined.",
   extend:
     "**Extend** *verb* [**replace** | **last** | **first**] *grammar* ;\n\nAdd or replace grammar lines for an existing verb.",
-  fake_action:
-    "**Fake_Action** *Name*\n\nDeclare an action number without generating a grammar entry.",
+  fake_action: "**Fake_Action** *Name*\n\nDeclare an action number without generating a grammar entry.",
   global: "**Global** *name* [= *value*]\n\nDeclare a global variable.",
-  ifdef:
-    "**#Ifdef** *SYMBOL*\n\nConditionally compile the following block if *SYMBOL* is defined.",
-  ifndef:
-    "**#Ifndef** *SYMBOL*\n\nConditionally compile the following block if *SYMBOL* is not defined.",
+  ifdef: "**#Ifdef** *SYMBOL*\n\nConditionally compile the following block if *SYMBOL* is defined.",
+  ifndef: "**#Ifndef** *SYMBOL*\n\nConditionally compile the following block if *SYMBOL* is not defined.",
   ifnot: "**#Ifnot**\n\nElse branch of `#Ifdef` / `#Ifndef`.",
   endif: "**#Endif**\n\nClose a conditional compilation block.",
   ifv3: "**#IfV3**\n\nTrue when the compilation target is Z-machine version 3.",
-  ifv5:
-    "**#IfV5**\n\nTrue when the compilation target is Z-machine version 4/5/6/8 or Glulx (i.e. not Z3).",
+  ifv5: "**#IfV5**\n\nTrue when the compilation target is Z-machine version 4/5/6/8 or Glulx (i.e. not Z3).",
   include:
-    "**Include** \"*file*\"\n\nInclude another source file at this point. The path is resolved relative to the library path in `inform6rc.yaml`.",
-  message: "**Message** \"*text*\"\n\nEmit a compile-time informational message.",
-  nearby:
-    "**Nearby** *name* [*parent*] … ;\n\nDeclare an object as an initial sibling of the previous object.",
+    '**Include** "*file*"\n\nInclude another source file at this point. The path is resolved relative to the library path in `inform6rc.yaml`.',
+  message: '**Message** "*text*"\n\nEmit a compile-time informational message.',
+  nearby: "**Nearby** *name* [*parent*] … ;\n\nDeclare an object as an initial sibling of the previous object.",
   object: "**Object** [*name*] [*parent*] … ;\n\nDeclare a game object.",
-  property:
-    "**Property** *name* [*default*]\n\nDeclare a new object property.",
-  replace:
-    "**Replace** *name*\n\nAllow a subsequent definition of *name* to silently override a library definition.",
-  stub:
-    "**Stub** *name* *n*\n\nDeclare a routine with *n* parameters that does nothing (forward declaration for optional routines).",
+  property: "**Property** *name* [*default*]\n\nDeclare a new object property.",
+  replace: "**Replace** *name*\n\nAllow a subsequent definition of *name* to silently override a library definition.",
+  stub: "**Stub** *name* *n*\n\nDeclare a routine with *n* parameters that does nothing (forward declaration for optional routines).",
   verb: "**Verb** *'token'* … *grammar* ;\n\nDefine vocabulary and grammar for a player command.",
 
   // ── Implicit locals in object routines ───────────────────────────────────
   self: "**self** — implicit local in object/class routines; the object receiving the message.",
-  sender:
-    "**sender** — implicit local in object routines; the object that sent the message (or `nothing`).",
+  sender: "**sender** — implicit local in object routines; the object that sent the message (or `nothing`).",
   noun: "**noun** — the primary object of the current player command.",
   second: "**second** — the secondary object of the current player command.",
   actor: "**actor** — the actor performing the current action (usually `player`).",
@@ -114,30 +100,20 @@ export const KEYWORD_HELP: Record<string, string> = {
  * Each value is user-facing Markdown.
  */
 const PRINT_RULE_HELP: Record<string, string> = {
-  char:
-    "**print (char)** *expr*\n\nPrint *expr* as a single ZSCII/Unicode character (like `@print_char`).",
-  name:
-    "**print (name)** *obj*\n\nPrint the short name of *obj* (the internal name, without articles).",
-  the:
-    "**print (the)** *obj*\n\nPrint the definite article + short name of *obj*, e.g. `\"the sword\"`.\n\nHandled by the library's `DefArt` routine, which respects `proper`, `pluralname`, etc.",
-  The:
-    "**print (The)** *obj*\n\nLike `(the)` but capitalised: `\"The sword\"`. Uses the library's `CDefArt` routine.",
-  a:
-    "**print (a)** *obj*\n\nPrint the indefinite article + short name, e.g. `\"a sword\"` or `\"some coins\"`.\n\nUses the library's `InDefArt` routine.",
-  A:
-    "**print (A)** *obj*\n\nLike `(a)` but capitalised: `\"A sword\"`. Uses the library's `CInDefArt` routine.",
-  an:
-    "**print (an)** *obj*\n\nSynonym for `(a)` — the library chooses the correct article regardless.",
+  char: "**print (char)** *expr*\n\nPrint *expr* as a single ZSCII/Unicode character (like `@print_char`).",
+  name: "**print (name)** *obj*\n\nPrint the short name of *obj* (the internal name, without articles).",
+  the: '**print (the)** *obj*\n\nPrint the definite article + short name of *obj*, e.g. `"the sword"`.\n\nHandled by the library\'s `DefArt` routine, which respects `proper`, `pluralname`, etc.',
+  The: '**print (The)** *obj*\n\nLike `(the)` but capitalised: `"The sword"`. Uses the library\'s `CDefArt` routine.',
+  a: '**print (a)** *obj*\n\nPrint the indefinite article + short name, e.g. `"a sword"` or `"some coins"`.\n\nUses the library\'s `InDefArt` routine.',
+  A: '**print (A)** *obj*\n\nLike `(a)` but capitalised: `"A sword"`. Uses the library\'s `CInDefArt` routine.',
+  an: "**print (an)** *obj*\n\nSynonym for `(a)` — the library chooses the correct article regardless.",
   number:
-    "**print (number)** *expr*\n\nPrint *expr* as a decimal number in words (e.g. `\"twelve\"`).\n\nUses the library's `EnglishNumber` routine.",
-  address:
-    "**print (address)** *expr*\n\nPrint a dictionary word given its packed address.",
-  string:
-    "**print (string)** *expr*\n\nPrint a string given its packed address (like `@print_paddr`).",
+    '**print (number)** *expr*\n\nPrint *expr* as a decimal number in words (e.g. `"twelve"`).\n\nUses the library\'s `EnglishNumber` routine.',
+  address: "**print (address)** *expr*\n\nPrint a dictionary word given its packed address.",
+  string: "**print (string)** *expr*\n\nPrint a string given its packed address (like `@print_paddr`).",
   object:
     "**print (object)** *expr*\n\nPrint an object's internal (hardware) name given its object number (like `@print_obj`).",
-  property:
-    "**print (property)** *expr*\n\nPrint the name of a property given its property number.",
+  property: "**print (property)** *expr*\n\nPrint the name of a property given its property number.",
 };
 
 /**

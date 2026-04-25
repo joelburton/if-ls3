@@ -72,6 +72,8 @@
     "build": "npm run compile && npm run build-server && npm run build-textmate-dist",
     "watch": "tsc -w -p tsconfig.client.json",
     "check": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "test": "vitest run",
     "package-vsix": "npm run build && npx -y @vscode/vsce@latest package --allow-missing-repository --skip-license",
     "install-vsix": "code --install-extension ./inform6-lsp-0.1.0.vsix --force",
@@ -89,7 +91,10 @@
     "@types/node": "^22.18.6",
     "@types/vscode": "^1.88.0",
     "esbuild": "^0.28.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
     "typescript": "^5.9.3",
+    "typescript-eslint": "^8.59.0",
     "vitest": "^4.1.5"
   }
 }

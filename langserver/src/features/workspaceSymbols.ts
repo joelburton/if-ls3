@@ -11,10 +11,7 @@ import { loc } from "./symbolLookup";
  * Embedded routines (ObjName.prop) are skipped — they appear under their
  * parent in the document outline instead.
  */
-export function getWorkspaceSymbols(
-  indices: CompilerIndex[],
-  query: string,
-): SymbolInformation[] {
+export function getWorkspaceSymbols(indices: CompilerIndex[], query: string): SymbolInformation[] {
   const q = query.toLowerCase();
   const matches = (name: string) => !q || name.toLowerCase().includes(q);
   const results: SymbolInformation[] = [];

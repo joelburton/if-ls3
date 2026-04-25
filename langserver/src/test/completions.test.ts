@@ -85,8 +85,7 @@ describe("getCompletions", () => {
         (i) => i.kind !== CompletionItemKind.Variable || !["a", "b", "x"].includes(i.label),
       );
       const lastLocal = items.reduce(
-        (idx, item, i) =>
-          ["a", "b", "x"].includes(item.label) && item.kind === CompletionItemKind.Variable ? i : idx,
+        (idx, item, i) => (["a", "b", "x"].includes(item.label) && item.kind === CompletionItemKind.Variable ? i : idx),
         -1,
       );
       expect(lastLocal).toBeLessThan(firstNonLocal);

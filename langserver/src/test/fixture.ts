@@ -28,7 +28,10 @@ export const testIndex: CompilerIndex = {
       is_class: false,
       parent: undefined,
       attributes: [{ name: "light", line: 11 }],
-      properties: [{ name: "description", line: 14 }, { name: "before", line: 15 }],
+      properties: [
+        { name: "description", line: 14 },
+        { name: "before", line: 15 },
+      ],
       private_properties: [{ name: "super_secret", line: 13 }],
       doc: "This is the doc comment for TheRoom",
     },
@@ -54,17 +57,15 @@ export const testIndex: CompilerIndex = {
     { name: "Foozle", file: FILE, line: 95 },
   ],
 
-  arrays: [
-    { name: "WordArray", file: FILE, line: 98, array_type: "-->", size: 10 },
-  ],
+  arrays: [{ name: "WordArray", file: FILE, line: 98, array_type: "-->", size: 10 }],
 
   symbols: [
     // System symbols (should be excluded from definition fallback).
     { name: "TARGET_ZCODE", type: "constant", value: 0, flags: 516, is_system: true },
-    { name: "nothing",      type: "object",   value: 0, flags: 516, is_system: true },
+    { name: "nothing", type: "object", value: 0, flags: 516, is_system: true },
     // User constant — value used by hover to show `NOPE = 0`.
-    { name: "NOPE",    type: "constant", value: 0,  flags: 1284, is_system: false, file: FILE, line: 29 },
-    { name: "Foozle",  type: "constant", value: 10, flags: 1284, is_system: false, file: FILE, line: 95 },
+    { name: "NOPE", type: "constant", value: 0, flags: 1284, is_system: false, file: FILE, line: 29 },
+    { name: "Foozle", type: "constant", value: 10, flags: 1284, is_system: false, file: FILE, line: 95 },
     // Library property only in symbols[] (not in objects/routines/etc.).
     { name: "description", type: "property", value: 3, flags: 1284, is_system: false, file: FILE, line: 14 },
   ],

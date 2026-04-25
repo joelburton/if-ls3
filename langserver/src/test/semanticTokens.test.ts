@@ -3,9 +3,9 @@ import { getSemanticTokens } from "../features/semanticTokens";
 import { FILE, testIndex } from "./fixture";
 
 // Token type indices from semanticTokens.ts (must match the legend in server.ts).
-const VAR   = 0;  // local variable
-const PROP  = 1;  // global variable
-const ENUM  = 2;  // constant
+const VAR = 0; // local variable
+const PROP = 1; // global variable
+const ENUM = 2; // constant
 
 /** Decode the raw number[] into readable token objects for easier assertions. */
 function decode(data: number[]): { line: number; char: number; len: number; type: number }[] {
@@ -15,8 +15,8 @@ function decode(data: number[]): { line: number; char: number; len: number; type
   for (let i = 0; i < data.length; i += 5) {
     const deltaLine = data[i];
     const deltaChar = data[i + 1];
-    const len       = data[i + 2];
-    const type      = data[i + 3];
+    const len = data[i + 2];
+    const type = data[i + 3];
     line += deltaLine;
     char = deltaLine === 0 ? char + deltaChar : deltaChar;
     tokens.push({ line, char, len, type });
@@ -44,15 +44,15 @@ describe("getSemanticTokens", () => {
     it("emits tokens for multiple globals on one line", () => {
       // "c" and "location" are both globals.
       const tokens = decode(getSemanticTokens(testIndex, FILE, "c = location;\n"));
-      const types = tokens.map(t => t.type);
+      const types = tokens.map((t) => t.type);
       expect(types).toContain(PROP);
-      expect(tokens.filter(t => t.type === PROP)).toHaveLength(2);
+      expect(tokens.filter((t) => t.type === PROP)).toHaveLength(2);
     });
 
     it("highlights the same global on multiple lines", () => {
       const src = "c = 1;\nc = 2;\n";
       const tokens = decode(getSemanticTokens(testIndex, FILE, src));
-      const props = tokens.filter(t => t.type === PROP);
+      const props = tokens.filter((t) => t.type === PROP);
       expect(props).toHaveLength(2);
       expect(props[0].line).toBe(0);
       expect(props[1].line).toBe(1);
@@ -64,7 +64,7 @@ describe("getSemanticTokens", () => {
       // "NOPE" is a constant in testIndex.
       const tokens = decode(getSemanticTokens(testIndex, FILE, "x = NOPE;\n"));
       expect(tokens).toContainEqual(expect.objectContaining({ type: ENUM }));
-      const nope = tokens.find(t => t.type === ENUM);
+      const nope = tokens.find((t) => t.type === ENUM);
       expect(nope?.len).toBe(4); // "NOPE"
     });
   });
@@ -75,7 +75,7 @@ describe("getSemanticTokens", () => {
       // Provide source with enough lines to reach line 57.
       const src = "\n".repeat(57) + "  a = b;\n";
       const tokens = decode(getSemanticTokens(testIndex, FILE, src));
-      const vars = tokens.filter(t => t.type === VAR);
+      const vars = tokens.filter((t) => t.type === VAR);
       // "a" and "b" are locals of MyFunc.
       expect(vars.length).toBeGreaterThanOrEqual(2);
     });
@@ -85,7 +85,7 @@ describe("getSemanticTokens", () => {
       // On line 1 they should not be colored.
       const src = "a = b;\n";
       const tokens = decode(getSemanticTokens(testIndex, FILE, src));
-      const vars = tokens.filter(t => t.type === VAR);
+      const vars = tokens.filter((t) => t.type === VAR);
       expect(vars).toHaveLength(0);
     });
   });
@@ -95,9 +95,7 @@ describe("getSemanticTokens", () => {
       // "c" is a global; add a routine whose local is also named "c".
       const idx = {
         ...testIndex,
-        routines: [
-          { name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["c"] },
-        ],
+        routines: [{ name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["c"] }],
       };
       // Line 0 (0-based) is inside Shadow (start_line=1, end_line=2 → 0-based 0-1).
       const tokens = decode(getSemanticTokens(idx, FILE, "c = 1;\n"));
@@ -109,9 +107,7 @@ describe("getSemanticTokens", () => {
       // "NOPE" is a constant; add a routine with a local also named "NOPE".
       const idx = {
         ...testIndex,
-        routines: [
-          { name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["NOPE"] },
-        ],
+        routines: [{ name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["NOPE"] }],
       };
       const tokens = decode(getSemanticTokens(idx, FILE, "NOPE = 0;\n"));
       expect(tokens).toHaveLength(1);
@@ -123,9 +119,7 @@ describe("getSemanticTokens", () => {
       // On line 2 (outside Shadow) the same name should be highlighted as PROP.
       const idx = {
         ...testIndex,
-        routines: [
-          { name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["c"] },
-        ],
+        routines: [{ name: "Shadow", file: FILE, start_line: 1, end_line: 2, locals: ["c"] }],
       };
       // line 0: inside Shadow → VAR; line 2: outside → PROP
       const src = "c;\n\nc;\n";
@@ -164,7 +158,7 @@ describe("getSemanticTokens", () => {
       // 'c' inside single quotes should not be colored.
       const tokens = decode(getSemanticTokens(testIndex, FILE, src));
       // "noun" might not be in the index; only check no token covers the 'c'.
-      const cTokens = tokens.filter(t => t.char === src.indexOf("'c'") + 1 && t.len === 1);
+      const cTokens = tokens.filter((t) => t.char === src.indexOf("'c'") + 1 && t.len === 1);
       expect(cTokens).toHaveLength(0);
     });
 
@@ -172,7 +166,7 @@ describe("getSemanticTokens", () => {
       // Global before the comment should still be highlighted.
       const src = "c = 1; ! c is also here\n";
       const tokens = decode(getSemanticTokens(testIndex, FILE, src));
-      const props = tokens.filter(t => t.type === PROP);
+      const props = tokens.filter((t) => t.type === PROP);
       // Only the first "c" (before !) should be highlighted.
       expect(props).toHaveLength(1);
       expect(props[0].char).toBe(0);
@@ -226,7 +220,7 @@ describe("getSemanticTokens", () => {
         globals: [],
         constants: [],
         routines: [
-          { name: "Late",  file: FILE, start_line: 5, end_line: 6, locals: ["late_var"] },
+          { name: "Late", file: FILE, start_line: 5, end_line: 6, locals: ["late_var"] },
           { name: "Early", file: FILE, start_line: 1, end_line: 2, locals: ["early_var"] },
         ],
       };
@@ -235,7 +229,7 @@ describe("getSemanticTokens", () => {
         "",
         "",
         "",
-        "late_var;",  // line 4 — inside Late  (1-based 5-6 → 0-based 4-5)
+        "late_var;", // line 4 — inside Late  (1-based 5-6 → 0-based 4-5)
         "",
       ].join("\n");
 
@@ -248,8 +242,7 @@ describe("getSemanticTokens", () => {
       expect(decoded[1]).toMatchObject({ line: 4, type: VAR }); // late_var
 
       // deltaLine values in the raw output must all be non-negative.
-      for (let i = 0; i < raw.length; i += 5)
-        expect(raw[i]).toBeGreaterThanOrEqual(0);
+      for (let i = 0; i < raw.length; i += 5) expect(raw[i]).toBeGreaterThanOrEqual(0);
     });
   });
 
@@ -260,7 +253,7 @@ describe("getSemanticTokens", () => {
       // Globals are matched by name regardless of file, but locals would be wrong file.
       // The global/constant scan doesn't filter by file — this is expected behavior.
       // Just verify no locals from MyFunc (which is on FILE) bleed into other files.
-      const vars = tokens.filter(t => t.type === VAR);
+      const vars = tokens.filter((t) => t.type === VAR);
       expect(vars).toHaveLength(0);
     });
   });
