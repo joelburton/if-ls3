@@ -5,6 +5,8 @@
 
 Include "Parser";
 
+! I'm a comment
+
 !! This is the doc comment for TheRoom
 
 Object TheRoom "The Room"
@@ -64,6 +66,8 @@ Constant NOT_SET_CONST;
     Foo();
     ! if (true) { print "true"; }
 ];
+
+!! This is a stupid routine and you should ignore it.
 
 [ An; print "ANNN"; ];
 
