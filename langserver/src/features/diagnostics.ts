@@ -77,6 +77,11 @@ export function pushDiagnostics(
 
   // --- #IfDef / #IfNDef unknown-constant warnings ---
   //
+  // The Inform 6 compiler silently accepts any name in #IfDef/#IfNDef, even
+  // typos, because an unknown constant is treated as 0 (false).  We catch
+  // this class of mistake here by scanning raw source text and checking every
+  // conditional-compilation name against the union of known symbols.
+  //
   // "Known" = appears in ANY compilation's symbol table OR in any
   // compilation's externalDefines.  A name known in at least one
   // compilation is intentional; we only warn when it's unknown everywhere.

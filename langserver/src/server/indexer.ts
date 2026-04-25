@@ -80,7 +80,9 @@ export function reindex(
 
       try {
         const index = JSON.parse(stdout) as CompilerIndex;
-        // Drop compiler-generated veneer routines (no source file).
+        // Drop compiler-generated veneer routines — runtime support code that
+        // the compiler injects with no corresponding source location.  They are
+        // not user-callable and would clutter completions and workspace search.
         index.routines = index.routines.filter(r => r.file);
         log(
           `[indexer] OK (${label}): ${index.routines.length} routines, ` +

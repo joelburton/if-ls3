@@ -1,5 +1,10 @@
 /**
- * Static keyword/directive hover help for Inform6.
+ * Static keyword/directive hover help and completions for Inform6.
+ *
+ * Hand-written from the Inform 6 Designer's Manual (DM4) and the Inform 6.4x
+ * release notes.  To add or update an entry, edit the relevant constant below.
+ * To add an entirely new keyword category, add entries to KEYWORD_HELP and/or
+ * KEYWORD_COMPLETIONS following the existing patterns.
  *
  * Keys are lowercase. Lookup is case-insensitive.
  * Directive entries are keyable without the leading `#` because wordAtPosition
