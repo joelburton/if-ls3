@@ -81,6 +81,14 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.toggleGrayInactiveBranches", async () => {
+      const config = vscode.workspace.getConfiguration("inform6");
+      const current = config.get<boolean>("grayInactiveBranches", true);
+      await config.update("grayInactiveBranches", !current, vscode.ConfigurationTarget.Global);
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand("inform6.applyBranchFolds", async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || editor.document.languageId !== "inform6") return;

@@ -51,6 +51,10 @@
       {
         "command": "inform6.applyBranchFolds",
         "title": "Inform 6: Fold Inactive Branches"
+      },
+      {
+        "command": "inform6.toggleGrayInactiveBranches",
+        "title": "Inform 6: Toggle Inactive Branch Graying"
       }
     ],
     "configuration": {
