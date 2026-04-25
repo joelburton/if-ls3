@@ -45,6 +45,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
       "dictionary",
       "errors",
       "grammar_action_refs",
+      "includes",
       "references",
     ]) {
       expect(idx).toHaveProperty(key);

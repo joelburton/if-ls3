@@ -568,6 +568,10 @@ extern int parse_given_directive(int internal_flag)
             return ebf_error_recover("filename in double-quotes");
 
         {   char *name = token_text;
+            debug_location str_loc;
+
+            if (index_switch)
+                str_loc = get_last_token_start_location();
 
             get_next_token();
             if (!((token_type == SEP_TT) && (token_value == SEMICOLON_SEP)))
@@ -578,6 +582,10 @@ extern int parse_given_directive(int internal_flag)
             else if (name[0] == '>')
                  load_sourcefile(name+1, 1);
             else load_sourcefile(name, 0);
+
+            if (index_switch)
+                index_note_include(name, str_loc);
+
             return FALSE;
         }
 

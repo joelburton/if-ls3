@@ -1,6 +1,18 @@
 import { Location } from "vscode-languageserver";
-import type { CompilerIndex } from "../server/types";
+import type { CompilerIndex, IncludeInfo } from "../server/types";
 import { loc, resolveSymbol } from "./symbolLookup";
+
+/**
+ * Return the includes[] entry whose `from_file` and `from_line` match the
+ * cursor position, or undefined if the cursor is not on an Include line.
+ */
+export function includeAtLine(
+  index: CompilerIndex,
+  filePath: string,
+  line1: number, // 1-based
+): IncludeInfo | undefined {
+  return index.includes?.find((inc) => inc.from_file === filePath && inc.from_line === line1);
+}
 
 /**
  * Find the definition location for `word`.

@@ -193,6 +193,36 @@ extern void index_note_action_sym_ref(const char *name)
 }
 
 /* --------------------------------------------------------------------- */
+/*   Include-directive capture                                           */
+/* --------------------------------------------------------------------- */
+
+typedef struct index_include_s {
+    char *from_file;     /* absolute path of the including file */
+    int32 from_line;     /* 1-based line of the Include string literal */
+    int32 from_col;      /* 0-based column of the opening " */
+    char *given;         /* raw argument string (e.g. "parser" or ">local") */
+    char *resolved;      /* absolute path of the included file */
+    int   file_index;    /* 0-based index into files[] */
+} index_include;
+
+static index_include *includes_info;
+static int includes_count;
+static memory_list includes_memlist;
+
+extern void index_note_include(const char *given, debug_location str_loc)
+{   index_include *inc;
+    ensure_memory_list_available(&includes_memlist, includes_count + 1);
+    inc = &includes_info[includes_count];
+    inc->from_file  = index_strdup(InputFiles[str_loc.file_index - 1].filename);
+    inc->from_line  = str_loc.beginning_line_number;
+    inc->from_col   = str_loc.beginning_character_number - 1;
+    inc->given      = index_strdup(given);
+    inc->file_index = total_input_files - 1;   /* 0-based, matches files[] */
+    inc->resolved   = index_strdup(InputFiles[total_input_files - 1].filename);
+    includes_count++;
+}
+
+/* --------------------------------------------------------------------- */
 /*   Error/warning capture for JSON output                               */
 /* --------------------------------------------------------------------- */
 
@@ -1019,6 +1049,25 @@ extern void index_output_json(void)
     }
     printf("\n  ],\n");
 
+    /* --- includes --- */
+    printf("  \"includes\": [\n");
+    first = TRUE;
+    for (i = 0; i < includes_count; i++)
+    {   index_include *inc = &includes_info[i];
+        if (!first) printf(",\n");
+        first = FALSE;
+        printf("    {\"from_file\": ");
+        json_print_abs_path(inc->from_file);
+        printf(", \"from_line\": %d, \"from_col\": %d",
+            (int)inc->from_line, (int)inc->from_col);
+        printf(", \"given\": ");
+        json_print_escaped_string(inc->given);
+        printf(", \"resolved\": ");
+        json_print_abs_path(inc->resolved);
+        printf(", \"file_index\": %d}", inc->file_index);
+    }
+    printf("\n  ],\n");
+
     /* --- references --- */
     qsort(sym_refs, sym_refs_count, sizeof(index_sym_ref), compare_sym_refs);
     printf("  \"references\": [\n");
@@ -1102,6 +1151,8 @@ extern void init_index_vars(void)
     formal_property_marks = NULL;
     trailing_docs = NULL;
     errors_info = NULL;
+    includes_info = NULL;
+    includes_count = 0;
     action_refs = NULL;
     sym_refs = NULL;
     pending_object_doc = NULL;
@@ -1138,6 +1189,7 @@ extern void index_begin_pass(void)
     trailing_doc_line = 0;
     trailing_docs_count = 0;
     errors_info_count = 0;
+    includes_count = 0;
     action_refs_count = 0;
     sym_refs_count = 0;
 }
@@ -1185,6 +1237,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&trailing_docs_list_memlist,
         sizeof(trailing_doc_entry), MAX_TRAILING_DOCS,
         (void **)&trailing_docs, "index trailing docs");
+    initialise_memory_list(&includes_memlist,
+        sizeof(index_include), 64,
+        (void **)&includes_info, "index includes");
     initialise_memory_list(&errors_info_memlist,
         sizeof(index_error), MAX_INDEX_ERRORS,
         (void **)&errors_info, "index errors");
@@ -1230,6 +1285,11 @@ extern void index_free_arrays(void)
     {   if (errors_info[i].file) free(errors_info[i].file);
         free(errors_info[i].message);
     }
+    for (i = 0; i < includes_count; i++)
+    {   free(includes_info[i].from_file);
+        free(includes_info[i].given);
+        free(includes_info[i].resolved);
+    }
     if (pending_object_doc) free(pending_object_doc);
     deallocate_memory_list(&routines_info_memlist);
     deallocate_memory_list(&locals_pool_memlist);
@@ -1246,6 +1306,7 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&formal_property_marks_memlist);
     deallocate_memory_list(&trailing_docs_list_memlist);
     deallocate_memory_list(&errors_info_memlist);
+    deallocate_memory_list(&includes_memlist);
     deallocate_memory_list(&action_refs_memlist);
     deallocate_memory_list(&sym_refs_memlist);
 }

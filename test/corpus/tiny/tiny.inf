@@ -33,6 +33,12 @@ Room TheRoom "The Room"
 
 [ Main;
   print foo, MY_CONST, arr-->0;
+  #IfDef DEBUG;
+    print TheRoom.description();
+  #EndIf;
+  #IfDef NOT_KNOWN;
+    print TheRoom.description();
+  #EndIF;
   MyFunc();
 ];
 

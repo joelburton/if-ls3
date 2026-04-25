@@ -20,9 +20,9 @@ import type { CompilerIndex } from "./types";
 import { loadConfig, type WorkspaceConfig } from "../workspace/config";
 import { reindex } from "./indexer";
 import { pushDiagnostics, type Compilation } from "../features/diagnostics";
-import { findDefinition } from "../features/definition";
-import { enclosingObject } from "../features/symbolLookup";
-import { findHover } from "../features/hover";
+import { findDefinition, includeAtLine } from "../features/definition";
+import { enclosingObject, loc } from "../features/symbolLookup";
+import { findHover, findIncludeHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
@@ -136,6 +136,11 @@ connection.onDefinition((params: DefinitionParams) => {
   if (fileIndex === -1) return null;
 
   const line1 = params.position.line + 1;
+
+  // Include directive: cursor on an Include "..." line → navigate to the file.
+  const inc = includeAtLine(index, filePath, line1);
+  if (inc) return loc(inc.resolved, 1);
+
   const ref = refAtPosition(index, fileIndex, line1, params.position.character);
 
   // Extract word and object/class context from source text — needed for both
@@ -191,6 +196,10 @@ connection.onHover((params: HoverParams) => {
 
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   const line1 = params.position.line + 1;
+
+  // Include directive: cursor on an Include "..." line → show resolved path.
+  const incHover = includeAtLine(index, filePath, line1);
+  if (incHover) return findIncludeHover(incHover, workspaceRoot ?? "");
 
   // If the cursor is on a compiler-tracked reference, use the exact symbol
   // name directly — no comment check or word-boundary heuristics needed.

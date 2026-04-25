@@ -2561,6 +2561,7 @@ extern void  index_note_object(char *name, const char *shortname, int symbol,
                  int is_class, int parent, brief_location start);
 extern void  index_note_error(const char *file, int32 line,
                  const char *msg, int severity);
+extern void  index_note_include(const char *given, debug_location str_loc);
 extern void  index_note_grammar_action_ref(brief_location loc);
 extern void  index_note_symbol_ref(int symindex);
 extern void  index_note_action_sym_ref(const char *name);

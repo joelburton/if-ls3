@@ -1,6 +1,6 @@
 import * as path from "node:path";
 import { Hover, MarkupKind } from "vscode-languageserver";
-import type { CompilerIndex } from "../server/types";
+import type { CompilerIndex, IncludeInfo } from "../server/types";
 import { findKeywordHover, findPrintRuleHover } from "./keywords";
 
 function md(parts: string[]): Hover {
@@ -22,6 +22,15 @@ function rel(filePath: string, workspaceRoot: string): string {
   const relative = path.relative(workspaceRoot, filePath);
   const leadingUps = relative.split(path.sep).filter((s) => s === "..").length;
   return leadingUps > 2 ? filePath : relative;
+}
+
+/**
+ * Build a hover response for an `Include "..."` directive line.
+ * Shows the resolved absolute path and the path relative to the workspace.
+ */
+export function findIncludeHover(inc: IncludeInfo, workspaceRoot: string): Hover {
+  const display = rel(inc.resolved, workspaceRoot);
+  return md([`**Include** \`"${inc.given}"\``, `→ *${display}*`]);
 }
 
 export function findHover(
