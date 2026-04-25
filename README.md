@@ -58,6 +58,7 @@ make langserver   Compile TypeScript and bundle the language server
 make ext          Package the VS Code extension as a .vsix
 make ext-install  Package and install the extension into VS Code
 make test         Run the vitest test suite
+make clean        Remove all generated artifacts
 ```
 
 Or drive the steps individually:
@@ -125,6 +126,27 @@ language-servers = ["inform6-lsp"]
 command = "node"
 args    = ["/path/to/repo/langserver/bundled-server/server.cjs", "--stdio"]
 ```
+
+### IntelliJ-based IDEs (LSP4IJ)
+
+**Language server**
+
+1. Install the [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij) plugin
+   from the JetBrains Marketplace (*Settings → Plugins → Marketplace*).
+
+2. Open *Settings → Languages & Frameworks → Language Servers* and add a new
+   server:
+   - **Name**: Inform 6
+   - **Command**: `node /path/to/repo/langserver/bundled-server/server.cjs --stdio`
+   - **File name patterns**: `*.inf`, `*.h`
+
+**Syntax highlighting (TextMate bundle)**
+
+Run `make langserver` first (or `npm run build` inside `langserver/`) to
+produce the bundle, then:
+
+1. Open *Settings → Editor → TextMate Bundles* and click **+**.
+2. Point it at `langserver/textmate-dist/inform6.tmbundle`.
 
 ---
 
