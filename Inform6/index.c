@@ -382,6 +382,21 @@ static const char *symbol_type_name(int type)
     }
 }
 
+/* Emit ", "doc": "..." if a doc comment exists for the given symbol index */
+static void json_print_symbol_doc(int sym_index)
+{   const char *doc = NULL;
+    if (sym_index < (int)symbol_docs_memlist.count && symbol_docs[sym_index]
+        && symbol_docs[sym_index][0] != '\0')
+        doc = symbol_docs[sym_index];
+    if (!doc && symbols[sym_index].line.file_index > 0)
+        doc = find_trailing_doc(symbols[sym_index].line.file_index,
+            symbols[sym_index].line.line_number);
+    if (doc)
+    {   printf(", \"doc\": ");
+        json_print_escaped_string(doc);
+    }
+}
+
 /* ------------------------------------------------------------------------- */
 /*   Capture routine info during parsing                                     */
 /* ------------------------------------------------------------------------- */
@@ -568,18 +583,7 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
         }
-        {   const char *doc = NULL;
-            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
-                && symbol_docs[i][0] != '\0')
-                doc = symbol_docs[i];
-            if (!doc && symbols[i].line.file_index > 0)
-                doc = find_trailing_doc(symbols[i].line.file_index,
-                    symbols[i].line.line_number);
-            if (doc)
-            {   printf(", \"doc\": ");
-                json_print_escaped_string(doc);
-            }
-        }
+        json_print_symbol_doc(i);
         printf("}");
     }
     printf("\n  ],\n");
@@ -731,18 +735,7 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
         }
-        {   const char *doc = NULL;
-            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
-                && symbol_docs[i][0] != '\0')
-                doc = symbol_docs[i];
-            if (!doc && symbols[i].line.file_index > 0)
-                doc = find_trailing_doc(symbols[i].line.file_index,
-                    symbols[i].line.line_number);
-            if (doc)
-            {   printf(", \"doc\": ");
-                json_print_escaped_string(doc);
-            }
-        }
+        json_print_symbol_doc(i);
         printf("}");
     }
     printf("\n  ],\n");
@@ -768,18 +761,7 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[i].line.line_number);
         }
-        {   const char *doc = NULL;
-            if (i < (int)symbol_docs_memlist.count && symbol_docs[i]
-                && symbol_docs[i][0] != '\0')
-                doc = symbol_docs[i];
-            if (!doc && symbols[i].line.file_index > 0)
-                doc = find_trailing_doc(symbols[i].line.file_index,
-                    symbols[i].line.line_number);
-            if (doc)
-            {   printf(", \"doc\": ");
-                json_print_escaped_string(doc);
-            }
-        }
+        json_print_symbol_doc(i);
         printf("}");
     }
     printf("\n  ],\n");
@@ -809,18 +791,7 @@ extern void index_output_json(void)
             printf(", \"line\": %d",
                 (int)symbols[sym].line.line_number);
         }
-        {   const char *doc = NULL;
-            if (sym < (int)symbol_docs_memlist.count && symbol_docs[sym]
-                && symbol_docs[sym][0] != '\0')
-                doc = symbol_docs[sym];
-            if (!doc && symbols[sym].line.file_index > 0)
-                doc = find_trailing_doc(symbols[sym].line.file_index,
-                    symbols[sym].line.line_number);
-            if (doc)
-            {   printf(", \"doc\": ");
-                json_print_escaped_string(doc);
-            }
-        }
+        json_print_symbol_doc(sym);
         printf("}");
     }
     printf("\n  ],\n");
