@@ -1,0 +1,278 @@
+{
+  "Game skeleton": {
+    "prefix": "zz!!",
+    "body": [
+      "Constant Story \"${1:Game Title}\";",
+      "Constant Headline \"^${2:A game by Author}^\";",
+      "",
+      "Include \"Parser\";",
+      "Include \"VerbLib\";",
+      "",
+      "Object ${3:TheRoom} \"${4:Room Name}\"",
+      "  with",
+      "    description \"${5:Description.}\",",
+      "  has light;",
+      "",
+      "[ Initialise ;",
+      "    location = ${3:TheRoom};",
+      "];",
+      "",
+      "Include \"Grammar\";",
+      "${0}"
+    ],
+    "description": "New game skeleton (Includes, starting room, Initialise)"
+  },
+  "Object": {
+    "prefix": "zzObject",
+    "body": [
+      "Object ${1:Name} \"${2:short name}\"",
+      "  with",
+      "    ${3:description} ${0},",
+      ";"
+    ],
+    "description": "Declare a game object"
+  },
+  "Class": {
+    "prefix": "zzClass",
+    "body": [
+      "Class ${1:Name}",
+      "  with",
+      "    ${2:property} ${0},",
+      ";"
+    ],
+    "description": "Declare an object class"
+  },
+  "Routine": {
+    "prefix": "zzRoutine",
+    "body": [
+      "[ ${1:name} ${2:args} ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Declare a standalone routine"
+  },
+  "Verb": {
+    "prefix": "zzVerb",
+    "body": [
+      "Verb '${1:word}'",
+      "    * ${2:grammar} -> ${3:Action}",
+      ";"
+    ],
+    "description": "Define a verb with grammar"
+  },
+  "ChooseObjects": {
+    "prefix": "zzChooseObjects",
+    "body": [
+      "!! Influence parser's object disambiguation.",
+      "!! code=0: filter (return 0 to exclude, 1 to allow);",
+      "!! code=1: accept a single-object match? (return 0 or 1);",
+      "!! code=2: rank (return 0-9, higher = preferred).",
+      "",
+      "[ ChooseObjects obj code ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: influence parser's object disambiguation (code: 0=filter, 1=accept?, 2=rank)"
+  },
+  "ParseNoun": {
+    "prefix": "zzParseNoun",
+    "body": [
+      "!! Custom noun-parsing for obj. Called when the parser tries to match",
+      "!! words to obj. Return the number of words matched, or -1 to fall",
+      "!! through to the default name-matching algorithm.",
+      "",
+      "[ ParseNoun obj ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: custom noun parsing for obj, return number of words matched or -1"
+  },
+  "ParserError": {
+    "prefix": "zzParserError",
+    "body": [
+      "!! Override parser error messages. error_type is one of the CANTSEE_PE,",
+      "!! TOOLIT_PE, etc. constants. Print a replacement message and return",
+      "!! true to suppress the default, or return false to let it print.",
+      "",
+      "[ ParserError error_type ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: override parser error messages, return true to suppress default"
+  },
+  "PrintVerb": {
+    "prefix": "zzPrintVerb",
+    "body": [
+      "!! Print a custom verb name for trace output and the ACTIONS debugging",
+      "!! command. verb is the dictionary word. Return true if handled.",
+      "",
+      "[ PrintVerb verb ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: print custom verb name in action traces, return true if handled"
+  },
+  "UnknownVerb": {
+    "prefix": "zzUnknownVerb",
+    "body": [
+      "!! Handle an unrecognised verb. word is the dictionary value of what",
+      "!! the player typed. Return a dictionary verb word to redirect to,",
+      "!! or false to let the parser print its error.",
+      "",
+      "[ UnknownVerb word ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: handle unrecognised verb, return a verb word or false"
+  },
+  "InScope": {
+    "prefix": "zzInScope",
+    "body": [
+      "!! Add extra objects to scope for the given actor. Call",
+      "!! PlaceInScope(obj) for each object to add. Return false",
+      "!! to also include the default scope, or true to replace it.",
+      "",
+      "[ InScope actor ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: add extra objects to scope via PlaceInScope()"
+  },
+  "GamePreRoutine": {
+    "prefix": "zzGamePreRoutine",
+    "body": [
+      "!! Runs before each action, after before rules on the noun but",
+      "!! before the action's main routine. Return true to block the action.",
+      "",
+      "[ GamePreRoutine ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs before each action, return true to block"
+  },
+  "GamePostRoutine": {
+    "prefix": "zzGamePostRoutine",
+    "body": [
+      "!! Runs after each action completes (after the action routine and",
+      "!! after rules). Return value is ignored.",
+      "",
+      "[ GamePostRoutine ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs after each action"
+  },
+  "AfterLife": {
+    "prefix": "zzAfterLife",
+    "body": [
+      "!! Runs when the player dies (deadflag becomes nonzero). Return true",
+      "!! to resurrect the player (reset deadflag to 0 first).",
+      "",
+      "[ AfterLife ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs when player dies, return true to resurrect"
+  },
+  "DarkToDark": {
+    "prefix": "zzDarkToDark",
+    "body": [
+      "!! Runs when the player moves from one dark room to another.",
+      "!! Conventionally used to kill the player (\"you fall into a pit\").",
+      "",
+      "[ DarkToDark ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs when player moves from one dark room to another"
+  },
+  "NewRoom": {
+    "prefix": "zzNewRoom",
+    "body": [
+      "!! Runs each time the player enters a new room, after the room",
+      "!! description is printed. Useful for triggering events on arrival.",
+      "",
+      "[ NewRoom ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs each time the player enters a new room"
+  },
+  "TimePasses": {
+    "prefix": "zzTimePasses",
+    "body": [
+      "!! Runs each turn after action processing. Use for daemons, timed",
+      "!! events, or anything that should happen every turn regardless",
+      "!! of what the player does.",
+      "",
+      "[ TimePasses ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: runs each turn after action processing"
+  },
+  "PrintTaskName": {
+    "prefix": "zzPrintTaskName",
+    "body": [
+      "!! Print the name of scored task number task (0-based) for the",
+      "!! FULL SCORE verb. Called once per achieved task.",
+      "",
+      "[ PrintTaskName task ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: print the name of a scored task"
+  },
+  "Amusing": {
+    "prefix": "zzAmusing",
+    "body": [
+      "!! Display amusing things to try after the player wins. Called",
+      "!! when the player answers YES to \"Would you like to see some",
+      "!! suggestions for amusing things to do?\"",
+      "",
+      "[ Amusing ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: display amusing things to try after winning"
+  },
+  "DeathMessage": {
+    "prefix": "zzDeathMessage",
+    "body": [
+      "!! Print custom death messages. Called when deadflag > 2;",
+      "!! print the message corresponding to the deadflag value.",
+      "!! (deadflag=1 is ~You have died~, 2 is ~You have won~.)",
+      "",
+      "[ DeathMessage ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: print custom death messages for deadflag values > 2"
+  },
+  "ObjectDoesNotFit": {
+    "prefix": "zzObjectDoesNotFit",
+    "body": [
+      "!! Custom capacity check. Called when the player tries to put item",
+      "!! into receiver and the default capacity check fails. Print a",
+      "!! custom message and return true to block, or false for the default.",
+      "",
+      "[ ObjectDoesNotFit item receiver ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: custom capacity check, return true to block and print message"
+  },
+  "ParseNumber": {
+    "prefix": "zzParseNumber",
+    "body": [
+      "!! Parse a custom number format. buf is the text buffer, len is",
+      "!! the word length. Return the parsed value, or 0 to fall through",
+      "!! to the default number parser.",
+      "",
+      "[ ParseNumber buf len ;",
+      "    ${0}",
+      "];"
+    ],
+    "description": "Entry point: parse a custom number format, return value or 0 to fall through"
+  }
+}
