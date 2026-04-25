@@ -3,6 +3,9 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/node";
+import { inactiveLineRange } from "../src/features/conditionals";
+
+type Conditional = Parameters<typeof inactiveLineRange>[0];
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel;
@@ -11,30 +14,6 @@ const inactiveDecoration = vscode.window.createTextEditorDecorationType({
   opacity: "0.4",
   isWholeLine: true,
 });
-
-type Conditional = {
-  active: "if" | "else" | "none";
-  start_line: number;
-  else_line?: number;
-  end_line: number;
-};
-
-function inactiveRange(c: Conditional): vscode.Range | null {
-  let startLine: number, endLine: number;
-  if (c.active === "none") {
-    startLine = c.start_line - 1;
-    endLine   = c.end_line   - 1;
-  } else if (c.active === "if" && c.else_line !== undefined) {
-    startLine = c.else_line - 1;
-    endLine   = c.end_line  - 1;
-  } else if (c.active === "else") {
-    startLine = c.start_line                         - 1;
-    endLine   = (c.else_line ?? c.end_line)          - 1;
-  } else {
-    return null; // active "if" with no else — nothing to gray
-  }
-  return new vscode.Range(startLine, 0, endLine, Number.MAX_SAFE_INTEGER);
-}
 
 async function applyInactiveDecorations(editor: vscode.TextEditor): Promise<void> {
   if (editor.document.languageId !== "inform6" || !client) return;
@@ -55,8 +34,8 @@ async function applyInactiveDecorations(editor: vscode.TextEditor): Promise<void
 
   const ranges: vscode.Range[] = [];
   for (const c of conditionals ?? []) {
-    const r = inactiveRange(c);
-    if (r) ranges.push(r);
+    const r = inactiveLineRange(c);
+    if (r) ranges.push(new vscode.Range(r.startLine, 0, r.endLine, Number.MAX_SAFE_INTEGER));
   }
   editor.setDecorations(inactiveDecoration, ranges);
 }

@@ -31,6 +31,7 @@ import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment } f
 import { getSemanticTokens } from "../features/semanticTokens";
 import { findReferences, refAtPosition } from "../features/references";
 import { getFoldingRanges } from "../features/foldingRanges";
+import { getConditionalsForFile } from "../features/conditionals";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -290,8 +291,7 @@ connection.onFoldingRanges((params: FoldingRangeParams) => {
 connection.onRequest("inform6/getConditionals", (params: { uri: string }) => {
   const index = indexForDocument(params.uri);
   if (!index) return [];
-  const filePath = URI.parse(params.uri).fsPath;
-  return (index.conditionals ?? []).filter((c) => c.file === filePath);
+  return getConditionalsForFile(index, URI.parse(params.uri).fsPath);
 });
 
 documents.listen(connection);
