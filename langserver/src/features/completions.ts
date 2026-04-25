@@ -100,6 +100,15 @@ export function isAfterHashHash(lineText: string, col: number): boolean {
   return lineText.slice(0, col).replace(/\w*$/, "").endsWith("##");
 }
 
+/**
+ * True when the cursor immediately follows `->` (Inform 6 grammar action
+ * arrow).  Also matches `obj->prop` — action names are prepended to the
+ * general list rather than replacing it, so property access still works.
+ */
+export function isAfterArrow(lineText: string, col: number): boolean {
+  return lineText.slice(0, col).replace(/\w*$/, "").trimEnd().endsWith("->");
+}
+
 // ---------------------------------------------------------------------------
 // has-clause detection
 // ---------------------------------------------------------------------------
@@ -163,6 +172,8 @@ export function isInHasClause(
  * 6. **Top-top** (first token at col 0, outside all bodies): directives,
  *    class names, snippet templates.
  * 7. **General**: in-scope locals, then all user symbols and keywords.
+ *    After `->`, action names are prepended (grammar lines get them first;
+ *    `obj->prop` access still has the full symbol list).
  */
 export function getCompletions(
   index: CompilerIndex,
@@ -293,8 +304,21 @@ export function getCompletions(
   }
 
   // ── General completion ──────────────────────────────────────────────────
+  // After `->`, prepend action names so grammar lines get them prominently
+  // while obj->prop access still has the full symbol list available.
   const items: CompletionItem[] = [];
-  const seen = new Set<string>();
+  if (isAfterArrow(lineText, col)) {
+    const seen = new Set<string>();
+    for (const s of index.symbols) {
+      if (s.type !== "fake_action") continue;
+      const name = s.name.toLowerCase().endsWith("__a") ? s.name.slice(0, -3) : s.name;
+      if (seen.has(name.toLowerCase())) continue;
+      seen.add(name.toLowerCase());
+      items.push({ label: name, kind: CompletionItemKind.EnumMember });
+    }
+  }
+
+  const seen = new Set<string>(items.map((i) => i.label.toLowerCase()));
 
   const add = (label: string, kind: CompletionItemKind, detail?: string) => {
     const key = label.toLowerCase();

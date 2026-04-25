@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAfterClassKeyword, isAtTopLevel } from "../features/completions";
+import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAfterClassKeyword, isAfterArrow, isAtTopLevel } from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -560,6 +560,51 @@ describe("class keyword completions", () => {
     const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
     expect(items.length).toBeGreaterThan(0);
     expect(items.every((i) => i.kind === CompletionItemKind.Class)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAfterArrow + -> completions
+// ---------------------------------------------------------------------------
+
+describe("isAfterArrow", () => {
+  it("true after '-> '", () => {
+    expect(isAfterArrow("* noun -> ", 10)).toBe(true);
+  });
+
+  it("true with partial action name typed", () => {
+    expect(isAfterArrow("* noun -> Foo", 13)).toBe(true);
+  });
+
+  it("true for obj->prop context", () => {
+    expect(isAfterArrow("x->", 3)).toBe(true);
+  });
+
+  it("false when not after ->", () => {
+    expect(isAfterArrow("* noun ", 7)).toBe(false);
+  });
+});
+
+describe("-> completions", () => {
+  it("prepends action names before the general list", () => {
+    const line = "* noun -> ";
+    const items = getCompletions(testIndex, FILE, pos(11, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    // Action names present
+    expect(labels).toContain("Take");
+    expect(labels).toContain("Foozle");
+    // General list also present (not restricted to actions only)
+    expect(labels).toContain("MyFunc");
+    expect(labels).toContain("location");
+  });
+
+  it("action names appear before general symbols", () => {
+    const line = "* noun -> ";
+    const items = getCompletions(testIndex, FILE, pos(11, line.length), line, singleLine(line));
+    const firstAction = items.findIndex((i) => i.label === "Take" || i.label === "Foozle");
+    const firstRoutine = items.findIndex((i) => i.label === "MyFunc");
+    expect(firstAction).toBeGreaterThanOrEqual(0);
+    expect(firstAction).toBeLessThan(firstRoutine);
   });
 });
 
