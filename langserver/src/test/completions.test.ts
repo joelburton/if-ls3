@@ -128,6 +128,23 @@ describe("getCompletions", () => {
       const items = getCompletions(testIndex, FILE, pos(0, 6), lineText, singleLine(lineText));
       expect(items).toEqual([]);
     });
+
+    it("resolves 'self.' to the enclosing object's properties", () => {
+      // TheRoom spans lines 10-20 (1-based); pos(14, 5) is inside it (0-based line 14 = 1-based line 15).
+      const lineText = "self.";
+      const items = getCompletions(testIndex, FILE, pos(14, 5), lineText, singleLine(lineText));
+      const labels = items.map((i) => i.label);
+      expect(labels).toContain("description");
+      expect(labels).toContain("before");
+      expect(labels).toContain("light");
+    });
+
+    it("returns empty list for 'self.' when cursor is outside any object", () => {
+      // Line 0 is outside all objects.
+      const lineText = "self.";
+      const items = getCompletions(testIndex, FILE, pos(0, 5), lineText, singleLine(lineText));
+      expect(items).toEqual([]);
+    });
   });
 
   // ---------------------------------------------------------------------------

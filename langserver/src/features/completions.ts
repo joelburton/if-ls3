@@ -1,6 +1,7 @@
 import { CompletionItem, CompletionItemKind, Position } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
 import { KEYWORD_COMPLETIONS } from "./keywords";
+import { enclosingObject } from "./symbolLookup";
 
 const isIdChar = (c: string) => /\w/.test(c);
 
@@ -83,7 +84,10 @@ export function getCompletions(
     const end = col - 1;
     let start = end;
     while (start > 0 && isIdChar(lineText[start - 1])) start--;
-    const objName = lineText.slice(start, end).toLowerCase();
+    const rawName = lineText.slice(start, end).toLowerCase();
+    const objName = rawName === "self"
+      ? (enclosingObject(index, filePath, position.line + 1)?.name.toLowerCase() ?? rawName)
+      : rawName;
 
     const obj = index.objects.find((o) => o.name.toLowerCase() === objName);
     if (!obj) return [];
