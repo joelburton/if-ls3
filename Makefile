@@ -1,4 +1,4 @@
-.PHONY: compiler langserver ext ext-install test
+.PHONY: compiler langserver ext ext-install test clean
 
 compiler:
 	$(MAKE) -C Inform6
@@ -14,3 +14,10 @@ ext-install: ext
 
 test:
 	cd langserver && npm test
+
+clean:
+	rm -f  Inform6/inform6
+	rm -rf langserver/out
+	rm -rf langserver/bundled-server
+	rm -rf langserver/textmate-dist
+	rm -f  langserver/*.vsix
