@@ -28,8 +28,11 @@ Object SimpleRoom;
 
 Constant NOPE;
 
-[Foo;
+[Foo x;
   if (action == ##Jump) print "hello";
+  switch (x) {
+    TheRoom: "Hey";
+  }
   Achieved(x);
 ];
 
@@ -62,12 +65,20 @@ Constant NOT_SET_CONST;
     ! if (true) { print "true"; }
 ];
 
+[ An; print "ANNN"; ];
 
 [ Initialise a b ;
+    ! print (An) TheRoom, " ";
+    ! print (A) TheRoom;
+    ! print (address) TheRoom;
+    ! print (object) TheRoom;
+    a = description;
+    print (property) a;
     location = TheRoom;
     print a, b, c, NOPE;
     ! if (true) { FoodFood() };
 ];
+
 
 [ MyScopeFunc;
 ];

@@ -128,7 +128,7 @@ export function pushDiagnostics(
  * all compilations: every symbol the compiler defined in any compilation, plus
  * every externalDefines entry from any compilation's config.
  */
-function buildUnionKnownNames(compilations: Compilation[]): Set<string> {
+export function buildUnionKnownNames(compilations: Compilation[]): Set<string> {
   const known = new Set<string>();
   for (const { index, fileConfig } of compilations) {
     for (const sym of index.symbols) known.add(sym.name.toLowerCase());
@@ -141,7 +141,7 @@ function buildUnionKnownNames(compilations: Compilation[]): Set<string> {
  * Scan source text for `#IfDef NAME` / `#IfNDef NAME` directives where NAME
  * is not in the known set.  Returns one Warning diagnostic per unknown name.
  */
-function scanIfDefWarnings(content: string, knownNames: Set<string>): Diagnostic[] {
+export function scanIfDefWarnings(content: string, knownNames: Set<string>): Diagnostic[] {
   const diagnostics: Diagnostic[] = [];
   const lines = content.split("\n");
 
