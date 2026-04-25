@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause } from "../features/completions";
+import { getCompletions, isInHasClause, isAfterProvides } from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -226,6 +226,69 @@ describe("getCompletions", () => {
       expect(items.find((i) => i.label === "light")).toBeDefined();
       expect(items.find((i) => i.label === "container")).toBeDefined();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// provides completions
+// ---------------------------------------------------------------------------
+
+describe("provides completions", () => {
+  it("returns only properties after 'provides'", () => {
+    const line = "if (TheRoom provides ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("description");
+    expect(labels).toContain("my_test");
+    expect(labels).not.toContain("MyFunc");
+    expect(labels).not.toContain("TheRoom");
+    expect(labels).not.toContain("light");
+    expect(labels).not.toContain("if");
+  });
+
+  it("works when a partial property name is already typed", () => {
+    const line = "if (self provides des";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    const labels = items.map((i) => i.label);
+    expect(labels).toContain("description");
+    expect(labels).not.toContain("MyFunc");
+  });
+
+  it("returns Field kind for all items", () => {
+    const line = "if (obj provides ";
+    const items = getCompletions(testIndex, FILE, pos(0, line.length), line, singleLine(line));
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.kind === CompletionItemKind.Field)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isAfterProvides unit tests
+// ---------------------------------------------------------------------------
+
+describe("isAfterProvides", () => {
+  it("true immediately after 'provides '", () => {
+    expect(isAfterProvides("if (obj provides ", 17)).toBe(true);
+  });
+
+  it("true with a partial word already typed", () => {
+    expect(isAfterProvides("if (obj provides des", 20)).toBe(true);
+  });
+
+  it("true with self as the object", () => {
+    expect(isAfterProvides("if (self provides ", 18)).toBe(true);
+  });
+
+  it("false when 'provides' is not the preceding keyword", () => {
+    expect(isAfterProvides("if (obj has ", 12)).toBe(false);
+  });
+
+  it("false when cursor is on the object before provides", () => {
+    expect(isAfterProvides("if (obj ", 8)).toBe(false);
+  });
+
+  it("false when 'provides' appears only in a word (e.g. 'notprovides')", () => {
+    expect(isAfterProvides("if (x notprovides ", 18)).toBe(false);
   });
 });
 

@@ -6,6 +6,20 @@ import { enclosingObject } from "./symbolLookup";
 const isIdChar = (c: string) => /\w/.test(c);
 
 // ---------------------------------------------------------------------------
+// provides-expression detection
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the cursor immediately follows the `provides` keyword (with
+ * optional whitespace and a partial identifier being typed).  Single-line
+ * check only — `provides` is always an inline expression in Inform 6.
+ */
+export function isAfterProvides(lineText: string, col: number): boolean {
+  const before = lineText.slice(0, col).replace(/\w+$/, "").trimEnd();
+  return /\bprovides$/.test(before);
+}
+
+// ---------------------------------------------------------------------------
 // has-clause detection
 // ---------------------------------------------------------------------------
 
@@ -96,6 +110,20 @@ export function getCompletions(
     for (const p of obj.properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
     for (const p of obj.private_properties) items.push({ label: p.name, kind: CompletionItemKind.Field });
     for (const a of obj.attributes) items.push({ label: a.name, kind: CompletionItemKind.EnumMember });
+    return items;
+  }
+
+  // ── Provides expression: properties only ────────────────────────────────
+  if (isAfterProvides(lineText, col)) {
+    const seen = new Set<string>();
+    const items: CompletionItem[] = [];
+    for (const s of index.symbols) {
+      if (s.type !== "property" && s.type !== "individual_property") continue;
+      const key = s.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: s.name, kind: CompletionItemKind.Field });
+    }
     return items;
   }
 
