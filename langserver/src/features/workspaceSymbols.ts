@@ -1,12 +1,6 @@
-import { SymbolInformation, SymbolKind, Location, Range } from "vscode-languageserver";
-import { URI } from "vscode-uri";
+import { SymbolInformation, SymbolKind } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
-
-function loc(file: string, line: number): Location {
-  const uri = URI.file(file).toString();
-  const pos = { line: Math.max(0, line - 1), character: 0 };
-  return Location.create(uri, Range.create(pos, pos));
-}
+import { loc } from "./symbolLookup";
 
 /**
  * Return workspace symbols matching `query` (case-insensitive substring)

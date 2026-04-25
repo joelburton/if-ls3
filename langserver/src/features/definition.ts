@@ -1,12 +1,6 @@
-import { Location, Range } from "vscode-languageserver";
-import { URI } from "vscode-uri";
+import { Location } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
-
-function loc(file: string, line: number): Location {
-  const uri = URI.file(file).toString();
-  const pos = { line: Math.max(0, line - 1), character: 0 };
-  return Location.create(uri, Range.create(pos, pos));
-}
+import { loc, resolveSymbol } from "./symbolLookup";
 
 /**
  * Find the definition location for `word`.
@@ -54,26 +48,17 @@ export function findDefinition(
     }
   }
 
-  const routine = index.routines.find((r) => r.name.toLowerCase() === lower);
-  if (routine) return loc(routine.file, routine.start_line);
+  const resolved = resolveSymbol(index, lower);
+  if (!resolved) return null;
 
-  const obj = index.objects.find((o) => o.name.toLowerCase() === lower);
-  if (obj) return loc(obj.file, obj.start_line);
-
-  const global_ = index.globals.find((g) => g.name.toLowerCase() === lower);
-  if (global_) return loc(global_.file, global_.line);
-
-  const constant = index.constants.find((c) => c.name.toLowerCase() === lower);
-  if (constant) return loc(constant.file, constant.line);
-
-  const array = index.arrays.find((a) => a.name.toLowerCase() === lower);
-  if (array) return loc(array.file, array.line);
-
-  // Fallback: non-system symbols (properties, attributes, etc.)
-  const sym = index.symbols.find(
-    (s) => !s.is_system && s.name.toLowerCase() === lower && s.file,
-  );
-  if (sym?.file) return loc(sym.file, sym.line ?? 1);
-
-  return null;
+  switch (resolved.kind) {
+    case "routine":  return loc(resolved.item.file, resolved.item.start_line);
+    case "object":   return loc(resolved.item.file, resolved.item.start_line);
+    case "global":   return loc(resolved.item.file, resolved.item.line);
+    case "constant": return loc(resolved.item.file, resolved.item.line);
+    case "array":    return loc(resolved.item.file, resolved.item.line);
+    case "symbol":   return resolved.item.file
+      ? loc(resolved.item.file, resolved.item.line ?? 1)
+      : null;
+  }
 }
