@@ -86,7 +86,8 @@ export function reindex(
         log(
           `[indexer] OK (${label}): ${index.routines.length} routines, ` +
             `${index.objects.length} objects, ${index.globals.length} globals, ` +
-            `${index.constants.length} constants, ${index.errors.length} diagnostic(s)`,
+            `${index.constants.length} constants, ` +
+            `${index.references?.length ?? 0} ref symbols, ${index.errors.length} diagnostic(s)`,
         );
         resolve(index);
       } catch (e) {

@@ -13,7 +13,7 @@ import * as path from "node:path";
 
 const REPO_ROOT = path.join(__dirname, "../../..");
 const INFORM6 = path.join(REPO_ROOT, "Inform6/inform6");
-const TINY_INF = path.join(REPO_ROOT, "test/corpus/tiny.inf");
+const TINY_INF = path.join(REPO_ROOT, "test/corpus/tiny/tiny.inf");
 
 describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
   let output: string;

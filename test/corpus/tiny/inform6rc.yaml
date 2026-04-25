@@ -1,0 +1,4 @@
+compiler: ~/if/if-ls3/Inform6/inform6
+switches: -DS -v8
+
+tiny.inf:

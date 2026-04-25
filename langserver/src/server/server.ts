@@ -11,6 +11,7 @@ import {
   WorkspaceSymbolParams,
   CompletionParams,
   SemanticTokensParams,
+  ReferenceParams,
 } from "vscode-languageserver/node";
 import * as path from "node:path";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -26,6 +27,7 @@ import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
 import { wordAtPosition, objectBeforeDot, isInComment } from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
+import { findReferences } from "../features/references";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -118,6 +120,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
         change: TextDocumentSyncKind.Incremental,
       },
       definitionProvider: true,
+      referencesProvider: true,
       hoverProvider: true,
       documentSymbolProvider: true,
       workspaceSymbolProvider: true,
@@ -189,6 +192,19 @@ connection.onDefinition((params: DefinitionParams) => {
   const isActionRef = isColon || isHashHash || isAngle || isArrow;
   const isExplicitAction = isHashHash || isAngle || isArrow;
   return findDefinition(index, hit.word, objCtx, isActionRef, isExplicitAction);
+});
+
+connection.onReferences((params: ReferenceParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return [];
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return [];
+
+  const hit = wordAtPosition(doc.getText(), params.position);
+  if (!hit) return [];
+  if (isInComment(hit.lineText, hit.start)) return [];
+
+  return findReferences(index, hit.word);
 });
 
 connection.onHover((params: HoverParams) => {

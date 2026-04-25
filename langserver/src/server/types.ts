@@ -5,6 +5,12 @@ export interface GrammarActionRef {
   line: number;
 }
 
+export interface SymbolReference {
+  sym: string;
+  type: string;
+  locs: string[]; // "fileIndex:line:col" — 0-based file index, 1-based line, 0-based col
+}
+
 export interface CompilerIndex {
   version: number;
   files: string[];
@@ -18,6 +24,7 @@ export interface CompilerIndex {
   dictionary: DictionaryWord[];
   errors: CompilerError[];
   grammar_action_refs: GrammarActionRef[];
+  references?: SymbolReference[];
 }
 
 export interface SymbolInfo {
