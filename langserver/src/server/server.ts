@@ -12,6 +12,7 @@ import {
   CompletionParams,
   SemanticTokensParams,
 } from "vscode-languageserver/node";
+import * as path from "node:path";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import type { CompilerIndex } from "./types";
@@ -104,7 +105,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
     } else if (workspaceConfig.files.length === 0) {
       log("[server] inform6rc.yaml has no main-file entries — nothing to compile");
     } else {
-      const names = workspaceConfig.files.map(f => URI.file(f.mainFile).fsPath.split("/").pop()).join(", ");
+      const names = workspaceConfig.files.map(f => path.basename(URI.file(f.mainFile).fsPath)).join(", ");
       log(`[server] config: ${workspaceConfig.files.length} main file(s): ${names}`);
     }
   }

@@ -48,11 +48,14 @@ export function pushDiagnostics(
         if (!fileLines.has(error.file)) {
           try {
             fileLines.set(error.file, fs.readFileSync(error.file, "utf-8").split("\n"));
-          } catch {
+          } catch (e) {
+            connection.console.warn(`[diagnostics] could not read ${error.file}: ${e}`);
             fileLines.set(error.file, []);
           }
         }
         const srcLine = fileLines.get(error.file)![line] ?? "";
+        // indexOf finds the first occurrence; may squiggle the wrong token if
+        // the name appears more than once on the line. Acceptable for now.
         const col = srcLine.indexOf(nameMatch[1]);
         if (col !== -1) {
           startChar = col;
