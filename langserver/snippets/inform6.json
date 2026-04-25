@@ -55,7 +55,7 @@
     "prefix": "zzVerb",
     "body": [
       "Verb '${1:word}'",
-      "    * ${2:grammar} -> ${3:Action}",
+      "    * ${2:noun} -> ${3:Action}",
       ";"
     ],
     "description": "Define a verb with grammar"
