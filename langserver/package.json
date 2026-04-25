@@ -65,6 +65,11 @@
           "type": "boolean",
           "default": true,
           "description": "Enable the Inform 6 language server (completions, hover, go-to-definition, etc.). Disable to use only TextMate grammar highlighting."
+        },
+        "inform6.grayInactiveBranches": {
+          "type": "boolean",
+          "default": true,
+          "description": "Gray out inactive conditional compilation branches (#IfDef, #IfV5, etc.) based on the compiler's evaluation."
         }
       }
     }

@@ -7,6 +7,66 @@ import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/nod
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel;
 
+const inactiveDecoration = vscode.window.createTextEditorDecorationType({
+  opacity: "0.4",
+  isWholeLine: true,
+});
+
+type Conditional = {
+  active: "if" | "else" | "none";
+  start_line: number;
+  else_line?: number;
+  end_line: number;
+};
+
+function inactiveRange(c: Conditional): vscode.Range | null {
+  let startLine: number, endLine: number;
+  if (c.active === "none") {
+    startLine = c.start_line - 1;
+    endLine   = c.end_line   - 1;
+  } else if (c.active === "if" && c.else_line !== undefined) {
+    startLine = c.else_line - 1;
+    endLine   = c.end_line  - 1;
+  } else if (c.active === "else") {
+    startLine = c.start_line                         - 1;
+    endLine   = (c.else_line ?? c.end_line)          - 1;
+  } else {
+    return null; // active "if" with no else — nothing to gray
+  }
+  return new vscode.Range(startLine, 0, endLine, Number.MAX_SAFE_INTEGER);
+}
+
+async function applyInactiveDecorations(editor: vscode.TextEditor): Promise<void> {
+  if (editor.document.languageId !== "inform6" || !client) return;
+
+  const enabled = vscode.workspace
+    .getConfiguration("inform6")
+    .get<boolean>("grayInactiveBranches", true);
+
+  if (!enabled) {
+    editor.setDecorations(inactiveDecoration, []);
+    return;
+  }
+
+  const conditionals = await client.sendRequest<Conditional[]>(
+    "inform6/getConditionals",
+    { uri: editor.document.uri.toString() }
+  );
+
+  const ranges: vscode.Range[] = [];
+  for (const c of conditionals ?? []) {
+    const r = inactiveRange(c);
+    if (r) ranges.push(r);
+  }
+  editor.setDecorations(inactiveDecoration, ranges);
+}
+
+function refreshAllDecorations(): void {
+  for (const editor of vscode.window.visibleTextEditors) {
+    void applyInactiveDecorations(editor);
+  }
+}
+
 export function activate(context: vscode.ExtensionContext): void {
   outputChannel = vscode.window.createOutputChannel("Inform6 Language Server");
 
@@ -60,7 +120,14 @@ export function activate(context: vscode.ExtensionContext): void {
     })
   );
 
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor((editor) => {
+      if (editor) void applyInactiveDecorations(editor);
+    })
+  );
+
   // Restart the LSP client when the language server enable/disable setting changes.
+  // Refresh branch graying when that setting changes.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("inform6.enableLanguageServer")) {
@@ -68,6 +135,9 @@ export function activate(context: vscode.ExtensionContext): void {
           "[extension] inform6.enableLanguageServer changed — restarting client"
         );
         void restartClient(context);
+      }
+      if (e.affectsConfiguration("inform6.grayInactiveBranches")) {
+        refreshAllDecorations();
       }
     })
   );
@@ -156,6 +226,10 @@ function startClient(context: vscode.ExtensionContext): void {
     serverOptions,
     clientOptions,
   );
+
+  client.onNotification("inform6/indexUpdated", () => {
+    refreshAllDecorations();
+  });
 
   // Restart the server when inform6rc.yaml changes.
   const yamlWatcher = vscode.workspace.createFileSystemWatcher("**/inform6rc.yaml");
