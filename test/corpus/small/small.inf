@@ -1,7 +1,7 @@
 !% +/Users/joel/if/inform6lib/
 !% $GRAMMAR_META_FLAG=1
 
-
+Property individual my_test;
 
 Include "Parser";
 
@@ -19,6 +19,9 @@ Object TheRoom "The Room"
       Jump:
         MyFunc(10, 20);
     ],
+    my_test [;
+      print 1;
+    ],
 ;
 
 Object -> "So quiet";
@@ -35,6 +38,7 @@ Constant NOPE;
   switch (x) {
     TheRoom: "Hey";
   }
+  TheRoom.my_test();
   Achieved(x);
 ];
 

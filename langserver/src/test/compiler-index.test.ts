@@ -45,6 +45,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
       "dictionary",
       "errors",
       "grammar_action_refs",
+      "references",
     ]) {
       expect(idx).toHaveProperty(key);
     }
@@ -54,14 +55,23 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
     const idx = JSON.parse(output);
     const names: string[] = idx.routines.map((r: { name: string }) => r.name);
     expect(names).toContain("Main");
-    expect(names).toContain("myfunc");
+    expect(names).toContain("MyFunc");
   });
 
-  it("myfunc has local x", () => {
+  it("MyFunc has locals a and b", () => {
     const idx = JSON.parse(output);
-    const myfunc = idx.routines.find((r: { name: string }) => r.name === "myfunc");
+    const myfunc = idx.routines.find((r: { name: string }) => r.name === "MyFunc");
     expect(myfunc).toBeDefined();
-    expect(myfunc.locals).toContain("x");
+    expect(myfunc.locals).toContain("a");
+    expect(myfunc.locals).toContain("b");
+  });
+
+  it("references array has action entries", () => {
+    const idx = JSON.parse(output);
+    const refs: Array<{ sym: string; type: string; locs: string[] }> = idx.references;
+    const foozleRef = refs.find((r) => r.sym === "Foozle" && r.type === "action");
+    expect(foozleRef).toBeDefined();
+    expect(foozleRef!.locs.length).toBeGreaterThan(0);
   });
 
   it("has no compilation errors", () => {

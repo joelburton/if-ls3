@@ -2561,6 +2561,8 @@ extern void  index_note_object(char *name, const char *shortname, int symbol,
 extern void  index_note_error(const char *file, int32 line,
                  const char *msg, int severity);
 extern void  index_note_grammar_action_ref(brief_location loc);
+extern void  index_note_symbol_ref(int symindex);
+extern void  index_note_action_sym_ref(const char *name);
 extern int   index_get_verb_word_count(int verbnum);
 extern const char *index_get_verb_word(int verbnum, int which);
 extern int   index_get_dict_entry_count(void);
@@ -2656,6 +2658,7 @@ extern int   token_type;
 extern char *token_text;
 
 extern debug_location get_token_location(void);
+extern debug_location get_last_token_start_location(void);
 extern debug_locations get_token_locations(void);
 extern debug_location_beginning get_token_location_beginning(void);
 extern void discard_token_location(debug_location_beginning beginning);

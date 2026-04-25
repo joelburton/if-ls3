@@ -91,6 +91,8 @@ static void parse_action(void)
         }
         codegen_action = FALSE;
         AO2 = action_of_name(token_text);
+        if (index_switch && token_type == UQ_TT)
+            index_note_action_sym_ref(token_text);
     }
 
     get_next_token();

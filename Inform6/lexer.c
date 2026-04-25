@@ -238,6 +238,7 @@ extern debug_locations get_token_location_end
      old-style "objectloop (a in b)" and a new "objectloop (a in b ...)".)   */
 
 static int circle_position;
+static int last_returned_circle_pos;  /* circle index of last token returned */
 static lexeme_data circle[CIRCLE_SIZE];
 
 /* ------------------------------------------------------------------------- */
@@ -1133,6 +1134,10 @@ extern debug_location get_current_debug_location(void)
     result.orig_beg_line_number = CurrentLB->orig_line;
     result.orig_beg_char_number = CurrentLB->orig_char;
     return result;
+}
+
+extern debug_location get_last_token_start_location(void)
+{   return circle[last_returned_circle_pos].location;
 }
 
 static debug_location ErrorReport_debug_location;
@@ -2175,6 +2180,7 @@ extern void get_next_token(void)
     /* We've either parsed a new token or selected a put-back one.
        i is the circle-position of the token in question. Time to
        export the token data where higher-level code can find it. */
+    last_returned_circle_pos = i;
     token_value = circle[i].value;
     token_type = circle[i].type;
     token_text = circle[i].text;

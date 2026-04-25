@@ -346,6 +346,8 @@ static void parse_switch_spec(assembly_operand switch_value, int label,
             {   spec_stack[spec_sp].value = 0;
                 ebf_curtoken_error("action (or fake action) name");
             }
+            else if (index_switch)
+                index_note_action_sym_ref(token_text);
         }
         else {
             spec_stack[spec_sp] =

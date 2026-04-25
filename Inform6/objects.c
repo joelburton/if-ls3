@@ -1169,8 +1169,10 @@ static void properties_segment_z(int this_segment)
         }
 
         if (index_switch)
-            index_note_property(token_text,
+        {   index_note_property(token_text,
                 this_segment == PRIVATE_SEGMENT);
+            index_note_symbol_ref(token_value);
+        }
 
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
@@ -1443,8 +1445,10 @@ static void properties_segment_g(int this_segment)
         }
 
         if (index_switch)
-            index_note_property(token_text,
+        {   index_note_property(token_text,
                 this_segment == PRIVATE_SEGMENT);
+            index_note_symbol_ref(token_value);
+        }
 
         individual_property = (symbols[token_value].type != PROPERTY_T);
 
@@ -1702,8 +1706,11 @@ static void attributes_segment(void)
         attribute_number = symbols[token_value].value;
         symbols[token_value].flags |= USED_SFLAG;
 
-        if (index_switch && truth_state)
-            index_note_attribute(symbols[token_value].name);
+        if (index_switch)
+        {   if (truth_state)
+                index_note_attribute(symbols[token_value].name);
+            index_note_symbol_ref(token_value);
+        }
 
         if (!glulx_mode) {
             bitmask = (1 << (7-attribute_number%8));
@@ -1790,6 +1797,8 @@ static void classes_segment(void)
         }
 
         symbols[token_value].flags |= USED_SFLAG;
+        if (index_switch)
+            index_note_symbol_ref(token_value);
         add_class_to_inheritance_list(symbols[token_value].value);
     } while (TRUE);
 }
@@ -2174,6 +2183,8 @@ extern void make_object(int nearby_flag,
             || (symbols[token_value].type == CLASS_T))
         {   specified_parent = symbols[token_value].value;
             symbols[token_value].flags |= USED_SFLAG;
+            if (index_switch)
+                index_note_symbol_ref(token_value);
         }
         else ebf_curtoken_error("name of (the parent) object");
     }

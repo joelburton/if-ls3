@@ -126,6 +126,73 @@ extern void index_note_grammar_action_ref(brief_location loc)
 }
 
 /* --------------------------------------------------------------------- */
+/*   Symbol reference positions                                          */
+/*                                                                       */
+/*   Each entry records a use-site: which symbol was referenced and      */
+/*   its exact source location. System-file references are excluded.    */
+/* --------------------------------------------------------------------- */
+
+typedef struct index_sym_ref_s {
+    int32 symbol_index;   /* index into symbols[] */
+    int32 file_index;     /* 1-based into InputFiles[] */
+    int32 line;
+    int32 col;            /* 0-based column */
+} index_sym_ref;
+
+static index_sym_ref *sym_refs;
+static int sym_refs_count;
+static memory_list sym_refs_memlist;
+
+static int compare_sym_refs(const void *a, const void *b)
+{   const index_sym_ref *ra = (const index_sym_ref *)a;
+    const index_sym_ref *rb = (const index_sym_ref *)b;
+    if (ra->symbol_index != rb->symbol_index)
+        return (ra->symbol_index < rb->symbol_index) ? -1 : 1;
+    if (ra->file_index != rb->file_index)
+        return (ra->file_index < rb->file_index) ? -1 : 1;
+    if (ra->line != rb->line)
+        return (ra->line < rb->line) ? -1 : 1;
+    return (ra->col < rb->col) ? -1 : (ra->col > rb->col) ? 1 : 0;
+}
+
+extern void index_note_symbol_ref(int symindex)
+{   debug_location loc;
+    index_sym_ref *r;
+    if (symindex < 0) return;
+    if (is_systemfile()) return;
+    loc = get_last_token_start_location();
+    if (loc.file_index <= 0) return;
+    ensure_memory_list_available(&sym_refs_memlist, sym_refs_count + 1);
+    r = &sym_refs[sym_refs_count++];
+    r->symbol_index = symindex;
+    r->file_index = loc.file_index;
+    r->line = loc.beginning_line_number;
+    r->col = loc.beginning_character_number - 1;
+}
+
+extern void index_note_action_sym_ref(const char *name)
+{   char action_sym[256];
+    int symindex, len;
+    debug_location loc;
+    index_sym_ref *r;
+    if (is_systemfile()) return;
+    len = strlen(name);
+    if (len + 4 > (int)sizeof(action_sym)) return;
+    memcpy(action_sym, name, len);
+    memcpy(action_sym + len, "__A", 4);   /* includes null terminator */
+    symindex = get_symbol_index(action_sym);
+    if (symindex < 0) return;
+    loc = get_last_token_start_location();
+    if (loc.file_index <= 0) return;
+    ensure_memory_list_available(&sym_refs_memlist, sym_refs_count + 1);
+    r = &sym_refs[sym_refs_count++];
+    r->symbol_index = symindex;
+    r->file_index = loc.file_index;
+    r->line = loc.beginning_line_number;
+    r->col = loc.beginning_character_number - 1;
+}
+
+/* --------------------------------------------------------------------- */
 /*   Error/warning capture for JSON output                               */
 /* --------------------------------------------------------------------- */
 
@@ -930,6 +997,66 @@ extern void index_output_json(void)
         json_print_abs_path(InputFiles[r->file_index - 1].filename);
         printf(", \"line\": %d}", (int)r->line);
     }
+    printf("\n  ],\n");
+
+    /* --- references --- */
+    qsort(sym_refs, sym_refs_count, sizeof(index_sym_ref), compare_sym_refs);
+    printf("  \"references\": [\n");
+    first = TRUE;
+    {   int si = 0;
+        while (si < sym_refs_count)
+        {   int sym = sym_refs[si].symbol_index;
+            const char *sym_name = symbols[sym].name;
+            const char *type_str;
+            int nlen = strlen(sym_name);
+            int loc_first;
+            int32 prev_file, prev_line, prev_col;
+            char stripped_name[256];
+
+            if (!first) printf(",\n");
+            first = FALSE;
+
+            /* Detect action symbols: name ends with __A and has ACTION_SFLAG
+               or is FAKE_ACTION_T */
+            if (nlen > 3 && strcmp(sym_name + nlen - 3, "__A") == 0
+                && ((symbols[sym].flags & ACTION_SFLAG)
+                    || symbols[sym].type == FAKE_ACTION_T))
+            {   if (nlen - 3 < (int)sizeof(stripped_name))
+                {   memcpy(stripped_name, sym_name, nlen - 3);
+                    stripped_name[nlen - 3] = '\0';
+                    sym_name = stripped_name;
+                }
+                type_str = "action";
+            }
+            else
+                type_str = symbol_type_name(symbols[sym].type);
+
+            printf("    {\"sym\": ");
+            json_print_escaped_string(sym_name);
+            printf(", \"type\": \"%s\", \"locs\": [", type_str);
+
+            loc_first = TRUE;
+            prev_file = -1; prev_line = -1; prev_col = -1;
+            while (si < sym_refs_count && sym_refs[si].symbol_index == sym)
+            {   /* Skip exact duplicate locs (put-back tokens can double-fire) */
+                if (sym_refs[si].file_index != prev_file
+                    || sym_refs[si].line != prev_line
+                    || sym_refs[si].col != prev_col)
+                {   if (!loc_first) printf(", ");
+                    loc_first = FALSE;
+                    printf("\"%d:%d:%d\"",
+                        (int)sym_refs[si].file_index - 1,
+                        (int)sym_refs[si].line,
+                        (int)sym_refs[si].col);
+                    prev_file = sym_refs[si].file_index;
+                    prev_line = sym_refs[si].line;
+                    prev_col  = sym_refs[si].col;
+                }
+                si++;
+            }
+            printf("]}");
+        }
+    }
     printf("\n  ]\n");
 
     printf("}\n");
@@ -955,10 +1082,12 @@ extern void init_index_vars(void)
     trailing_docs = NULL;
     errors_info = NULL;
     action_refs = NULL;
+    sym_refs = NULL;
     pending_object_doc = NULL;
     trailing_docs_count = 0;
     errors_info_count = 0;
     action_refs_count = 0;
+    sym_refs_count = 0;
     routines_count = 0;
     locals_pool_count = 0;
     objects_info_count = 0;
@@ -989,6 +1118,7 @@ extern void index_begin_pass(void)
     trailing_docs_count = 0;
     errors_info_count = 0;
     action_refs_count = 0;
+    sym_refs_count = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -1037,6 +1167,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&action_refs_memlist,
         sizeof(index_action_ref), MAX_INDEX_ACTION_REFS,
         (void **)&action_refs, "index grammar action refs");
+    initialise_memory_list(&sym_refs_memlist,
+        sizeof(index_sym_ref), 8192,
+        (void **)&sym_refs, "index symbol refs");
 }
 
 extern void index_free_arrays(void)
@@ -1089,4 +1222,5 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&trailing_docs_list_memlist);
     deallocate_memory_list(&errors_info_memlist);
     deallocate_memory_list(&action_refs_memlist);
+    deallocate_memory_list(&sym_refs_memlist);
 }

@@ -1085,6 +1085,8 @@ static int grammar_line(int verbnum, int allmeta, int line)
                          wordcode = make_parsing_routine(symbols[token_value].value);
                      }
                      symbols[token_value].flags |= USED_SFLAG;
+                     if (index_switch)
+                         index_note_symbol_ref(token_value);
                  }
                  else
                  {   put_token_back();
@@ -1155,6 +1157,8 @@ are using grammar version 2 or later");
                      wordcode = make_parsing_routine(symbols[token_value].value);
                  }
                  symbols[token_value].flags |= USED_SFLAG;
+                 if (index_switch)
+                     index_note_symbol_ref(token_value);
              }
         else if ((token_type == SEP_TT) && (token_value == SETEQUALS_SEP))
              {   discard_token_location(beginning_debug_location);
@@ -1192,6 +1196,8 @@ are using grammar version 2 or later");
                      }
                  }
                  symbols[token_value].flags |= USED_SFLAG;
+                 if (index_switch)
+                     index_note_symbol_ref(token_value);
              }
 
         grammar_token++; no_grammar_tokens++;
@@ -1255,7 +1261,9 @@ tokens in any line (for grammar version 3)");
         if (j >= lowest_fake_action())
             error_named("This is a fake action, not a real one:", token_text);
         if (index_switch)
-            index_note_grammar_action_ref(get_brief_location(&ErrorReport));
+        {   index_note_grammar_action_ref(get_brief_location(&ErrorReport));
+            index_note_action_sym_ref(token_text);
+        }
     }
 
     reverse_action = FALSE;

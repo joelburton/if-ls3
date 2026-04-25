@@ -128,6 +128,8 @@ but not used as a value:", unicode);
             current_token.symindex = symbol;
             current_token.symtype = symbols[symbol].type;
             current_token.symflags = symbols[symbol].flags;
+            if (index_switch)
+                index_note_symbol_ref(symbol);
             switch(symbols[symbol].type)
             {   case ROUTINE_T:
                     /* Replaced functions must always be backpatched
@@ -923,6 +925,8 @@ static int evaluate_term(const token_data *t, assembly_operand *o)
              system_function_usage[t->value] = 1;
              return(TRUE);
         case ACTION_TT:
+             if (index_switch)
+                 index_note_action_sym_ref(t->text);
              *o = action_of_name(t->text);
              return(TRUE);
         case SYSTEM_CONSTANT_TT:
