@@ -39,7 +39,7 @@ export function isInHasClause(
     chunks.push(line);
   }
   const text = chunks.join("\n");
-  const hasIdx  = lastWordIndex(text, "has");
+  const hasIdx  = Math.max(lastWordIndex(text, "has"), lastWordIndex(text, "hasnt"));
   const termIdx = Math.max(
     lastWordIndex(text, "with"),
     lastWordIndex(text, "private"),

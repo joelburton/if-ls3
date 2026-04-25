@@ -255,4 +255,8 @@ describe("isInHasClause", () => {
     const lines = ["Object O", "  has light    ! lit up", "    "];
     expect(isInHasClause(lines, 2, 4)).toBe(true);
   });
+
+  it("true after 'hasnt' keyword (e.g. if (x hasnt ^))", () => {
+    expect(isInHasClause(["if (x hasnt "], 0, 12)).toBe(true);
+  });
 });
