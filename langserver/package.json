@@ -47,6 +47,10 @@
       {
         "command": "inform6.toggleTextMateHighlighting",
         "title": "Inform 6: Toggle TextMate Highlighting"
+      },
+      {
+        "command": "inform6.applyBranchFolds",
+        "title": "Inform 6: Fold Inactive Branches"
       }
     ],
     "configuration": {

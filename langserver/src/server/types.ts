@@ -20,6 +20,18 @@ export interface IncludeInfo {
   file_index: number; // 0-based index into files[]
 }
 
+export interface ConditionalInfo {
+  directive: "ifdef" | "ifndef" | "ifv3" | "ifv5" | "iftrue" | "iffalse";
+  file: string;
+  start_line: number;  // 1-based
+  start_col: number;   // 0-based
+  else_line?: number;  // 1-based; present only when #Ifnot exists
+  else_col?: number;
+  end_line: number;    // 1-based
+  end_col: number;
+  active: "if" | "else" | "none";
+}
+
 export interface CompilerIndex {
   version: number;
   files: string[];
@@ -35,6 +47,7 @@ export interface CompilerIndex {
   grammar_action_refs: GrammarActionRef[];
   includes?: IncludeInfo[];
   references?: SymbolReference[];
+  conditionals?: ConditionalInfo[];
 }
 
 export interface SymbolInfo {

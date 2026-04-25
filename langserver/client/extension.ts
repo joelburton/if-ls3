@@ -21,6 +21,29 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.applyBranchFolds", async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.document.languageId !== "inform6") return;
+      if (!client) return;
+
+      type Conditional = { active: string; start_line: number };
+      const conditionals = await client.sendRequest<Conditional[]>(
+        "inform6/getConditionals",
+        { uri: editor.document.uri.toString() }
+      );
+      if (!conditionals || conditionals.length === 0) return;
+
+      const activeLines   = conditionals.filter(c => c.active !== "none").map(c => c.start_line - 1);
+      const inactiveLines = conditionals.filter(c => c.active === "none").map(c => c.start_line - 1);
+
+      if (activeLines.length > 0)
+        await vscode.commands.executeCommand("editor.unfold", { selectionLines: activeLines });
+      if (inactiveLines.length > 0)
+        await vscode.commands.executeCommand("editor.fold",   { selectionLines: inactiveLines });
+    })
+  );
+
+  context.subscriptions.push(
     vscode.commands.registerCommand("inform6.toggleTextMateHighlighting", async () => {
       const config = vscode.workspace.getConfiguration("inform6");
       const current = config.get<boolean>("enableTextMateHighlighting", true);

@@ -1,0 +1,1 @@
+Constant LIB_CONST 10;

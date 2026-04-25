@@ -1,4 +1,6 @@
 compiler: ~/if/if-ls3/Inform6/inform6
-switches: -DS -v8
+switches: -S -v8
 
 tiny.inf:
+  defines:
+    - COND

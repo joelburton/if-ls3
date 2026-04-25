@@ -59,6 +59,8 @@ extern int parse_given_directive(int internal_flag)
     const char *constant_name;
     assembly_operand AO;
     debug_location_beginning beginning_debug_location;
+    int if_directive_code = 0;
+    debug_location if_directive_loc = {0};
 
     if (internal_flag)
     {
@@ -351,7 +353,11 @@ extern int parse_given_directive(int internal_flag)
 
     case ENDIF_CODE:
         if (ifdef_sp == 0) error("'Endif' without matching 'If...'");
-        else ifdef_sp--;
+        else
+        {   if (index_switch)
+                index_end_conditional(get_last_token_start_location());
+            ifdef_sp--;
+        }
         break;
 
     /* --------------------------------------------------------------------- */
@@ -387,9 +393,13 @@ extern int parse_given_directive(int internal_flag)
     /* --------------------------------------------------------------------- */
 
     case IFDEF_CODE:
+        if_directive_code = IFDEF_CODE;
+        if_directive_loc = get_last_token_start_location();
         flag = TRUE;
         goto DefCondition;
     case IFNDEF_CODE:
+        if_directive_code = IFNDEF_CODE;
+        if_directive_loc = get_last_token_start_location();
         flag = FALSE;
 
       DefCondition:
@@ -428,7 +438,9 @@ extern int parse_given_directive(int internal_flag)
         if (!(ifdef_stack[ifdef_sp-1]))
             error("Second 'Ifnot' for the same 'If...' condition");
         else
-        {   dont_enter_into_symbol_table = -2; n = 1;
+        {   if (index_switch)
+                index_note_conditional_else(get_last_token_start_location());
+            dont_enter_into_symbol_table = -2; n = 1;
             directives.enabled = TRUE;
             do
             {
@@ -443,6 +455,9 @@ extern int parse_given_directive(int internal_flag)
                 {
                     switch(token_value)
                     {   case ENDIF_CODE:
+                            if (index_switch && n > 1)
+                                index_end_conditional(
+                                    get_last_token_start_location());
                             n--; break;
                         case IFV3_CODE:
                         case IFV5_CODE:
@@ -450,6 +465,10 @@ extern int parse_given_directive(int internal_flag)
                         case IFNDEF_CODE:
                         case IFTRUE_CODE:
                         case IFFALSE_CODE:
+                            if (index_switch)
+                                index_begin_conditional(token_value,
+                                    TRUE, FALSE,
+                                    get_last_token_start_location());
                             n++; break;
                         case IFNOT_CODE:
                             if (n == 1)
@@ -457,26 +476,37 @@ extern int parse_given_directive(int internal_flag)
                               "Second 'Ifnot' for the same 'If...' condition");
                                 break;
                             }
+                            if (index_switch)
+                                index_note_conditional_else(
+                                    get_last_token_start_location());
                     }
                 }
             } while (n > 0);
-            ifdef_sp--; 
+            if (index_switch)
+                index_end_conditional(get_last_token_start_location());
+            ifdef_sp--;
             dont_enter_into_symbol_table = FALSE;
             directives.enabled = FALSE;
         }
         break;
 
     case IFV3_CODE:
+        if_directive_code = IFV3_CODE;
+        if_directive_loc = get_last_token_start_location();
         flag = FALSE;
         if (!glulx_mode && version_number <= 3) flag = TRUE;
         goto HashIfCondition;
 
     case IFV5_CODE:
+        if_directive_code = IFV5_CODE;
+        if_directive_loc = get_last_token_start_location();
         flag = TRUE;
         if (!glulx_mode && version_number <= 3) flag = FALSE;
         goto HashIfCondition;
 
     case IFTRUE_CODE:
+        if_directive_code = IFTRUE_CODE;
+        if_directive_loc = get_last_token_start_location();
         {   assembly_operand AO;
             AO = parse_expression(CONSTANT_CONTEXT);
             if (AO.marker != 0)
@@ -488,6 +518,8 @@ extern int parse_given_directive(int internal_flag)
         goto HashIfCondition;
 
     case IFFALSE_CODE:
+        if_directive_code = IFFALSE_CODE;
+        if_directive_loc = get_last_token_start_location();
         {   assembly_operand AO;
             AO = parse_expression(CONSTANT_CONTEXT);
             if (AO.marker != 0)
@@ -507,11 +539,16 @@ extern int parse_given_directive(int internal_flag)
             error("'If' directives nested too deeply");
             panic_mode_error_recovery(); return FALSE;
         }
-        
+
+        if (index_switch)
+            index_begin_conditional(if_directive_code, FALSE, flag,
+                if_directive_loc);
+
         if (flag)
         {   ifdef_stack[ifdef_sp++] = TRUE; return FALSE; }
         else
-        {   dont_enter_into_symbol_table = -2; n = 1;
+        {   int saw_ifnot_in_skip = FALSE;
+            dont_enter_into_symbol_table = -2; n = 1;
             directives.enabled = TRUE;
             do
             {
@@ -526,6 +563,9 @@ extern int parse_given_directive(int internal_flag)
                 {
                     switch(token_value)
                     {   case ENDIF_CODE:
+                            if (index_switch && n > 1)
+                                index_end_conditional(
+                                    get_last_token_start_location());
                             n--; break;
                         case IFV3_CODE:
                         case IFV5_CODE:
@@ -533,15 +573,28 @@ extern int parse_given_directive(int internal_flag)
                         case IFNDEF_CODE:
                         case IFTRUE_CODE:
                         case IFFALSE_CODE:
+                            if (index_switch)
+                                index_begin_conditional(token_value,
+                                    TRUE, FALSE,
+                                    get_last_token_start_location());
                             n++; break;
                         case IFNOT_CODE:
                             if (n == 1)
-                            {   ifdef_stack[ifdef_sp++] = FALSE;
+                            {   if (index_switch)
+                                    index_note_conditional_else(
+                                        get_last_token_start_location());
+                                ifdef_stack[ifdef_sp++] = FALSE;
+                                saw_ifnot_in_skip = TRUE;
                                 n--; break;
                             }
+                            if (index_switch)
+                                index_note_conditional_else(
+                                    get_last_token_start_location());
                     }
                 }
             } while (n > 0);
+            if (index_switch && !saw_ifnot_in_skip)
+                index_end_conditional(get_last_token_start_location());
             directives.enabled = FALSE;
             dont_enter_into_symbol_table = FALSE;
         }

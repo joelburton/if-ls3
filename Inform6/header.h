@@ -2574,6 +2574,10 @@ extern void  index_doc_comment_line(const char *text);
 extern void  index_doc_comment_trailing(const char *text, int32 line);
 extern void  index_doc_nontrivial_token(void);
 extern void  index_note_symbol_doc(int symbol);
+extern void  index_begin_conditional(int directive, int dead, int taken,
+                 debug_location loc);
+extern void  index_note_conditional_else(debug_location loc);
+extern void  index_end_conditional(debug_location loc);
 extern void  index_output_json(void);
 
 /* ------------------------------------------------------------------------- */

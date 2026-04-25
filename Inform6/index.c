@@ -223,6 +223,86 @@ extern void index_note_include(const char *given, debug_location str_loc)
 }
 
 /* --------------------------------------------------------------------- */
+/*   Conditional compilation tracking                                    */
+/*                                                                       */
+/*   Each #IfDef/#IfNDef/#IfV3/#IfV5/#IfTrue/#IfFalse...#Endif block     */
+/*   produces one entry (including blocks nested inside non-active       */
+/*   branches: those are marked with active="none" since the compiler   */
+/*   doesn't evaluate the inner condition while skipping).               */
+/* --------------------------------------------------------------------- */
+
+#define MAX_INDEX_COND_DEPTH 32
+
+typedef struct index_conditional_s {
+    int   directive;             /* IFDEF_CODE, IFNDEF_CODE, ... */
+    int32 file_index;            /* 1-based into InputFiles[] */
+    int32 start_line;
+    int32 start_col;             /* 0-based column of '#' */
+    int32 else_line;             /* 0 if no #Ifnot */
+    int32 else_col;
+    int32 end_line;              /* 0 if never closed (e.g. EOF in skip) */
+    int32 end_col;
+    int   dead;                  /* TRUE if nested in inactive parent */
+    int   taken;                 /* meaningful only when !dead */
+} index_conditional;
+
+static index_conditional *conditionals;
+static int conditionals_count;
+static memory_list conditionals_memlist;
+
+/* Open conditionals: stack of indexes into conditionals[]. */
+static int cond_stack[MAX_INDEX_COND_DEPTH];
+static int cond_sp;
+
+extern void index_begin_conditional(int directive, int dead, int taken,
+    debug_location loc)
+{   index_conditional *c;
+    if (cond_sp >= MAX_INDEX_COND_DEPTH) return;
+    ensure_memory_list_available(&conditionals_memlist,
+        conditionals_count + 1);
+    c = &conditionals[conditionals_count];
+    c->directive  = directive;
+    c->file_index = loc.file_index;
+    c->start_line = loc.beginning_line_number;
+    c->start_col  = loc.beginning_character_number - 1;
+    c->else_line = 0; c->else_col = 0;
+    c->end_line  = 0; c->end_col  = 0;
+    c->dead  = dead ? 1 : 0;
+    c->taken = (!dead && taken) ? 1 : 0;
+    cond_stack[cond_sp++] = conditionals_count;
+    conditionals_count++;
+}
+
+extern void index_note_conditional_else(debug_location loc)
+{   index_conditional *c;
+    if (cond_sp <= 0) return;
+    c = &conditionals[cond_stack[cond_sp - 1]];
+    if (c->else_line != 0) return;     /* first #Ifnot wins */
+    c->else_line = loc.beginning_line_number;
+    c->else_col  = loc.beginning_character_number - 1;
+}
+
+extern void index_end_conditional(debug_location loc)
+{   index_conditional *c;
+    if (cond_sp <= 0) return;
+    c = &conditionals[cond_stack[--cond_sp]];
+    c->end_line = loc.beginning_line_number;
+    c->end_col  = loc.beginning_character_number - 1;
+}
+
+static const char *cond_directive_name(int code)
+{   switch (code)
+    {   case IFDEF_CODE:   return "ifdef";
+        case IFNDEF_CODE:  return "ifndef";
+        case IFV3_CODE:    return "ifv3";
+        case IFV5_CODE:    return "ifv5";
+        case IFTRUE_CODE:  return "iftrue";
+        case IFFALSE_CODE: return "iffalse";
+        default:           return "unknown";
+    }
+}
+
+/* --------------------------------------------------------------------- */
 /*   Error/warning capture for JSON output                               */
 /* --------------------------------------------------------------------- */
 
@@ -1126,6 +1206,42 @@ extern void index_output_json(void)
             printf("]}");
         }
     }
+    printf("\n  ],\n");
+
+    /* --- conditionals --- */
+    printf("  \"conditionals\": [\n");
+    first = TRUE;
+    for (i = 0; i < conditionals_count; i++)
+    {   index_conditional *c = &conditionals[i];
+        const char *active;
+        if (c->end_line == 0) continue;   /* unterminated (e.g. EOF) */
+        /* Skip conditionals from veneer routines (file_index == 255) and
+           any out-of-range file index — those aren't from real source. */
+        if (c->file_index < 1 || c->file_index > total_input_files) continue;
+        if (!first) printf(",\n");
+        first = FALSE;
+        printf("    {\"directive\": \"%s\"",
+            cond_directive_name(c->directive));
+        printf(", \"file\": ");
+        json_print_abs_path(InputFiles[c->file_index - 1].filename);
+        printf(", \"start_line\": %d, \"start_col\": %d",
+            (int)c->start_line, (int)c->start_col);
+        if (c->else_line > 0)
+            printf(", \"else_line\": %d, \"else_col\": %d",
+                (int)c->else_line, (int)c->else_col);
+        printf(", \"end_line\": %d, \"end_col\": %d",
+            (int)c->end_line, (int)c->end_col);
+        if (c->dead)
+            active = "none";
+        else if (c->taken)
+            active = "if";
+        else if (c->else_line > 0)
+            active = "else";
+        else
+            active = "none";
+        printf(", \"active\": \"%s\"", active);
+        printf("}");
+    }
     printf("\n  ]\n");
 
     printf("}\n");
@@ -1155,6 +1271,9 @@ extern void init_index_vars(void)
     includes_count = 0;
     action_refs = NULL;
     sym_refs = NULL;
+    conditionals = NULL;
+    conditionals_count = 0;
+    cond_sp = 0;
     pending_object_doc = NULL;
     trailing_docs_count = 0;
     errors_info_count = 0;
@@ -1192,6 +1311,8 @@ extern void index_begin_pass(void)
     includes_count = 0;
     action_refs_count = 0;
     sym_refs_count = 0;
+    conditionals_count = 0;
+    cond_sp = 0;
 }
 
 extern void index_allocate_arrays(void)
@@ -1249,6 +1370,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&sym_refs_memlist,
         sizeof(index_sym_ref), 8192,
         (void **)&sym_refs, "index symbol refs");
+    initialise_memory_list(&conditionals_memlist,
+        sizeof(index_conditional), 256,
+        (void **)&conditionals, "index conditionals");
 }
 
 extern void index_free_arrays(void)
@@ -1309,4 +1433,5 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&includes_memlist);
     deallocate_memory_list(&action_refs_memlist);
     deallocate_memory_list(&sym_refs_memlist);
+    deallocate_memory_list(&conditionals_memlist);
 }

@@ -12,6 +12,7 @@ import {
   CompletionParams,
   SemanticTokensParams,
   ReferenceParams,
+  FoldingRangeParams,
 } from "vscode-languageserver/node";
 import * as path from "node:path";
 import { TextDocument } from "vscode-languageserver-textdocument";
@@ -29,6 +30,7 @@ import { getCompletions } from "../features/completions";
 import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment } from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
 import { findReferences, refAtPosition } from "../features/references";
+import { getFoldingRanges } from "../features/foldingRanges";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -89,6 +91,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
         },
         full: true,
       },
+      foldingRangeProvider: true,
     },
   };
 });
@@ -275,6 +278,20 @@ connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
   if (!doc) return { data: [] };
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   return { data: getSemanticTokens(index, filePath, doc.getText()) };
+});
+
+connection.onFoldingRanges((params: FoldingRangeParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return [];
+  const filePath = URI.parse(params.textDocument.uri).fsPath;
+  return getFoldingRanges(index, filePath);
+});
+
+connection.onRequest("inform6/getConditionals", (params: { uri: string }) => {
+  const index = indexForDocument(params.uri);
+  if (!index) return [];
+  const filePath = URI.parse(params.uri).fsPath;
+  return (index.conditionals ?? []).filter((c) => c.file === filePath);
 });
 
 documents.listen(connection);

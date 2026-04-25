@@ -13,14 +13,15 @@ import * as path from "node:path";
 
 const REPO_ROOT = path.join(__dirname, "../../..");
 const INFORM6 = path.join(REPO_ROOT, "Inform6/inform6");
-const TINY_INF = path.join(REPO_ROOT, "test/corpus/tiny/tiny.inf");
+const TINY_DIR = path.join(REPO_ROOT, "test/corpus/tiny");
+const TINY_INF = path.join(TINY_DIR, "tiny.inf");
 
 describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
   let output: string;
 
   // Run once and re-use across all tests in this suite.
   try {
-    output = execSync(`${INFORM6} -y ${TINY_INF}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    output = execSync(`${INFORM6} -y +${TINY_DIR}/ ${TINY_INF}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
   } catch (e: any) {
     // inform6 exits non-zero on warnings; stdout still has the JSON.
     output = e.stdout ?? "";
@@ -47,6 +48,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
       "grammar_action_refs",
       "includes",
       "references",
+      "conditionals",
     ]) {
       expect(idx).toHaveProperty(key);
     }
@@ -84,6 +86,19 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
   it("files array contains the tiny.inf path", () => {
     const idx = JSON.parse(output);
     expect(idx.files.some((f: string) => f.endsWith("tiny.inf"))).toBe(true);
+  });
+
+  it("conditionals array has entries with required fields", () => {
+    const idx = JSON.parse(output);
+    expect(Array.isArray(idx.conditionals)).toBe(true);
+    expect(idx.conditionals.length).toBeGreaterThan(0);
+    for (const c of idx.conditionals) {
+      expect(c).toHaveProperty("directive");
+      expect(c).toHaveProperty("file");
+      expect(c).toHaveProperty("start_line");
+      expect(c).toHaveProperty("end_line");
+      expect(["if", "else", "none"]).toContain(c.active);
+    }
   });
 
   describe("formal_declaration on property symbols", () => {
