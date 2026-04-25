@@ -112,6 +112,28 @@ export function pushDiagnostics(
     }
   }
 
+  // --- Undeclared-property warnings ---
+  for (const { index, fileConfig } of compilations) {
+    if (!fileConfig.warnUndeclaredProperties) continue;
+
+    const getLines = (file: string) => {
+      if (!fileLines.has(file)) {
+        try {
+          fileLines.set(file, fs.readFileSync(file, "utf-8").split("\n"));
+        } catch {
+          fileLines.set(file, []);
+        }
+      }
+      return fileLines.get(file)!;
+    };
+
+    for (const [filePath, diags] of collectUndeclaredPropertyWarnings(index, getLines)) {
+      const uri = URI.file(filePath).toString();
+      if (!byUri.has(uri)) byUri.set(uri, []);
+      byUri.get(uri)!.push(...diags);
+    }
+  }
+
   // --- Send and reconcile stale URIs ---
   const currentUris = new Set(byUri.keys());
 
@@ -136,6 +158,62 @@ export function buildUnionKnownNames(compilations: Compilation[]): Set<string> {
     for (const name of fileConfig.externalDefines) known.add(name.toLowerCase());
   }
   return known;
+}
+
+/**
+ * Find all informal property declarations in `index` and return diagnostics
+ * grouped by file path.  A property is "informal" when `formal_declaration` is
+ * `false` — it was created implicitly on first use inside an object `with`
+ * block rather than via an explicit `Property` directive.
+ *
+ * `getLines(file)` should return the source lines for a given file (or [] if
+ * unavailable); it is used for column narrowing and to detect the
+ * `! Pragma:Prop` inline suppression marker.
+ */
+export function collectUndeclaredPropertyWarnings(
+  index: CompilerIndex,
+  getLines: (file: string) => string[],
+): Map<string, Diagnostic[]> {
+  const byFile = new Map<string, Diagnostic[]>();
+
+  const informalProps = new Set(
+    index.symbols
+      .filter(
+        (s) =>
+          (s.type === "property" || s.type === "individual_property") &&
+          !s.is_system &&
+          s.formal_declaration === false,
+      )
+      .map((s) => s.name),
+  );
+  if (informalProps.size === 0) return byFile;
+
+  for (const obj of index.objects) {
+    for (const prop of [...obj.properties, ...obj.private_properties]) {
+      if (!informalProps.has(prop.name)) continue;
+
+      const line = Math.max(0, prop.line - 1);
+      const srcLine = getLines(obj.file)[line] ?? "";
+      if (srcLine.includes("Pragma:Prop")) continue;
+
+      if (!byFile.has(obj.file)) byFile.set(obj.file, []);
+      const col = srcLine.indexOf(prop.name);
+      const startChar = col !== -1 ? col : 0;
+      const endChar = col !== -1 ? col + prop.name.length : Number.MAX_SAFE_INTEGER;
+
+      byFile.get(obj.file)!.push({
+        severity: DiagnosticSeverity.Warning,
+        range: {
+          start: { line, character: startChar },
+          end: { line, character: endChar },
+        },
+        message: `'${prop.name}' is not formally declared — consider adding 'Property ${prop.name};' or 'Property individual ${prop.name};'`,
+        source: "inform6",
+      });
+    }
+  }
+
+  return byFile;
 }
 
 /**

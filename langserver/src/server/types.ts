@@ -36,6 +36,7 @@ export interface SymbolInfo {
   file?: string;
   line?: number;
   doc?: string;
+  formal_declaration?: boolean; // property/individual_property only
 }
 
 export interface RoutineInfo {

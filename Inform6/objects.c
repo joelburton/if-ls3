@@ -278,6 +278,7 @@ extern void make_property(void)
 
         this_identifier_number = no_individual_properties++;
         assign_symbol(i, this_identifier_number, INDIVIDUAL_PROPERTY_T);
+        if (index_switch) index_note_property_formal(i);
         if (debugfile_switch) {
             debug_file_printf("<property>");
             debug_file_printf
@@ -321,6 +322,7 @@ extern void make_property(void)
         }
 
         assign_symbol(i, symbols[token_value].value, PROPERTY_T);
+        if (index_switch) index_note_property_formal(i);
         trace_s(name, symbols[i].value, 1);
         symbols[token_value].flags |= ALIASED_SFLAG;
         symbols[i].flags |= ALIASED_SFLAG;
@@ -374,6 +376,7 @@ Advanced game to get 32 more)");
     commonprops[no_properties].is_additive = additive_flag;
 
     assign_symbol(i, no_properties++, PROPERTY_T);
+    if (index_switch) index_note_property_formal(i);
 
     if (debugfile_switch)
     {   debug_file_printf("<property>");

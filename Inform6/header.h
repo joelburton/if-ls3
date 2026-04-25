@@ -2556,6 +2556,7 @@ extern void  index_note_routine_end(void);
 extern void  index_reset_object_props(void);
 extern void  index_note_attribute(char *name);
 extern void  index_note_property(char *name, int is_private);
+extern void  index_note_property_formal(int symbol);
 extern void  index_note_object(char *name, const char *shortname, int symbol,
                  int is_class, int parent, brief_location start);
 extern void  index_note_error(const char *file, int32 line,

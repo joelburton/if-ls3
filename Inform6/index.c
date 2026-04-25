@@ -258,7 +258,19 @@ static memory_list trailing_docs_list_memlist;
 static char **symbol_docs;
 static memory_list symbol_docs_memlist;
 
+/* Parallel array marking which property symbols were formally declared via
+   the `Property` directive (vs. created implicitly by inline use in an
+   object's `with` block). One byte per symbol: 1 = formal, 0 = implicit. */
+static unsigned char *formal_property_marks;
+static memory_list formal_property_marks_memlist;
+
 static char *index_consume_doc(int32 def_line);
+
+extern void index_note_property_formal(int symbol)
+{   if (symbol < 0) return;
+    ensure_memory_list_available(&formal_property_marks_memlist, symbol + 1);
+    formal_property_marks[symbol] = 1;
+}
 
 extern void index_note_symbol_doc(int symbol)
 {   char *doc;
@@ -642,6 +654,14 @@ extern void index_output_json(void)
         printf(", \"value\": %d", (int)symbols[i].value);
         printf(", \"flags\": %u", symbols[i].flags);
         printf(", \"is_system\": %s", is_sys ? "true" : "false");
+
+        if (symbols[i].type == PROPERTY_T
+            || symbols[i].type == INDIVIDUAL_PROPERTY_T)
+        {   int formal = (i < (int)formal_property_marks_memlist.count
+                && formal_property_marks[i]) ? 1 : 0;
+            printf(", \"formal_declaration\": %s",
+                formal ? "true" : "false");
+        }
 
         if (symbols[i].line.file_index > 0)
         {   printf(", \"file\": ");
@@ -1079,6 +1099,7 @@ extern void init_index_vars(void)
     doc_buffer = NULL;
     trailing_doc_text = NULL;
     symbol_docs = NULL;
+    formal_property_marks = NULL;
     trailing_docs = NULL;
     errors_info = NULL;
     action_refs = NULL;
@@ -1158,6 +1179,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&symbol_docs_memlist,
         sizeof(char *), MAX_SYMBOL_DOCS,
         (void **)&symbol_docs, "index symbol docs");
+    initialise_memory_list(&formal_property_marks_memlist,
+        sizeof(unsigned char), MAX_SYMBOL_DOCS,
+        (void **)&formal_property_marks, "index formal property marks");
     initialise_memory_list(&trailing_docs_list_memlist,
         sizeof(trailing_doc_entry), MAX_TRAILING_DOCS,
         (void **)&trailing_docs, "index trailing docs");
@@ -1219,6 +1243,7 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&doc_buffer_memlist);
     deallocate_memory_list(&trailing_doc_memlist);
     deallocate_memory_list(&symbol_docs_memlist);
+    deallocate_memory_list(&formal_property_marks_memlist);
     deallocate_memory_list(&trailing_docs_list_memlist);
     deallocate_memory_list(&errors_info_memlist);
     deallocate_memory_list(&action_refs_memlist);

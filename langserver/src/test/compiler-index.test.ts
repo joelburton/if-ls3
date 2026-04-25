@@ -84,4 +84,62 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
     const idx = JSON.parse(output);
     expect(idx.files.some((f: string) => f.endsWith("tiny.inf"))).toBe(true);
   });
+
+  describe("formal_declaration on property symbols", () => {
+    type Sym = {
+      name: string;
+      type: string;
+      is_system?: boolean;
+      formal_declaration?: boolean;
+      line?: number;
+    };
+
+    it("marks `Property name;` declarations as formal", () => {
+      const idx = JSON.parse(output);
+      // tiny.inf lines 1-2: `Property room_func;` and `Property description;`
+      const roomFunc = idx.symbols.find((s: Sym) => s.name === "room_func");
+      const description = idx.symbols.find((s: Sym) => s.name === "description");
+
+      expect(roomFunc).toBeDefined();
+      expect(roomFunc.type).toBe("property");
+      expect(roomFunc.formal_declaration).toBe(true);
+
+      expect(description).toBeDefined();
+      expect(description.type).toBe("property");
+      expect(description.formal_declaration).toBe(true);
+    });
+
+    it("marks properties created implicitly inside `with` blocks as not formal", () => {
+      const idx = JSON.parse(output);
+      // tiny.inf has no library include, so `before` (used inside TheRoom's
+      // with-block on line 19) is created implicitly as an individual_property.
+      const before = idx.symbols.find((s: Sym) => s.name === "before");
+      expect(before).toBeDefined();
+      expect(before.type).toBe("individual_property");
+      expect(before.is_system).toBe(false);
+      expect(before.formal_declaration).toBe(false);
+    });
+
+    it("emits formal_declaration on every property/individual_property symbol", () => {
+      const idx = JSON.parse(output);
+      const props: Sym[] = idx.symbols.filter(
+        (s: Sym) => s.type === "property" || s.type === "individual_property",
+      );
+      expect(props.length).toBeGreaterThan(0);
+      for (const p of props) {
+        expect(typeof p.formal_declaration).toBe("boolean");
+      }
+    });
+
+    it("does not emit formal_declaration on non-property symbols", () => {
+      const idx = JSON.parse(output);
+      const others: Sym[] = idx.symbols.filter(
+        (s: Sym) => s.type !== "property" && s.type !== "individual_property",
+      );
+      expect(others.length).toBeGreaterThan(0);
+      for (const s of others) {
+        expect(s).not.toHaveProperty("formal_declaration");
+      }
+    });
+  });
 });

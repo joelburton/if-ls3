@@ -11,6 +11,7 @@ export interface FileConfig {
   switches: string;
   defines: string[];
   externalDefines: string[];
+  warnUndeclaredProperties: boolean;
 }
 
 export interface WorkspaceConfig {
@@ -30,7 +31,7 @@ function dedup(arr: string[]): string[] {
   return [...new Set(arr)];
 }
 
-const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "externalDefines"]);
+const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "externalDefines", "warnUndeclaredProperties"]);
 
 /**
  * Load `inform6rc.yaml` from the workspace root.
@@ -62,6 +63,7 @@ export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
   const globalSwitches = String(raw["switches"] ?? "");
   const globalDefines = toStringArray(raw["defines"]);
   const globalExternalDefines = toStringArray(raw["externalDefines"]);
+  const globalWarnUndeclaredProperties = raw["warnUndeclaredProperties"] !== false;
 
   /* Per-file entries: any non-global key with a null or plain-object value */
   const files: FileConfig[] = [];
@@ -78,6 +80,10 @@ export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
       switches: String(perFile["switches"] ?? globalSwitches),
       defines: dedup([...globalDefines, ...toStringArray(perFile["defines"])]),
       externalDefines: dedup([...globalExternalDefines, ...toStringArray(perFile["externalDefines"])]),
+      warnUndeclaredProperties:
+        typeof perFile["warnUndeclaredProperties"] === "boolean"
+          ? perFile["warnUndeclaredProperties"]
+          : globalWarnUndeclaredProperties,
     });
   }
 
