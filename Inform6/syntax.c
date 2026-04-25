@@ -238,6 +238,7 @@ extern int parse_directive(int internal_flag)
             return(TRUE);
         }
         symbols[token_value].flags |= USED_SFLAG;
+        index_note_symbol_ref(token_value);
         make_object(FALSE, NULL, -1, -1, symbols[token_value].value);
         return TRUE;
     }
