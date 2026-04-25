@@ -189,7 +189,8 @@ export function getCompletions(
   // Only when typing the first token on the line (nothing before the cursor
   // except the partial word being typed) — mid-directive positions need the
   // full symbol list.
-  const lineBeforeCursor = lineText.slice(0, col).replace(/\w*$/, "").trim();
+  // Only trigger when the directive starts at column 0 (no leading whitespace).
+  const lineBeforeCursor = lineText.slice(0, col).replace(/\w*$/, "");
   if (lineBeforeCursor === "" && isAtTopLevel(index, filePath, position.line + 1)) {
     const items: CompletionItem[] = [...TOPLEVEL_SNIPPETS];
     const seen = new Set<string>(TOPLEVEL_SNIPPETS.map((s) => s.label.toLowerCase()));

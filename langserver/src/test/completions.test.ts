@@ -317,12 +317,20 @@ describe("top-level completions", () => {
     expect(midLabels).toContain("NOPE");
   });
 
-  it("applies top-level filter when typing the first word (no prior content)", () => {
+  it("applies top-top filter when typing the first word at column 0", () => {
     const line = "Ob";
     const firstWordItems = getCompletions(testIndex, FILE, pos(4, line.length), line, singleLine(line));
     const firstLabels = firstWordItems.map((i) => i.label);
     expect(firstLabels).toContain("Object");
     expect(firstLabels).not.toContain("MyFunc");
+  });
+
+  it("does NOT apply top-top filter when first word is indented", () => {
+    const line = "  with";
+    const indentedItems = getCompletions(testIndex, FILE, pos(4, line.length), line, singleLine(line));
+    const indentedLabels = indentedItems.map((i) => i.label);
+    expect(indentedLabels).toContain("MyFunc"); // general completions
+    expect(indentedLabels).toContain("with");   // keyword now in general list
   });
 });
 

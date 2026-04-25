@@ -85,6 +85,29 @@ export const KEYWORD_HELP: Record<string, string> = {
   stub: "**Stub** *name* *n*\n\nDeclare a routine with *n* parameters that does nothing (forward declaration for optional routines).",
   verb: "**Verb** *'token'* … *grammar* ;\n\nDefine vocabulary and grammar for a player command.",
 
+  // ── Object-body clause keywords ───────────────────────────────────────────
+  with: "**with** — opens the property clause of an object or class definition.",
+  private: "**private** — opens the private property clause (inaccessible from outside the object).",
+
+  // ── Directive modifiers ───────────────────────────────────────────────────
+  individual: "**individual** — used in `Property name individual` to declare a per-object (individual) property.",
+  alias: "**alias** *name* — used in `Property`/`Attribute` to create an alternative name for an existing property or attribute.",
+
+  // ── Verb/grammar tokens ───────────────────────────────────────────────────
+  noun:        "**noun** — grammar token: matches the primary object noun.",
+  held:        "**held** — grammar token: like `noun` but the object must be held by the player.",
+  multi:       "**multi** — grammar token: matches multiple objects.",
+  multiheld:   "**multiheld** — grammar token: matches multiple held objects.",
+  multiexcept: "**multiexcept** — grammar token: matches multiple objects except one specified.",
+  multiinside: "**multiinside** — grammar token: matches multiple objects inside a container.",
+  creature:    "**creature** — grammar token: matches an animate object.",
+  topic:       "**topic** — grammar token: matches any sequence of words as a string topic.",
+  special:     "**special** — grammar token: matches a special dictionary word.",
+  number:      "**number** — grammar token: matches a number typed by the player.",
+  "scope=":    "**scope=***Routine* — grammar token: uses *Routine* to determine the scope of matchable objects.",
+  only:        "**only** — grammar line modifier: restricts this grammar line to exact token matches.",
+  reverse:     "**reverse** — grammar line modifier: swaps the roles of `noun` and `second`.",
+
   // ── Implicit locals in object routines ───────────────────────────────────
   self: "**self** — implicit local in object/class routines; the object receiving the message.",
   sender: "**sender** — implicit local in object routines; the object that sent the message (or `nothing`).",
@@ -184,6 +207,26 @@ export const KEYWORD_COMPLETIONS: { label: string; kind: "keyword" | "directive"
   { label: "nothing", kind: "keyword" },
   { label: "true", kind: "keyword" },
   { label: "false", kind: "keyword" },
+  // Object-body clause keywords
+  { label: "with", kind: "keyword" },
+  { label: "private", kind: "keyword" },
+  // Directive modifiers
+  { label: "individual", kind: "keyword" },
+  { label: "alias", kind: "keyword" },
+  // Verb/grammar tokens
+  { label: "noun",        kind: "keyword" },
+  { label: "held",        kind: "keyword" },
+  { label: "multi",       kind: "keyword" },
+  { label: "multiheld",   kind: "keyword" },
+  { label: "multiexcept", kind: "keyword" },
+  { label: "multiinside", kind: "keyword" },
+  { label: "creature",    kind: "keyword" },
+  { label: "topic",       kind: "keyword" },
+  { label: "special",     kind: "keyword" },
+  { label: "number",      kind: "keyword" },
+  { label: "scope=",      kind: "keyword" },
+  { label: "only",        kind: "keyword" },
+  { label: "reverse",     kind: "keyword" },
   // Directives (capitalised as conventionally written)
   { label: "Array", kind: "directive" },
   { label: "Attribute", kind: "directive" },
