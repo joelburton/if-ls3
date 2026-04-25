@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause, isAfterProvides } from "../features/completions";
+import { getCompletions, isInHasClause, isAfterProvides, isAtTopLevel } from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -11,7 +11,8 @@ const singleLine = (text: string) => [text];
 
 describe("getCompletions", () => {
   describe("general completions (no dot)", () => {
-    const items = getCompletions(testIndex, FILE, pos(0, 0), "", singleLine(""));
+    // pos(11, 0) = 1-based line 12, inside TheRoom (10-20) but outside all routines → general completions.
+    const items = getCompletions(testIndex, FILE, pos(11, 0), "", singleLine(""));
 
     it("includes non-embedded routines", () => {
       const labels = items.map((i) => i.label);
@@ -95,8 +96,8 @@ describe("getCompletions", () => {
     });
 
     it("does not include locals when cursor is outside the routine", () => {
-      // Line 0 is outside MyFunc (which starts at line 58, i.e., index 57).
-      const items = getCompletions(testIndex, FILE, pos(0, 0), "", singleLine(""));
+      // pos(11, 0) = inside TheRoom but outside all routines — still general completions, no locals.
+      const items = getCompletions(testIndex, FILE, pos(11, 0), "", singleLine(""));
       const labels = items.map((i) => i.label);
       // "a" and "b" are locals only; they shouldn't appear unless there's a
       // global/constant/etc. with the same name.
@@ -184,7 +185,7 @@ describe("getCompletions", () => {
 
     it("returns all items (not just attributes) when 'has' is in a comment", () => {
       const lines = ["Object O", "  with name 'o', ! has prop", "    "];
-      const items = getCompletions(testIndex, FILE, pos(2, 4), "    ", lines);
+      const items = getCompletions(testIndex, FILE, pos(11, 4), "    ", lines);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("MyFunc");
       expect(labels).toContain("TheRoom");
@@ -192,14 +193,14 @@ describe("getCompletions", () => {
 
     it("returns all items when 'has' is in a string literal", () => {
       const lines = ['Object O', '  with description "has light",', "  "];
-      const items = getCompletions(testIndex, FILE, pos(2, 2), "  ", lines);
+      const items = getCompletions(testIndex, FILE, pos(11, 2), "  ", lines);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("MyFunc");
     });
 
     it("returns all items after the semicolon that closes the has clause", () => {
       const lines = ["Object O", "  has light;", ""];
-      const items = getCompletions(testIndex, FILE, pos(2, 0), "", lines);
+      const items = getCompletions(testIndex, FILE, pos(11, 0), "", lines);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("MyFunc");
       expect(labels).toContain("Object");
@@ -208,7 +209,7 @@ describe("getCompletions", () => {
     it("returns all items inside a 'with' clause even when 'has' appears later in source", () => {
       // Cursor is in the 'with' block; 'has' comes after on next line — not yet scanned.
       const lines = ["Object O", "  with name 'o',", "    "];
-      const items = getCompletions(testIndex, FILE, pos(2, 4), "    ", lines);
+      const items = getCompletions(testIndex, FILE, pos(11, 4), "    ", lines);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("MyFunc");
     });
@@ -226,6 +227,85 @@ describe("getCompletions", () => {
       expect(items.find((i) => i.label === "light")).toBeDefined();
       expect(items.find((i) => i.label === "container")).toBeDefined();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// top-level completions
+// ---------------------------------------------------------------------------
+
+// testIndex: objects at lines 10-20 and 24-24; routines at 16-19, 58-66, 89-89.
+// Line 5 (1-based) is outside all of them → top level.
+// Line 30 (1-based) is also between objects/routines → top level.
+
+describe("isAtTopLevel", () => {
+  it("true when cursor is outside all routines and objects", () => {
+    expect(isAtTopLevel(testIndex, FILE, 5)).toBe(true);
+    expect(isAtTopLevel(testIndex, FILE, 30)).toBe(true);
+  });
+
+  it("false when cursor is inside a routine", () => {
+    expect(isAtTopLevel(testIndex, FILE, 60)).toBe(false); // inside MyFunc (58-66)
+  });
+
+  it("false when cursor is inside an object body", () => {
+    expect(isAtTopLevel(testIndex, FILE, 12)).toBe(false); // inside TheRoom (10-20)
+  });
+
+  it("true for a file path not in the index (treated as top level)", () => {
+    expect(isAtTopLevel(testIndex, "/other/file.inf", 10)).toBe(true);
+  });
+});
+
+describe("top-level completions", () => {
+  // pos(4, 0) → 1-based line 5, which is outside all objects and routines.
+  const items = getCompletions(testIndex, FILE, pos(4, 0), "", singleLine(""));
+  const labels = items.map((i) => i.label);
+
+  it("includes directives", () => {
+    expect(labels).toContain("Object");
+    expect(labels).toContain("Class");
+    expect(labels).toContain("Global");
+    expect(labels).toContain("Constant");
+    expect(labels).toContain("Array");
+    expect(labels).toContain("Verb");
+    expect(labels).toContain("#Ifdef");
+  });
+
+  it("includes user-defined class names for pseudo-directives", () => {
+    expect(labels).toContain("Room"); // is_class: true in testIndex
+  });
+
+  it("includes snippet items", () => {
+    expect(labels).toContain("[ (routine)");
+    expect(labels).toContain("Object (with body)");
+    expect(labels).toContain("Class (with body)");
+  });
+
+  it("snippet items have insertText and InsertTextFormat.Snippet", () => {
+    const { CompletionItemKind, InsertTextFormat } = require("vscode-languageserver");
+    const snippet = items.find((i) => i.label === "[ (routine)");
+    expect(snippet).toBeDefined();
+    expect(snippet!.kind).toBe(CompletionItemKind.Snippet);
+    expect(snippet!.insertTextFormat).toBe(InsertTextFormat.Snippet);
+    expect(snippet!.insertText).toContain("${1:");
+  });
+
+  it("does NOT include statement keywords", () => {
+    expect(labels).not.toContain("if");
+    expect(labels).not.toContain("for");
+    expect(labels).not.toContain("while");
+    expect(labels).not.toContain("return");
+  });
+
+  it("does NOT include user routines, globals, or constants", () => {
+    expect(labels).not.toContain("MyFunc");
+    expect(labels).not.toContain("location");
+    expect(labels).not.toContain("NOPE");
+  });
+
+  it("does NOT include non-class objects", () => {
+    expect(labels).not.toContain("TheRoom"); // is_class: false
   });
 });
 

@@ -1,9 +1,52 @@
-import { CompletionItem, CompletionItemKind, Position } from "vscode-languageserver";
+import { CompletionItem, CompletionItemKind, InsertTextFormat, Position } from "vscode-languageserver";
 import type { CompilerIndex } from "../server/types";
 import { KEYWORD_COMPLETIONS } from "./keywords";
 import { enclosingObject } from "./symbolLookup";
 
-const isIdChar = (c: string) => /\w/.test(c);
+// ---------------------------------------------------------------------------
+// Top-level detection
+// ---------------------------------------------------------------------------
+
+/**
+ * True when the cursor line is outside all routine and object bodies in the
+ * index, i.e. at the top level where directives and pseudo-directives appear.
+ */
+export function isAtTopLevel(
+  index: CompilerIndex,
+  filePath: string,
+  line: number, // 1-based
+): boolean {
+  if (index.routines.some((r) => r.file === filePath && r.start_line <= line && line <= r.end_line))
+    return false;
+  if (index.objects.some((o) => o.file === filePath && o.start_line <= line && line <= o.end_line))
+    return false;
+  return true;
+}
+
+/** Snippet templates offered at the top level. */
+const TOPLEVEL_SNIPPETS: CompletionItem[] = [
+  {
+    label: "[ (routine)",
+    kind: CompletionItemKind.Snippet,
+    insertText: "[ ${1:Name};\n\t$0\n];\n",
+    insertTextFormat: InsertTextFormat.Snippet,
+    detail: "routine definition",
+  },
+  {
+    label: "Object (with body)",
+    kind: CompletionItemKind.Snippet,
+    insertText: "Object ${1:Name} \"${2:short name}\"\n  with\n    description \"${3:Description.}\",\n  has ${4:light}\n;\n",
+    insertTextFormat: InsertTextFormat.Snippet,
+    detail: "object definition",
+  },
+  {
+    label: "Class (with body)",
+    kind: CompletionItemKind.Snippet,
+    insertText: "Class ${1:Name}\n  with\n    ${2}\n;\n",
+    insertTextFormat: InsertTextFormat.Snippet,
+    detail: "class definition",
+  },
+];
 
 // ---------------------------------------------------------------------------
 // provides-expression detection
@@ -35,8 +78,8 @@ function lastWordIndex(text: string, word: string): number {
 /**
  * True when the cursor appears to be inside an Inform 6 `has` attribute
  * clause.  Scans backwards up to SCAN_LIMIT lines, stripping comments and
- * string literals, then checks whether `has` appears more recently than any
- * clause terminator (`;`, `with`, `private`, `class`).
+ * string literals, then checks whether `has`/`hasnt` appears more recently
+ * than any clause terminator (`;`, `with`, `private`, `class`).
  */
 export function isInHasClause(
   lines: string[],
@@ -71,18 +114,19 @@ export function isInHasClause(
 /**
  * Return completion items for the cursor position.
  *
- * Three modes:
+ * Modes (in priority order):
  *
- * 1. **Dot completion** (`ObjName.`): the character immediately before the
- *    cursor is `.`.  Look up the object and return its properties, private
- *    properties, and attributes.
+ * 1. **Dot completion** (`ObjName.` / `self.`): return properties and
+ *    attributes of the named (or enclosing) object.
  *
- * 2. **Has clause**: cursor is inside a `has` attribute block.  Return only
- *    attribute names (all objects' attributes + attribute symbols).
+ * 2. **Provides expression**: after `obj provides`, return property names.
  *
- * 3. **General completion**: return all in-scope locals (from the enclosing
- *    routine) followed by every user-defined routine, object, global,
- *    constant, and array in the index.
+ * 3. **Has clause**: inside a `has`/`hasnt` block, return attribute names.
+ *
+ * 4. **Top level**: outside all routines and objects, return directives,
+ *    pseudo-directive class names, and snippet templates.
+ *
+ * 5. **General**: in-scope locals, then all user symbols and keywords.
  */
 export function getCompletions(
   index: CompilerIndex,
@@ -141,6 +185,32 @@ export function getCompletions(
     return items;
   }
 
+  // ── Top level: directives, pseudo-directive class names, snippets ────────
+  // Checked after expression-context guards above, which cannot fire at the
+  // real top level (has/provides only appear inside routines/objects).
+  if (isAtTopLevel(index, filePath, position.line + 1)) {
+    const items: CompletionItem[] = [...TOPLEVEL_SNIPPETS];
+    const seen = new Set<string>(TOPLEVEL_SNIPPETS.map((s) => s.label.toLowerCase()));
+
+    for (const kw of KEYWORD_COMPLETIONS) {
+      if (kw.kind !== "directive") continue;
+      const key = kw.label.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: kw.label, kind: CompletionItemKind.Struct });
+    }
+
+    for (const o of index.objects) {
+      if (!o.is_class) continue;
+      const key = o.name.toLowerCase();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      items.push({ label: o.name, kind: CompletionItemKind.Class });
+    }
+
+    return items;
+  }
+
   // ── General completion ──────────────────────────────────────────────────
   const items: CompletionItem[] = [];
   const seen = new Set<string>();
@@ -186,3 +256,5 @@ export function getCompletions(
 
   return items;
 }
+
+const isIdChar = (c: string) => /\w/.test(c);
