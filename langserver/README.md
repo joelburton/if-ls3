@@ -28,6 +28,19 @@ Ctrl+click (or F12) on any symbol to jump to its definition:
 - Properties and attributes (including `Object.property` dot notation)
 - Action names (`##Jump`, `<Jump>`, and grammar `-> Jump` navigate to `JumpSub`)
 - Library-defined symbols (properties, attributes, etc.)
+- `Include "filename"` directives — jumps to the included file
+
+### Find references
+
+Shift+F12 (or right-click → Find All References) lists every use of a symbol
+across all indexed files.
+
+### Rename symbol
+
+F2 renames a symbol everywhere it is referenced. The rename covers all indexed
+source files. References inside inactive `#IfDef` branches are not seen by the
+compiler and will not be renamed; a notification appears after the rename if
+any inactive branches exist in the affected files.
 
 ### Hover information
 
@@ -41,12 +54,26 @@ location. Includes:
 - Print-rule keywords (`(the)`, `(The)`, `(a)`, `(name)`, etc.)
 - Language keyword and directive reference
 
+Hover is suppressed inside string literals so prose words don't trigger
+false symbol lookups.
+
 ### Autocomplete
 
-- **Dot completion**: type `ObjectName.` to see that object's properties
+Context-aware completions triggered as you type:
+
+- **Dot completion**: `ObjectName.` or `self.` shows that object's properties
   and attributes
-- **General completion**: all in-scope locals, routines, objects, globals,
-  constants, arrays, and language keywords
+- **`##`**: action names only
+- **`provides` expression**: property names only (including `or` chains)
+- **`ofclass` expression**: class names only (including `or` chains)
+- **`class` clause** in an object header: class names only
+- **`has`/`hasnt` clause**: attribute names only
+- **Top of file** (column 0, outside all bodies): directives, class
+  pseudo-directives, and declaration snippets
+- **`->` in grammar lines**: action names appear first, followed by the full
+  symbol list (so `obj->prop` access still works)
+- **General**: all in-scope locals, routines, objects, globals, constants,
+  arrays, and language keywords
 - Completions are suppressed inside comments
 
 ### Diagnostics
@@ -55,11 +82,38 @@ Compiler errors and warnings appear inline as you edit. The full Inform 6
 compiler runs on each save, so diagnostics reflect real compilation results
 rather than approximate heuristics.
 
+Opt-in: set `warnUndeclaredProperties: true` in `inform6rc.yaml` to warn when
+an object uses a property name that was never formally declared with a
+`Property` directive. This catches typos that the compiler silently accepts
+(e.g. `prop_aa` instead of `prop_a`). Add `! Pragma:Prop` at the end of a
+property line to suppress the warning for that one usage.
+
 ### Document and workspace symbols
 
 - **Document symbols** (Ctrl+Shift+O): browse all routines, objects, classes,
   and verbs defined in the current file
 - **Workspace symbols** (Ctrl+T): search across all indexed files
+
+### Folding
+
+Routine and object bodies fold in the editor. The **Inform 6: Fold Inactive
+Branches** command (also available in the command palette) folds every
+inactive `#IfDef`/`#IfNDef`/`#IfV3`/`#IfV5` block and unfolds every active
+one, based on the compiler's evaluation of your defines.
+
+### Conditional compilation graying
+
+Inactive `#IfDef` branches are displayed at reduced opacity so you can see at
+a glance which code paths are compiled. Toggle with the **Inform 6: Toggle
+Inactive Branch Graying** command, or set `inform6.grayInactiveBranches` to
+`false` to disable permanently.
+
+### Fill and wrap strings (Alt+Q)
+
+With the cursor inside a string literal, **Alt+Q** reflows the string content
+to fit within the editor ruler (default 80 columns). Indentation, leading and
+trailing spaces, `^` paragraph breaks, and any suffix after the closing quote
+(e.g. `,` or `;`) are all preserved.
 
 ### Snippets
 
@@ -106,6 +160,13 @@ file, or when `inform6rc.yaml` changes.
 |---------|---------|-------------|
 | `inform6.enableTextMateHighlighting` | `true` | Enable TextMate grammar highlighting (reload required) |
 | `inform6.enableLanguageServer` | `true` | Enable the language server |
+| `inform6.grayInactiveBranches` | `true` | Gray out inactive conditional compilation branches |
+
+### Per-file options in `inform6rc.yaml`
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `warnUndeclaredProperties` | `false` | Warn on properties not formally declared with `Property` |
 
 ## Doc comments
 
