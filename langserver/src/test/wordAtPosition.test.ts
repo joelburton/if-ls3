@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isInComment, wordAtPosition, objectBeforeDot, classBeforeColonColon } from "../features/wordAtPosition";
+import { isInComment, isInString, wordAtPosition, objectBeforeDot, classBeforeColonColon } from "../features/wordAtPosition";
 
 // ── isInComment ──────────────────────────────────────────────────────────────
 
@@ -51,6 +51,74 @@ describe("isInComment", () => {
 
   it("returns false for a line with no ! at all", () => {
     expect(isInComment("x = 42;", 3)).toBe(false);
+  });
+});
+
+// ── isInString ───────────────────────────────────────────────────────────────
+
+describe("isInString", () => {
+  const pos = (line: number, character: number) => ({ line, character });
+
+  it("returns false on a line with no strings", () => {
+    expect(isInString("x = 42;", pos(0, 4))).toBe(false);
+  });
+
+  it("returns true when cursor is inside a single-line string", () => {
+    //              0123456789012345678
+    const src = `print "hello world";`;
+    expect(isInString(src, pos(0, 10))).toBe(true);
+  });
+
+  it("returns false before the opening quote", () => {
+    const src = `print "hello world";`;
+    expect(isInString(src, pos(0, 5))).toBe(false);
+  });
+
+  it("returns false after the closing quote", () => {
+    const src = `print "hello world";`;
+    expect(isInString(src, pos(0, 19))).toBe(false);
+  });
+
+  it("returns false between two strings on the same line", () => {
+    //              0         1         2
+    //              0123456789012345678901234
+    const src = `x = "foo" + "bar";`;
+    // cursor at 11 (the '+'), between the two strings
+    expect(isInString(src, pos(0, 11))).toBe(false);
+  });
+
+  it("returns true inside the second of two strings on the same line", () => {
+    const src = `x = "foo" + "bar";`;
+    // cursor at 14 (inside "bar")
+    expect(isInString(src, pos(0, 14))).toBe(true);
+  });
+
+  it("returns true inside a multi-line string (cursor on continuation line)", () => {
+    const src = `description "The long\n    description continues",`;
+    // cursor on line 1 col 5 — inside the string
+    expect(isInString(src, pos(1, 5))).toBe(true);
+  });
+
+  it("returns false on a code line after a multi-line string has closed", () => {
+    const src = `description "The long\n    description",\n    before [;`;
+    // cursor on line 2 (the 'before' line) — string is already closed
+    expect(isInString(src, pos(2, 5))).toBe(false);
+  });
+
+  it("does not treat ! inside a string as a comment (string stays open)", () => {
+    const src = `print "He said !wow";\nx = 1;`;
+    // cursor on line 1 — the string on line 0 closed properly
+    expect(isInString(src, pos(1, 2))).toBe(false);
+  });
+
+  it("treats ! outside a string as a comment (stops scanning the line)", () => {
+    // Line: `x = 1; ! "not a string`  — the " after ! should not open a string
+    const src = `x = 1; ! "not a string\nnext line`;
+    expect(isInString(src, pos(1, 2))).toBe(false);
+  });
+
+  it("returns false at column 0 with no preceding content", () => {
+    expect(isInString(`"hello"`, pos(0, 0))).toBe(false);
   });
 });
 
