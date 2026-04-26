@@ -62,7 +62,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("inform6.compile", compileCommand)
+    vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel))
   );
 
   context.subscriptions.push(

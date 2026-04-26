@@ -4,7 +4,7 @@ import * as vscode from "vscode";
 import { loadConfig } from "../src/workspace/config";
 import type { FileConfig } from "../src/workspace/config";
 
-export async function compileCommand(): Promise<void> {
+export async function compileCommand(outputChannel: vscode.OutputChannel): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) {
     void vscode.window.showErrorMessage("Inform 6: no workspace folder open.");
@@ -81,7 +81,8 @@ export async function compileCommand(): Promise<void> {
 
         child.on("close", (code) => {
           resolve();
-          const lines = Buffer.concat(stderrChunks).toString("utf-8").split("\n");
+          const stderr = Buffer.concat(stderrChunks).toString("utf-8");
+          const lines = stderr.split("\n");
           const errors   = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
           const warnings = lines.filter((l) => /:\s+Warning:\s/.test(l)).length;
 
@@ -90,14 +91,24 @@ export async function compileCommand(): Promise<void> {
             warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "",
           ].filter(Boolean).join(", ");
 
+          // Write diagnostics to the output channel so "Show Output" reveals them.
+          if (errors > 0 || warnings > 0) {
+            outputChannel.appendLine(`\n[compile] ${label}`);
+            for (const line of lines) {
+              if (line.trim()) outputChannel.appendLine(line);
+            }
+          }
+
           if (code !== 0) {
             void vscode.window.showErrorMessage(
               `Inform 6: ${label} — ${detail || "compilation failed"}.`,
-            );
+              "Show Output",
+            ).then((action) => { if (action) outputChannel.show(); });
           } else if (warnings > 0) {
             void vscode.window.showWarningMessage(
               `Inform 6: ${label} — ${detail}.`,
-            );
+              "Show Output",
+            ).then((action) => { if (action) outputChannel.show(); });
           } else {
             void vscode.window.showInformationMessage(
               `Inform 6: ${label} compiled successfully.`,
