@@ -24,7 +24,7 @@ export function wrapParagraph(): void {
   void editor.edit((edit) => edit.replace(replaceRange, newText));
 }
 
-function findEnclosingString(
+export function findEnclosingString(
   doc: vscode.TextDocument,
   cursor: vscode.Position,
 ): { open: vscode.Position; close: vscode.Position } | null {
@@ -81,7 +81,7 @@ function getColumnLimit(editor: vscode.TextEditor): number {
   return 80;
 }
 
-function wrapString(
+export function wrapString(
   doc: vscode.TextDocument,
   openPos: vscode.Position,
   closePos: vscode.Position,

@@ -101,21 +101,25 @@ needed.
 
 ## C. Test coverage gaps
 
-The 489-test vitest suite is thorough on the LSP side. The genuine gaps
-are on the **client (extension) side**:
+The vitest suite is thorough on the LSP side. The genuine gaps are on the
+**client (extension) side**:
 
 | Module | LOC | Tested? |
 |--------|-----|---------|
 | `client/extension.ts` | 307 | ❌ none — activation, decorations, branch-fold cmd |
-| `client/wrapParagraph.ts` | 181 | ❌ none — Alt+Q paragraph wrap inside strings |
+| `client/wrapParagraph.ts` | 181 | ✅ helpers covered (`wrapParagraph.test.ts`, 18 tests) |
 | `client/compile.ts` | 303 | partial — output parsing covered (`compile.test.ts`), spawn/UI not |
 | `server/server.ts` | 377 | indirect — feature handlers covered via unit tests, but the wiring (request dispatch, reindex token, getFileText callback) is not exercised end-to-end |
 
 Recommended additions, in ROI order:
 
-1. **`wrapParagraph.ts` unit tests.** Pure function over a string + cursor;
-   trivial to test like `wordAtPosition`. 181 untested lines is the biggest
-   gap.
+1. **`wrapParagraph.ts` unit tests.** ✅ Done 2026-04-25 — `findEnclosingString`
+   and `wrapString` exported and covered by `src/test/wrapParagraph.test.ts`
+   (18 tests: enclosing-string detection inside strings/comments/multi-line,
+   wrap shape, indent preservation, paragraph breaks, `^` group split,
+   CRLF/LF, suffix preservation, whitespace handling). The `wrapParagraph()`
+   entry point itself still relies on `vscode.window.activeTextEditor` and
+   isn't unit-tested — acceptable, the hard logic is in the helpers.
 2. **Branch-fold command unit tests.** The decoration-range computation in
    `extension.ts` (which lines to gray, `#EndIf` visible-when-folded logic)
    is pure data manipulation against a `conditionals[]` fixture and could be
