@@ -266,7 +266,7 @@ Doc comments appear in hover popups and help document your project's API.
 
 ## Credits
 
-- **Inform 6 compiler** — Graham Nelson and contributors (GPL-2.0)
+- **Inform 6 compiler** — Graham Nelson and contributors (Artistic License  2.0)
 - **[vscode-inform6](https://gitlab.com/Natrium729/vscode-inform6)** by
   Nathanaël Marion (MIT) — the TextMate grammar descends from his, and the
   compile-and-run story-launcher is adapted from his extension

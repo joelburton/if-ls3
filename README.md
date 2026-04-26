@@ -169,7 +169,7 @@ contributors (human or AI).
 
 ## Credits
 
-- **Inform 6 compiler** — Graham Nelson and contributors (GPL-2.0)
+- **Inform 6 compiler** — Graham Nelson and contributors (Artistic License 2.0)
 - **[vscode-inform6](https://gitlab.com/Natrium729/vscode-inform6)** by
   Nathanaël Marion (MIT) — the TextMate grammar in `langserver/syntaxes/`
   descends from his, and the compile-and-run story-launcher logic is adapted
