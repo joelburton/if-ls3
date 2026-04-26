@@ -128,6 +128,11 @@
           "default": false,
           "description": "Show verbose indexer and server logs in the Inform 6 output channel. Off by default; enable when debugging the extension."
         },
+        "inform6.runWithWarnings": {
+          "type": "boolean",
+          "default": false,
+          "description": "Launch the story after Compile and Run even when there are compiler warnings. Errors always prevent launch."
+        },
         "inform6.storyPlayerColumn": {
           "type": "string",
           "default": "beside",

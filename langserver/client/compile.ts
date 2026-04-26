@@ -244,10 +244,18 @@ export async function compileAndRunCommand(
   const result = await compileTarget(fc, workspaceRoot, label, `Compiling ${label}…`, outputChannel, diagCollection);
   if (!result) return;
 
-  if (result.errors > 0 || result.warnings > 0) {
+  const runWithWarnings = vscode.workspace
+    .getConfiguration("inform6")
+    .get<boolean>("runWithWarnings", false);
+
+  if (result.errors > 0 || (result.warnings > 0 && !runWithWarnings)) {
     showCompileToast(label, result, outputChannel);
     jumpToFirst(result.first);
     return;
+  }
+
+  if (result.warnings > 0) {
+    showCompileToast(label, result, outputChannel);
   }
 
   // Compile succeeded — find and open the story file.
