@@ -11,6 +11,9 @@
   "categories": [
     "Programming Languages"
   ],
+  "extensionDependencies": [
+    "natrium729.if-player"
+  ],
   "activationEvents": [
     "onLanguage:inform6"
   ],
@@ -50,6 +53,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "inform6.compileAndRun",
+        "title": "Inform 6: Compile and Run",
+        "icon": "$(debug-start)"
+      },
+      {
         "command": "inform6.toggleTextMateHighlighting",
         "title": "Inform 6: Toggle TextMate Highlighting"
       },
@@ -73,6 +81,11 @@
         "when": "resourceLangId == inform6"
       },
       {
+        "command": "inform6.compileAndRun",
+        "key": "f5",
+        "when": "resourceLangId == inform6"
+      },
+      {
         "command": "inform6.wrapParagraph",
         "key": "alt+q",
         "when": "editorTextFocus && resourceLangId == inform6"
@@ -81,9 +94,14 @@
     "menus": {
       "editor/title": [
         {
+          "command": "inform6.compileAndRun",
+          "when": "resourceLangId == inform6",
+          "group": "navigation@1"
+        },
+        {
           "command": "inform6.compile",
           "when": "resourceLangId == inform6",
-          "group": "navigation"
+          "group": "navigation@2"
         }
       ]
     },
@@ -109,6 +127,20 @@
           "type": "boolean",
           "default": false,
           "description": "Show verbose indexer and server logs in the Inform 6 output channel. Off by default; enable when debugging the extension."
+        },
+        "inform6.storyPlayerColumn": {
+          "type": "string",
+          "default": "beside",
+          "description": "Where to open the compiled story file when using Compile and Run.",
+          "enum": ["beside", "active", "external", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"],
+          "enumDescriptions": [
+            "Open beside the current editor (default)",
+            "Open in the current editor column",
+            "Open with the default external application (e.g. Lectrote)",
+            "Open in column 1", "Open in column 2", "Open in column 3",
+            "Open in column 4", "Open in column 5", "Open in column 6",
+            "Open in column 7", "Open in column 8", "Open in column 9"
+          ]
         }
       }
     }

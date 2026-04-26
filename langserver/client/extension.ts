@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/node";
 import { inactiveLineRange } from "../src/features/conditionals";
 import { wrapParagraph } from "./wrapParagraph";
-import { compileCommand } from "./compile";
+import { compileCommand, compileAndRunCommand } from "./compile";
 import { isVerboseOnly } from "./outputFilter";
 
 type Conditional = Parameters<typeof inactiveLineRange>[0];
@@ -89,6 +89,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel, compileDiagnostics))
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.compileAndRun", () => compileAndRunCommand(outputChannel, compileDiagnostics))
   );
 
   context.subscriptions.push(
