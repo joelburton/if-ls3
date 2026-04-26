@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { getSignatureHelp } from "../features/signatureHelp";
 import { testIndex } from "./fixture";
 
-// testIndex has: MyFunc(a, b, x), FoozleSub(), TheRoom_before (embedded)
+// testIndex has: MyFunc(a, b, x), FoozleSub(), TheRoom.before (embedded)
 
 function pos(line: number, character: number) {
   return { line, character };
@@ -45,9 +45,18 @@ describe("getSignatureHelp", () => {
     expect(result).toBeNull();
   });
 
-  it("returns null for embedded routine (not callable by bare name)", () => {
-    const result = getSignatureHelp(testIndex, "TheRoom_before(", pos(0, 15));
-    expect(result).toBeNull();
+  it("returns null when an identifier matches an embedded routine", () => {
+    // Real source never literally writes "Object.prop(" — the compiler-emitted
+    // name has a `.` in it, which is not a valid identifier character.  But
+    // guard against an embedded routine whose name happens to match a typed
+    // identifier by giving it no separator and verifying the embedded check.
+    const idx = {
+      ...testIndex,
+      routines: [
+        { name: "BareEmbedded", file: "/p/g.inf", start_line: 1, end_line: 2, locals: ["x"], embedded: true },
+      ],
+    };
+    expect(getSignatureHelp(idx, "BareEmbedded(", pos(0, 13))).toBeNull();
   });
 
   it("shows correct parameter for nested call — outer", () => {

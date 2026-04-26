@@ -22,7 +22,7 @@ describe("getCompletions", () => {
 
     it("excludes embedded routines", () => {
       const labels = items.map((i) => i.label);
-      expect(labels).not.toContain("TheRoom_before");
+      expect(labels).not.toContain("TheRoom.before");
     });
 
     it("includes objects", () => {

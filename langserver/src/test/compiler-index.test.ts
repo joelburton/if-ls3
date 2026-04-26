@@ -87,6 +87,32 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
     expect(idx.files.some((f: string) => f.endsWith("tiny.inf"))).toBe(true);
   });
 
+  it("emits embedded routines as 'Object.prop' or 'Class::prop'", () => {
+    // documentSymbols nesting and other features depend on this naming
+    // contract: every embedded routine's name must contain `.` or `::` so the
+    // parent can be derived by splitting on the separator.  No underscore-only
+    // forms.  Each parent must actually exist in objects[].
+    const idx = JSON.parse(output);
+    const embedded: Array<{ name: string }> = idx.routines.filter(
+      (r: { embedded?: boolean }) => r.embedded,
+    );
+    expect(embedded.length).toBeGreaterThan(0);
+
+    const objectNames = new Set<string>(idx.objects.map((o: { name: string }) => o.name));
+
+    for (const r of embedded) {
+      const sep = r.name.includes("::") ? r.name.indexOf("::") : r.name.indexOf(".");
+      expect(sep, `embedded routine ${r.name} missing '.' or '::' separator`).toBeGreaterThan(0);
+      const parent = r.name.slice(0, sep);
+      expect(objectNames.has(parent), `embedded routine ${r.name}: parent ${parent} not in objects[]`).toBe(true);
+    }
+
+    // tiny.inf specifically should produce both forms.
+    const names = embedded.map((r) => r.name);
+    expect(names.some((n) => n.includes("::"))).toBe(true);
+    expect(names.some((n) => n.includes(".") && !n.includes("::"))).toBe(true);
+  });
+
   it("conditionals array has entries with required fields", () => {
     const idx = JSON.parse(output);
     expect(Array.isArray(idx.conditionals)).toBe(true);

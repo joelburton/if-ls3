@@ -15,7 +15,10 @@ export const testIndex: CompilerIndex = {
     // Action routine for the Foozle action.
     { name: "FoozleSub", file: FILE, start_line: 89, end_line: 89, locals: [] },
     // Embedded routine (not callable by bare name — should be excluded from completions).
-    { name: "TheRoom_before", file: FILE, start_line: 16, end_line: 19, locals: [], embedded: true },
+    // The compiler emits this form ("Object.prop") for property routines on objects;
+    // class-defined routines use "Class::prop".  Both forms are recognized by
+    // documentSymbols nesting.
+    { name: "TheRoom.before", file: FILE, start_line: 16, end_line: 19, locals: [], embedded: true },
   ],
 
   objects: [

@@ -160,7 +160,7 @@ describe("findHover", () => {
   });
 
   describe("self hover (enclosingObject)", () => {
-    // TheRoom spans lines 10-20 in the fixture; TheRoom_before (embedded) 16-19.
+    // TheRoom spans lines 10-20 in the fixture; TheRoom.before (embedded) 16-19.
 
     it("enclosingObject returns the object containing the line", () => {
       const obj = enclosingObject(testIndex, FILE, 15);
