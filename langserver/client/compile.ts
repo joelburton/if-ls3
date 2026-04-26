@@ -4,7 +4,36 @@ import * as vscode from "vscode";
 import { loadConfig } from "../src/workspace/config";
 import type { FileConfig } from "../src/workspace/config";
 
-export async function compileCommand(outputChannel: vscode.OutputChannel): Promise<void> {
+// Matches "-E1" Microsoft-format lines: /abs/path/file(line): Error:  message
+const DIAG_RE = /^(.+)\((\d+)\):\s+(Error|Warning):\s+(.*)$/;
+
+function parseDiagnostics(stderr: string): Map<string, vscode.Diagnostic[]> {
+  const byFile = new Map<string, vscode.Diagnostic[]>();
+  for (const line of stderr.split("\n")) {
+    const m = DIAG_RE.exec(line);
+    if (!m) continue;
+    const [, file, lineStr, severity, message] = m;
+    const lineNum = parseInt(lineStr) - 1; // VS Code is 0-based
+    const range = new vscode.Range(lineNum, 0, lineNum, Number.MAX_SAFE_INTEGER);
+    const diag = new vscode.Diagnostic(
+      range,
+      message.trim(),
+      severity === "Error"
+        ? vscode.DiagnosticSeverity.Error
+        : vscode.DiagnosticSeverity.Warning,
+    );
+    diag.source = "inform6-compile";
+    const list = byFile.get(file) ?? [];
+    list.push(diag);
+    byFile.set(file, list);
+  }
+  return byFile;
+}
+
+export async function compileCommand(
+  outputChannel: vscode.OutputChannel,
+  diagCollection: vscode.DiagnosticCollection,
+): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) {
     void vscode.window.showErrorMessage("Inform 6: no workspace folder open.");
@@ -29,7 +58,6 @@ export async function compileCommand(outputChannel: vscode.OutputChannel): Promi
     fileConfig: fc,
   }));
 
-  // Use createQuickPick so we can pre-select the active file.
   const qp = vscode.window.createQuickPick<TargetItem>();
   qp.title = "Compile Inform 6";
   qp.placeholder = "Select target to compile";
@@ -46,7 +74,10 @@ export async function compileCommand(outputChannel: vscode.OutputChannel): Promi
   if (!fc) return;
   const label = path.basename(fc.mainFile);
 
-  const args: string[] = ["-q2"];
+  // Clear previous compile diagnostics for this target.
+  diagCollection.clear();
+
+  const args: string[] = ["-E1", "-q2"];
   if (fc.switches) args.push(...fc.switches.trim().split(/\s+/));
   if (fc.libraryPath) args.push(`+${fc.libraryPath}`);
   for (const def of fc.defines) {
@@ -86,18 +117,24 @@ export async function compileCommand(outputChannel: vscode.OutputChannel): Promi
           const errors   = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
           const warnings = lines.filter((l) => /:\s+Warning:\s/.test(l)).length;
 
+          // Push parsed diagnostics to Problems panel.
+          const byFile = parseDiagnostics(stderr);
+          for (const [file, diags] of byFile) {
+            diagCollection.set(vscode.Uri.file(file), diags);
+          }
+
+          // Write raw stderr to the output channel (skip source-echo lines).
+          if (errors > 0 || warnings > 0) {
+            outputChannel.appendLine(`\n[compile] ${label}`);
+            for (const line of lines) {
+              if (line.trim() && !line.startsWith(">")) outputChannel.appendLine(line);
+            }
+          }
+
           const detail = [
             errors   > 0 ? `${errors} error${errors     === 1 ? "" : "s"}`   : "",
             warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "",
           ].filter(Boolean).join(", ");
-
-          // Write diagnostics to the output channel so "Show Output" reveals them.
-          if (errors > 0 || warnings > 0) {
-            outputChannel.appendLine(`\n[compile] ${label}`);
-            for (const line of lines) {
-              if (line.trim()) outputChannel.appendLine(line);
-            }
-          }
 
           if (code !== 0) {
             void vscode.window.showErrorMessage(

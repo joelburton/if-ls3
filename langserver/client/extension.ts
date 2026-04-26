@@ -48,8 +48,11 @@ function refreshAllDecorations(): void {
   }
 }
 
+const compileDiagnostics = vscode.languages.createDiagnosticCollection("inform6-compile");
+
 export function activate(context: vscode.ExtensionContext): void {
   outputChannel = vscode.window.createOutputChannel("Inform6 Language Server");
+  context.subscriptions.push(compileDiagnostics);
 
   // Write the correct grammar file before VS Code tokenizes any .inf files.
   // This must be synchronous so it completes before activate() returns.
@@ -62,7 +65,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel))
+    vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel, compileDiagnostics))
   );
 
   context.subscriptions.push(
