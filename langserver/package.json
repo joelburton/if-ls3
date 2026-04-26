@@ -45,6 +45,11 @@
     ],
     "commands": [
       {
+        "command": "inform6.compile",
+        "title": "Inform 6: Compile",
+        "icon": "$(play)"
+      },
+      {
         "command": "inform6.toggleTextMateHighlighting",
         "title": "Inform 6: Toggle TextMate Highlighting"
       },
@@ -63,11 +68,25 @@
     ],
     "keybindings": [
       {
+        "command": "inform6.compile",
+        "key": "ctrl+shift+b",
+        "when": "resourceLangId == inform6"
+      },
+      {
         "command": "inform6.wrapParagraph",
         "key": "alt+q",
         "when": "editorTextFocus && resourceLangId == inform6"
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "inform6.compile",
+          "when": "resourceLangId == inform6",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "Inform 6 Language Server",
       "properties": {

@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/node";
 import { inactiveLineRange } from "../src/features/conditionals";
 import { wrapParagraph } from "./wrapParagraph";
+import { compileCommand } from "./compile";
 
 type Conditional = Parameters<typeof inactiveLineRange>[0];
 
@@ -59,6 +60,10 @@ export function activate(context: vscode.ExtensionContext): void {
   } else {
     outputChannel.appendLine("[activate] language server disabled by configuration");
   }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.compile", compileCommand)
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("inform6.wrapParagraph", wrapParagraph)
