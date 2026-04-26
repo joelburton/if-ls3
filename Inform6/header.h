@@ -2567,6 +2567,7 @@ extern void  index_note_error(const char *file, int32 line,
 extern void  index_note_include(const char *given, debug_location str_loc);
 extern void  index_note_symbol_ref(int symindex);
 extern void  index_note_action_sym_ref(const char *name);
+extern void  index_note_action_sym_ref_hashhash(const char *name);
 extern int   index_get_verb_word_count(int verbnum);
 extern const char *index_get_verb_word(int verbnum, int which);
 extern int   index_get_dict_entry_count(void);

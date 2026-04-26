@@ -259,7 +259,8 @@ connection.onHover((params: HoverParams) => {
         rawCtx?.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx) : rawCtx;
       const sym =
         ref.sym.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym) : ref.sym;
-      return findHover(index, sym, workspaceRoot ?? "", undefined, undefined, filePath, line1, objCtx);
+      const lookupName = ref.type === "action" ? sym + "Sub" : sym;
+      return findHover(index, lookupName, workspaceRoot ?? "", undefined, undefined, filePath, line1, objCtx);
     }
   }
 

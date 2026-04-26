@@ -295,6 +295,8 @@ but not used as a value:", unicode);
 
                 case HASHHASH_SEP:
                     token_text = current_token.text + 2;
+                    if (index_switch)
+                        index_note_action_sym_ref_hashhash(token_text);
 
                     ActionUsedAsConstant:
 
@@ -925,8 +927,6 @@ static int evaluate_term(const token_data *t, assembly_operand *o)
              system_function_usage[t->value] = 1;
              return(TRUE);
         case ACTION_TT:
-             if (index_switch)
-                 index_note_action_sym_ref(t->text);
              *o = action_of_name(t->text);
              return(TRUE);
         case SYSTEM_CONSTANT_TT:

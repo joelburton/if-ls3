@@ -113,6 +113,19 @@ static index_sym_ref *sym_refs;
 static int sym_refs_count;
 static memory_list sym_refs_memlist;
 
+/* Action refs where the action symbol wasn't yet defined at parse time
+   (e.g. ##Foozle before the Verb directive).  Resolved at JSON output. */
+typedef struct index_deferred_action_ref_s {
+    char *name;        /* action name (e.g. "Foozle"), strdup'd */
+    int32 file_index;  /* 1-based into InputFiles[] */
+    int32 line;
+    int32 col;
+} index_deferred_action_ref;
+
+static index_deferred_action_ref *deferred_action_refs;
+static int deferred_action_refs_count;
+static memory_list deferred_action_refs_memlist;
+
 static int compare_sym_refs(const void *a, const void *b)
 {   const index_sym_ref *ra = (const index_sym_ref *)a;
     const index_sym_ref *rb = (const index_sym_ref *)b;
@@ -140,9 +153,11 @@ extern void index_note_symbol_ref(int symindex)
     r->col = loc.beginning_character_number - 1;
 }
 
-extern void index_note_action_sym_ref(const char *name)
+/* col_adjust: add to the raw column to point at the identifier start.
+   Pass 2 for ##Name (skip "##"), 0 for all other callers. */
+static void do_note_action_sym_ref(const char *name, int col_adjust)
 {   char action_sym[256];
-    int symindex, len;
+    int symindex, len, col;
     debug_location loc;
     index_sym_ref *r;
     if (is_systemfile()) return;
@@ -150,16 +165,37 @@ extern void index_note_action_sym_ref(const char *name)
     if (len + 4 > (int)sizeof(action_sym)) return;
     memcpy(action_sym, name, len);
     memcpy(action_sym + len, "__A", 4);   /* includes null terminator */
-    symindex = get_symbol_index(action_sym);
-    if (symindex < 0) return;
     loc = get_last_token_start_location();
     if (loc.file_index <= 0) return;
+    col = loc.beginning_character_number - 1 + col_adjust;
+    symindex = get_symbol_index(action_sym);
+    if (symindex < 0)
+    {   /* Action not defined yet (forward ref, e.g. ##Foozle before Verb).
+           Capture location now; resolve symbol at JSON output time. */
+        index_deferred_action_ref *d;
+        ensure_memory_list_available(&deferred_action_refs_memlist,
+            deferred_action_refs_count + 1);
+        d = &deferred_action_refs[deferred_action_refs_count++];
+        d->name = index_strdup(name);
+        d->file_index = loc.file_index;
+        d->line = loc.beginning_line_number;
+        d->col = col;
+        return;
+    }
     ensure_memory_list_available(&sym_refs_memlist, sym_refs_count + 1);
     r = &sym_refs[sym_refs_count++];
     r->symbol_index = symindex;
     r->file_index = loc.file_index;
     r->line = loc.beginning_line_number;
-    r->col = loc.beginning_character_number - 1;
+    r->col = col;
+}
+
+extern void index_note_action_sym_ref(const char *name)
+{   do_note_action_sym_ref(name, 0);
+}
+
+extern void index_note_action_sym_ref_hashhash(const char *name)
+{   do_note_action_sym_ref(name, 2);   /* skip "##" prefix */
 }
 
 /* --------------------------------------------------------------------- */
@@ -1110,6 +1146,25 @@ extern void index_output_json(void)
     printf("\n  ],\n");
 
     /* --- references --- */
+    /* Resolve deferred action refs (e.g. ##Foozle before the Verb directive). */
+    {   int i;
+        char action_sym[256];
+        for (i = 0; i < deferred_action_refs_count; i++)
+        {   int symindex, len = strlen(deferred_action_refs[i].name);
+            index_sym_ref *r;
+            if (len + 4 > (int)sizeof(action_sym)) continue;
+            memcpy(action_sym, deferred_action_refs[i].name, len);
+            memcpy(action_sym + len, "__A", 4);
+            symindex = get_symbol_index(action_sym);
+            if (symindex < 0) continue;
+            ensure_memory_list_available(&sym_refs_memlist, sym_refs_count + 1);
+            r = &sym_refs[sym_refs_count++];
+            r->symbol_index = symindex;
+            r->file_index = deferred_action_refs[i].file_index;
+            r->line = deferred_action_refs[i].line;
+            r->col = deferred_action_refs[i].col;
+        }
+    }
     qsort(sym_refs, sym_refs_count, sizeof(index_sym_ref), compare_sym_refs);
     printf("  \"references\": [\n");
     first = TRUE;
@@ -1231,6 +1286,8 @@ extern void init_index_vars(void)
     includes_info = NULL;
     includes_count = 0;
     sym_refs = NULL;
+    deferred_action_refs = NULL;
+    deferred_action_refs_count = 0;
     conditionals = NULL;
     conditionals_count = 0;
     cond_sp = 0;
@@ -1238,6 +1295,7 @@ extern void init_index_vars(void)
     trailing_docs_count = 0;
     errors_info_count = 0;
     sym_refs_count = 0;
+    deferred_action_refs_count = 0;
     routines_count = 0;
     locals_pool_count = 0;
     objects_info_count = 0;
@@ -1269,6 +1327,7 @@ extern void index_begin_pass(void)
     errors_info_count = 0;
     includes_count = 0;
     sym_refs_count = 0;
+    deferred_action_refs_count = 0;
     conditionals_count = 0;
     cond_sp = 0;
 }
@@ -1325,6 +1384,9 @@ extern void index_allocate_arrays(void)
     initialise_memory_list(&sym_refs_memlist,
         sizeof(index_sym_ref), 8192,
         (void **)&sym_refs, "index symbol refs");
+    initialise_memory_list(&deferred_action_refs_memlist,
+        sizeof(index_deferred_action_ref), 64,
+        (void **)&deferred_action_refs, "index deferred action refs");
     initialise_memory_list(&conditionals_memlist,
         sizeof(index_conditional), 256,
         (void **)&conditionals, "index conditionals");
@@ -1386,6 +1448,9 @@ extern void index_free_arrays(void)
     deallocate_memory_list(&trailing_docs_list_memlist);
     deallocate_memory_list(&errors_info_memlist);
     deallocate_memory_list(&includes_memlist);
+    for (i = 0; i < deferred_action_refs_count; i++)
+        free(deferred_action_refs[i].name);
     deallocate_memory_list(&sym_refs_memlist);
+    deallocate_memory_list(&deferred_action_refs_memlist);
     deallocate_memory_list(&conditionals_memlist);
 }

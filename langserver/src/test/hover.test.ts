@@ -36,6 +36,27 @@ describe("findHover", () => {
     });
   });
 
+  describe("action reference hover", () => {
+    // server.ts transforms the lookup name when ref.type === "action":
+    //   lookupName = ref.type === "action" ? sym + "Sub" : sym
+    // So Foozle: / ##Foozle / -> Foozle all resolve to FoozleSub, not to
+    // the Foozle constant (or the Foozle routine if one happens to exist).
+
+    it("hovering the action name (non-action context) shows the constant, not the sub", () => {
+      // Without the action-ref transform, "Foozle" resolves to the constant (value 10).
+      const text = md(findHover(testIndex, "Foozle", ROOT));
+      expect(text).toContain("**Foozle** = 10");
+      expect(text).not.toContain("FoozleSub");
+    });
+
+    it("hovering sym+Sub (action-ref context, after server.ts transform) shows the routine", () => {
+      // server.ts calls findHover(index, "FoozleSub", ...) when ref.type === "action"
+      const text = md(findHover(testIndex, "FoozleSub", ROOT));
+      expect(text).toContain("**FoozleSub**()");
+      expect(text).not.toContain("= 10");
+    });
+  });
+
   describe("objects", () => {
     it("shows object name with shortname and kind", () => {
       const text = md(findHover(testIndex, "TheRoom", ROOT));

@@ -71,12 +71,28 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
     expect(myfunc.locals).toContain("b");
   });
 
-  it("references array has action entries", () => {
+  it("references array has action entries from all three syntaxes", () => {
+    // tiny.inf exercises three action-reference syntaxes:
+    //   line 25:  Foozle: "You foozle!";   (switch-case label)
+    //   line 33:  if (a == ##Foozle) { }   (##Name expression)
+    //   line 66:  * noun -> Foozle         (Verb grammar)
+    // All three must appear as a single entry with type "action" and three locs.
     const idx = JSON.parse(output);
     const refs: Array<{ sym: string; type: string; locs: string[] }> = idx.references;
     const foozleRef = refs.find((r) => r.sym === "Foozle" && r.type === "action");
     expect(foozleRef).toBeDefined();
-    expect(foozleRef!.locs.length).toBeGreaterThan(0);
+    expect(foozleRef!.locs).toHaveLength(3);
+  });
+
+  it("##Name action ref col points to the identifier, not the ## prefix", () => {
+    // line 33: `  if (a == ##Foozle) { }`
+    //                          ^col 13 — 'F' of Foozle, not '#' at col 11.
+    // This ensures refAtPosition covers the full identifier span.
+    const idx = JSON.parse(output);
+    const refs: Array<{ sym: string; type: string; locs: string[] }> = idx.references;
+    const foozleRef = refs.find((r) => r.sym === "Foozle" && r.type === "action");
+    expect(foozleRef).toBeDefined();
+    expect(foozleRef!.locs).toContain("0:33:13");
   });
 
   it("has no compilation errors", () => {

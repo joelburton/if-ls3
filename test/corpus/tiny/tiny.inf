@@ -30,6 +30,7 @@ Room TheRoom "The Room"
 
 [ MyFunc a b ;
   if (a) print b;
+  if (a == ##Foozle) { }
   print (string) TheRoom.description();
   print (property) description;
   print LIB_CONST;
@@ -54,6 +55,8 @@ Room TheRoom "The Room"
   print apple, berry, cherry;
   ! This sub is not actually related to the Foozle action
 ];
+
+!! Here the action info
 
 [ FoozleSub;
 ];
