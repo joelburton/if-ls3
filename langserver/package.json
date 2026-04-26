@@ -108,6 +108,11 @@
     "configuration": {
       "title": "Inform 6 Language Server",
       "properties": {
+        "inform6.compilerPath": {
+          "type": "string",
+          "default": "inform6",
+          "markdownDescription": "Path to the **IDE-enabled Inform 6 compiler** (this fork — built from `Inform6/` in this extension's repo). It must be the patched build that supports the `-y` JSON-index flag; a stock Inform 6 install will not work for language-server features.\n\nDefault `inform6` resolves on `$PATH`. Use an absolute path (e.g. `/usr/local/bin/inform6-ls`) if you do not have the patched build on your `$PATH`.\n\nA `compiler:` entry in `inform6rc.yaml` (global or per-file) overrides this setting."
+        },
         "inform6.enableTextMateHighlighting": {
           "type": "boolean",
           "default": true,

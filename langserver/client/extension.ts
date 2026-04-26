@@ -163,6 +163,12 @@ export function activate(context: vscode.ExtensionContext): void {
         );
         void restartClient(context);
       }
+      if (e.affectsConfiguration("inform6.compilerPath")) {
+        outputChannel.appendLine(
+          "[extension] inform6.compilerPath changed — restarting client"
+        );
+        void restartClient(context);
+      }
       if (e.affectsConfiguration("inform6.grayInactiveBranches")) {
         refreshAllDecorations();
       }
@@ -233,6 +239,10 @@ function startClient(context: vscode.ExtensionContext): void {
     return Promise.resolve(child);
   };
 
+  const compilerPath = vscode.workspace
+    .getConfiguration("inform6")
+    .get<string>("compilerPath", "inform6");
+
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       { scheme: "file", language: "inform6" },
@@ -244,6 +254,7 @@ function startClient(context: vscode.ExtensionContext): void {
         vscode.workspace.createFileSystemWatcher("**/inform6rc.yaml"),
       ],
     },
+    initializationOptions: { compilerPath },
     outputChannel,
   };
 

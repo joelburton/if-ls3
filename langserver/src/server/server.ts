@@ -64,8 +64,12 @@ function indexForDocument(documentUri: string): CompilerIndex | null {
 
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   workspaceRoot = params.rootUri ? URI.parse(params.rootUri).fsPath : null;
+  // initializationOptions.compilerPath comes from the inform6.compilerPath
+  // VS Code setting; used as the fallback when YAML omits a compiler: entry.
+  const initOpts = (params.initializationOptions ?? {}) as { compilerPath?: string };
+  const defaultCompiler = initOpts.compilerPath?.trim() || "inform6";
   if (workspaceRoot) {
-    workspaceConfig = loadConfig(workspaceRoot);
+    workspaceConfig = loadConfig(workspaceRoot, defaultCompiler);
     if (!workspaceConfig) {
       log("[server] no inform6rc.yaml found — language server features disabled");
     } else if (workspaceConfig.files.length === 0) {
@@ -113,18 +117,30 @@ connection.onInitialized(async () => {
 });
 
 let compilerNotFoundNotified = false;
+let reindexGen = 0;
 
 async function triggerReindex(): Promise<void> {
   if (!workspaceConfig || !workspaceRoot) return;
   if (workspaceConfig.files.length === 0) return;
 
+  // Generation token: if another triggerReindex starts while we're awaiting
+  // Promise.all, our results are stale and must be dropped — otherwise a slow
+  // run that started earlier can overwrite the fresh state from a later run.
+  const myGen = ++reindexGen;
+  const fileConfigs = workspaceConfig.files;
+
   // Run all compilations in parallel.
-  const results = await Promise.all(workspaceConfig.files.map((fc) => reindex(fc, workspaceRoot!, log)));
+  const results = await Promise.all(fileConfigs.map((fc) => reindex(fc, workspaceRoot!, log)));
+
+  if (myGen !== reindexGen) {
+    log(`[server] discarding reindex #${myGen} results — superseded by #${reindexGen}`);
+    return;
+  }
 
   currentIndices = [];
-  for (let i = 0; i < workspaceConfig.files.length; i++) {
+  for (let i = 0; i < fileConfigs.length; i++) {
     const index = results[i];
-    if (index) currentIndices.push({ fileConfig: workspaceConfig.files[i], index });
+    if (index) currentIndices.push({ fileConfig: fileConfigs[i], index });
   }
 
   if (currentIndices.length > 0) {
@@ -133,7 +149,7 @@ async function triggerReindex(): Promise<void> {
   } else if (!compilerNotFoundNotified) {
     // Check whether any configured compiler binary is missing — that's the most
     // common reason every compilation returns null on first launch.
-    const missing = workspaceConfig.files.find((fc) => !fs.existsSync(fc.compiler));
+    const missing = fileConfigs.find((fc) => !fs.existsSync(fc.compiler));
     if (missing) {
       compilerNotFoundNotified = true;
       connection.sendNotification("inform6/compilerNotFound", { path: missing.compiler });

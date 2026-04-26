@@ -5,6 +5,11 @@ import type { FileConfig } from "../workspace/config";
 
 let spawnCount = 0;
 
+// Safety cap on compiler stdout. A real index for a large game (PunyLib +
+// library_of_horror) is well under 10 MB; this is a runaway-process backstop,
+// not an expected limit. Checked once per chunk, not per byte.
+const MAX_STDOUT_BYTES = 50 * 1024 * 1024;
+
 /**
  * Invoke the compiler in index mode for a single main file, return the parsed
  * JSON index.  Returns null on spawn failure, timeout, or JSON parse error.
@@ -36,15 +41,32 @@ export function reindex(
 
     const stdoutChunks: Buffer[] = [];
     const stderrChunks: Buffer[] = [];
-
-    child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+    let stdoutBytes = 0;
+    let stdoutOverflow = false;
 
     const timer = setTimeout(() => {
       child.kill();
       log(`[indexer] TIMEOUT (${label}): compiler did not finish within 10 s, killed`);
       resolve(null);
     }, 10_000);
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      if (stdoutOverflow) return;
+      stdoutBytes += chunk.length;
+      if (stdoutBytes > MAX_STDOUT_BYTES) {
+        stdoutOverflow = true;
+        clearTimeout(timer);
+        child.kill();
+        log(
+          `[indexer] FAILED (${label}): stdout exceeded ${MAX_STDOUT_BYTES / 1024 / 1024} MiB, ` +
+            `compiler killed (likely runaway output)`,
+        );
+        resolve(null);
+        return;
+      }
+      stdoutChunks.push(chunk);
+    });
+    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
     child.on("error", (err) => {
       clearTimeout(timer);

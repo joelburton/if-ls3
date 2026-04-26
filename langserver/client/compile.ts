@@ -46,7 +46,10 @@ type TargetItem = vscode.QuickPickItem & { fileConfig: FileConfig };
 
 /** Show the quick-pick and return the chosen FileConfig, or undefined if cancelled. */
 async function pickTarget(workspaceRoot: string): Promise<FileConfig | undefined> {
-  const config = loadConfig(workspaceRoot);
+  const compilerPath = vscode.workspace
+    .getConfiguration("inform6")
+    .get<string>("compilerPath", "inform6");
+  const config = loadConfig(workspaceRoot, compilerPath);
   if (!config || config.files.length === 0) {
     void vscode.window.showErrorMessage("Inform 6: no targets found in inform6rc.yaml.");
     return undefined;

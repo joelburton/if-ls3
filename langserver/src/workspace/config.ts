@@ -42,9 +42,13 @@ const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "
  * list fields (`defines`, `externalDefines`) are merged (global + per-file,
  * deduplicated).
  *
+ * `defaultCompiler` is the fallback when neither global nor per-file YAML
+ * specifies a `compiler:` — typically the value of the `inform6.compilerPath`
+ * VS Code setting.  A YAML `compiler:` entry always overrides it.
+ *
  * Returns null if the file is missing or unparseable.
  */
-export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
+export function loadConfig(workspaceRoot: string, defaultCompiler = "inform6"): WorkspaceConfig | null {
   const configPath = path.join(workspaceRoot, "inform6rc.yaml");
   if (!fs.existsSync(configPath)) return null;
 
@@ -58,7 +62,7 @@ export function loadConfig(workspaceRoot: string): WorkspaceConfig | null {
   if (!raw || typeof raw !== "object") return null;
 
   /* Global defaults */
-  const globalCompiler = String(raw["compiler"] ?? "inform6");
+  const globalCompiler = String(raw["compiler"] ?? defaultCompiler);
   const globalLibraryPath = String(raw["libraryPath"] ?? "");
   const globalSwitches = String(raw["switches"] ?? "");
   const globalDefines = toStringArray(raw["defines"]);

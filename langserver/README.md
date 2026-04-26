@@ -186,8 +186,22 @@ Copy `if-ls3/Inform6/inform6.exe` somewhere convenient, e.g.
 
 #### Setting the compiler path
 
-Point `inform6rc.yaml` at the binary you just built (see Workspace
-configuration below).
+You can point the extension at the binary you built in either of two places:
+
+- **VS Code setting** (recommended for most users): set `inform6.compilerPath`
+  to the absolute path of the binary, or leave it as the default `inform6` if
+  the binary is on your `$PATH`. Open settings with **Cmd/Ctrl + ,** and
+  search for *Inform 6: Compiler Path*. This setting applies to every
+  workspace.
+
+  > **Important:** the value must point to the **IDE-enabled fork** built from
+  > this repository's `Inform6/` directory. A stock Inform 6 install will not
+  > produce the JSON index the language server needs and most features will
+  > silently fail.
+
+- **`inform6rc.yaml`** (per-project override): a `compiler:` entry — global
+  or under a specific main file — overrides the VS Code setting for that
+  workspace. Useful when one project needs a different build than another.
 
 ### Workspace configuration
 
@@ -196,7 +210,6 @@ server how to compile your project:
 
 ```yaml
 # Global defaults
-compiler: ~/bin/inform6
 libraryPath: ~/if/inform6lib
 
 # List each main source file as a top-level key.
@@ -210,6 +223,10 @@ Each top-level key that isn't a global setting (`compiler`, `libraryPath`,
 `switches`, `defines`, `externalDefines`) is treated as a main source file
 to compile and index.
 
+The `compiler:` key (omitted above) falls back to the `inform6.compilerPath`
+VS Code setting, then to `inform6` on your `$PATH`. Add it to the YAML only
+if a particular project needs a different binary.
+
 The language server re-indexes automatically when you save any `.inf` or `.h`
 file, or when `inform6rc.yaml` changes.
 
@@ -217,6 +234,7 @@ file, or when `inform6rc.yaml` changes.
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `inform6.compilerPath` | `inform6` | Path to the IDE-enabled Inform 6 compiler built from this repo. Must be the patched fork — a stock install will not work. Overridden by a `compiler:` entry in `inform6rc.yaml`. |
 | `inform6.enableTextMateHighlighting` | `true` | Enable TextMate grammar highlighting (reload required) |
 | `inform6.enableLanguageServer` | `true` | Enable the language server |
 | `inform6.grayInactiveBranches` | `true` | Gray out inactive conditional compilation branches |
