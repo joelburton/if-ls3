@@ -143,18 +143,25 @@ describe("getSignatureHelp", () => {
 
   // ── Dictionary words: '...' ─────────────────────────────────────────────────
   // Inform 6 single-quoted tokens are dictionary words, not string literals.
-  // The current findCallContext doesn't know about them, so a `(` or `,` inside
-  // a dict word derails the paren stack / comma count.  These tests document
-  // the intended behavior; they pass once the dict-word skip is added to the
-  // scan loop in signatureHelp.ts.  Remove `.fails` after the fix.
+  // findCallContext skips them wholesale so a `(` or `,` inside doesn't
+  // derail the paren stack or comma count.
 
-  it.fails("ignores comma inside a '...' dictionary word", () => {
+  it("treats ' inside a \"...\" string as ordinary string content", () => {
+    // The apostrophe in "isn't" must NOT open a dict-word region — the
+    // string-state check runs first in the scan loop, so the ' is consumed
+    // as plain string content.  Pins the branch ordering invariant.
+    const result = getSignatureHelp(testIndex, `MyFunc("isn't", `, pos(0, 16));
+    expect(result!.signatures[0]!.label).toBe("MyFunc(a, b, x)");
+    expect(result!.activeParameter).toBe(1);
+  });
+
+  it("ignores comma inside a '...' dictionary word", () => {
     // MyFunc('a,b', |) — only one real comma, so cursor is on second param.
     const result = getSignatureHelp(testIndex, "MyFunc('a,b', ", pos(0, 14));
     expect(result!.activeParameter).toBe(1);
   });
 
-  it.fails("ignores ( inside a '...' dictionary word", () => {
+  it("ignores ( inside a '...' dictionary word", () => {
     // MyFunc('foo(', |) — the ( inside the dict word should not open a frame.
     const result = getSignatureHelp(testIndex, "MyFunc('foo(', ", pos(0, 15));
     expect(result).not.toBeNull();

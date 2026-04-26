@@ -39,6 +39,17 @@ function findCallContext(
 
     if (c === '"') { inString = true; i++; continue; }
 
+    // '...' is an Inform 6 dictionary word, not a string.  Skip it wholesale
+    // so a `,` or `(` inside (e.g. 'a,b' or 'foo(') doesn't derail the comma
+    // count or paren stack.  The inString check above runs first, so a `'`
+    // inside a "..." string never reaches this branch.
+    if (c === "'") {
+      i++;
+      while (i < cursorOffset && text[i] !== "'") i++;
+      if (i < cursorOffset) i++; // consume closing '
+      continue;
+    }
+
     if (c === '!') {
       // Comment: skip to end of line.
       while (i < cursorOffset && text[i] !== '\n') i++;
