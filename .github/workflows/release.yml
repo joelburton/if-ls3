@@ -138,6 +138,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
+          gh release delete "$TAG" --yes 2>/dev/null || true
           gh release create "$TAG" \
             --title "Inform 6 Language Server $TAG" \
             --notes-file .github/RELEASE_NOTES.md \
