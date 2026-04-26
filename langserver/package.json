@@ -14,7 +14,7 @@
   "activationEvents": [
     "onLanguage:inform6"
   ],
-  "main": "./out/extension.js",
+  "main": "./out/client/extension.js",
   "contributes": {
     "languages": [
       {
