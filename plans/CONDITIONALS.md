@@ -1,5 +1,12 @@
 # Plan: Track Conditional Compilation Blocks in JSON Index
 
+> **Status — 2026-04-25: Implemented.** `conditionals[]` is emitted by the
+> compiler (with `directive`, `start_line`/`col`, optional `else_line`/`col`,
+> `end_line`/`col`, and an `active` field of `"first"`/`"second"`/`"none"`).
+> The language server consumes it for branch folding, "Fold Inactive
+> Branches", and inactive-branch dimming. Field name landed as `active` not
+> `taken`; see `langserver/src/server/types.ts` for the live schema.
+
 ## Context
 
 Inform6 has six conditional compilation directives:

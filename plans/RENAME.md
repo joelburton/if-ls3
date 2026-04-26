@@ -1,5 +1,10 @@
 # Plan: Rename Symbol
 
+> **Status — 2026-04-25: Implemented.** `prepareRename` and `rename` ship
+> in `langserver/src/features/rename.ts` (~260 lines), wired into
+> `server.ts`. Action/Sub tandem rename is included; inactive-branch
+> warning toast fires when affected files have inactive `#IfDef` regions.
+
 ## What we have
 
 - `refAtPosition()` — compiler-backed cursor hit-test; returns `SymbolReference`

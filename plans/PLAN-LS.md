@@ -330,14 +330,24 @@ Source: the original extension (MIT-licensed, so straightforward to adapt).
 - Debounced reindex on keystrokes — deliberately deferred; compiler needs
   on-disk content, so save-triggered reindex is the right model. VS Code
   autosave means users already get near-real-time updates without explicit saves.
-- Find references (requires compiler-side reference tracking in `expressp.c`)
-- Signature help for routine calls
-- ~~Semantic token highlighting~~ — done (locals, globals, constants)
-- Rename symbol — becomes straightforward once find-references exists; caveat
-  that references inside inactive `#IfDef` branches won't be seen by the
-  compiler and so won't be renamed. Worth documenting but not a blocker.
+- ~~Find references~~ — ✅ done (compiler emits `references[]`).
+- ~~Signature help for routine calls~~ — ✅ done.
+- ~~Semantic token highlighting~~ — ✅ done (locals, globals, constants).
+- ~~Rename symbol~~ — ✅ done. Inactive-`#IfDef` caveat surfaced as a toast
+  when affected files contain inactive branches.
+- ~~Compile-and-play~~ — ✅ done. `Inform 6: Compile` and `Inform 6: Compile
+  and Run` commands ship in `client/compile.ts`; honor `inform6rc.yaml`
+  targets, `runWithWarnings`, and the `storyPlayerColumn` setting.
 
-### Unknown property warnings + Pragma:Prop
+### Unknown property warnings + Pragma:Prop — ✅ done
+
+Implemented in `diagnostics.ts:collectUndeclaredPropertyWarnings()`. Driven
+by the compiler's per-symbol `formal_declaration` flag (true if declared via
+`Property` directive, false if created implicitly inside an object body).
+Per-config `warnUndeclaredProperties` toggle and `! Pragma:Prop` inline
+suppression both honored. Original design notes preserved below.
+
+---
 
 Warn when an object uses a property name that isn't declared anywhere as a
 `Property individual` (or built-in library property). The primary value is

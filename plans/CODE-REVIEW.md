@@ -10,6 +10,37 @@ existing compiler files; ~1,630 lines TypeScript (language server);
 
 ---
 
+## Status update — 2026-04-25
+
+Status of each priority section relative to the current tree:
+
+- **P1 — No automated tests**: ✅ Done. vitest suite (~490 tests) covers
+  every pure-function feature module + a compiler integration test. CI runs
+  `lint`, `format:check`, `check`, and `test`.
+- **P2 — Duplicated symbol-lookup pattern**: ✅ Done. `resolveSymbol()` and
+  the shared `loc()` helper live in `features/symbolLookup.ts`. (See
+  CLAUDE.md note about why hover keeps its own cascade.)
+- **P3 — Duplicated doc-comment lookup (C)**: ✅ Done. Extracted to
+  `json_print_symbol_doc(int sym_index)` in `Inform6/index.c` (~line 545).
+- **P4 — Linear scans on every request**: ⚪ Declined. Profiling on
+  realistic projects shows the .find() cascade is well below any human
+  perception threshold. Revisit only if a concrete slow case appears.
+- **P5 — Comments and documentation**: ✅ Done where it mattered;
+  `diagnostics.ts` has the “why” comment for `scanIfDefWarnings()`,
+  `indexer.ts` explains veneer filtering, `keywords.ts` has a header.
+- **P6 — Minor bugs**:
+  - Windows `path.split("/")` → `path.basename()`: ✅ Done.
+  - Silent `readFileSync` failures in `diagnostics.ts`: ✅ Done (both call
+    sites log via `connection.console.warn`).
+  - `indexOf` mismatch for duplicate names on a line: ⚪ Declined. Cosmetic
+    squiggle position only; comment in code documents the limitation.
+  - `dictword_to_text` buffer (pre-existing in upstream): ⚪ Out of scope.
+- **P7 — Missing linting/formatting**: ✅ Done. `eslint.config.mjs`
+  (typescript-eslint flat config) + `.prettierrc` + GitHub Actions workflow
+  enforce both on every push.
+
+---
+
 ## Priority 1: No automated tests
 
 There are zero automated tests -- no test framework, no unit tests, no

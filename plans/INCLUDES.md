@@ -1,5 +1,9 @@
 # Plan: Track Include Directives in JSON Index
 
+> **Status — 2026-04-25: Implemented.** `includes[]` is emitted by the
+> compiler with `from_file`, `from_line`/`col`, `given`, `resolved`, and
+> `file_index`. The LS uses it for go-to-definition on `Include` strings.
+
 ## Context
 
 The Inform 6 `Include` directive resolves filenames through a multi-step
