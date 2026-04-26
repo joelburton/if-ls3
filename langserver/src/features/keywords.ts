@@ -94,7 +94,14 @@ export const KEYWORD_HELP: Record<string, string> = {
   alias: "**alias** *name* — used in `Property`/`Attribute` to create an alternative name for an existing property or attribute.",
 
   // ── Verb/grammar tokens ───────────────────────────────────────────────────
-  noun:        "**noun** — grammar token: matches the primary object noun.",
+  // `noun` has two senses, both lower-case identifiers:
+  //   1. Grammar token in a Verb line (`* noun -> Take`).
+  //   2. The primary object of the current player command, available as a
+  //      pseudo-local inside an action routine.
+  noun:
+    "**noun**\n\n" +
+    "- *Grammar token* (in a `Verb`/`Extend` line): matches the primary object noun.\n" +
+    "- *Inside an action routine*: the primary object of the current player command.",
   held:        "**held** — grammar token: like `noun` but the object must be held by the player.",
   multi:       "**multi** — grammar token: matches multiple objects.",
   multiheld:   "**multiheld** — grammar token: matches multiple held objects.",
@@ -109,9 +116,10 @@ export const KEYWORD_HELP: Record<string, string> = {
   reverse:     "**reverse** — grammar line modifier: swaps the roles of `noun` and `second`.",
 
   // ── Implicit locals in object routines ───────────────────────────────────
+  // `noun` is documented above with both its grammar-token and action-routine
+  // senses combined into a single entry.
   self: "**self** — implicit local in object/class routines; the object receiving the message.",
   sender: "**sender** — implicit local in object routines; the object that sent the message (or `nothing`).",
-  noun: "**noun** — the primary object of the current player command.",
   second: "**second** — the secondary object of the current player command.",
   actor: "**actor** — the actor performing the current action (usually `player`).",
 

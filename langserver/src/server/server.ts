@@ -69,7 +69,9 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
   const initOpts = (params.initializationOptions ?? {}) as { compilerPath?: string };
   const defaultCompiler = initOpts.compilerPath?.trim() || "inform6";
   if (workspaceRoot) {
-    workspaceConfig = loadConfig(workspaceRoot, defaultCompiler);
+    workspaceConfig = loadConfig(workspaceRoot, defaultCompiler, (msg) =>
+      log(`[server] config error: ${msg}`),
+    );
     if (!workspaceConfig) {
       log("[server] no inform6rc.yaml found — language server features disabled");
     } else if (workspaceConfig.files.length === 0) {

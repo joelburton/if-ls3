@@ -46,20 +46,34 @@ const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "
  * specifies a `compiler:` — typically the value of the `inform6.compilerPath`
  * VS Code setting.  A YAML `compiler:` entry always overrides it.
  *
+ * `onError` is called with a human-readable message when the YAML file
+ * exists but cannot be parsed (e.g. syntax error, root is not an object).
+ * This lets callers distinguish "no config" from "broken config" so users
+ * don't silently lose features after a typo.
+ *
  * Returns null if the file is missing or unparseable.
  */
-export function loadConfig(workspaceRoot: string, defaultCompiler = "inform6"): WorkspaceConfig | null {
+export function loadConfig(
+  workspaceRoot: string,
+  defaultCompiler = "inform6",
+  onError?: (msg: string) => void,
+): WorkspaceConfig | null {
   const configPath = path.join(workspaceRoot, "inform6rc.yaml");
   if (!fs.existsSync(configPath)) return null;
 
   let raw: Record<string, unknown>;
   try {
     raw = yaml.load(fs.readFileSync(configPath, "utf-8")) as Record<string, unknown>;
-  } catch {
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    onError?.(`failed to parse ${configPath}: ${msg}`);
     return null;
   }
 
-  if (!raw || typeof raw !== "object") return null;
+  if (!raw || typeof raw !== "object") {
+    onError?.(`${configPath}: top-level value is not a mapping`);
+    return null;
+  }
 
   /* Global defaults */
   const globalCompiler = String(raw["compiler"] ?? defaultCompiler);

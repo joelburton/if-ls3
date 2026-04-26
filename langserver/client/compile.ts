@@ -49,9 +49,14 @@ async function pickTarget(workspaceRoot: string): Promise<FileConfig | undefined
   const compilerPath = vscode.workspace
     .getConfiguration("inform6")
     .get<string>("compilerPath", "inform6");
-  const config = loadConfig(workspaceRoot, compilerPath);
+  let configError: string | null = null;
+  const config = loadConfig(workspaceRoot, compilerPath, (msg) => { configError = msg; });
   if (!config || config.files.length === 0) {
-    void vscode.window.showErrorMessage("Inform 6: no targets found in inform6rc.yaml.");
+    void vscode.window.showErrorMessage(
+      configError
+        ? `Inform 6: ${configError}`
+        : "Inform 6: no targets found in inform6rc.yaml.",
+    );
     return undefined;
   }
 
