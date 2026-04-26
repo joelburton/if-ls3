@@ -4,6 +4,7 @@ import * as path from "node:path";
 import * as vscode from "vscode";
 import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/node";
 import { inactiveLineRange } from "../src/features/conditionals";
+import { wrapParagraph } from "./wrapParagraph";
 
 type Conditional = Parameters<typeof inactiveLineRange>[0];
 
@@ -58,6 +59,10 @@ export function activate(context: vscode.ExtensionContext): void {
   } else {
     outputChannel.appendLine("[activate] language server disabled by configuration");
   }
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("inform6.wrapParagraph", wrapParagraph)
+  );
 
   context.subscriptions.push(
     vscode.commands.registerCommand("inform6.toggleGrayInactiveBranches", async () => {

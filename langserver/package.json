@@ -55,6 +55,17 @@
       {
         "command": "inform6.toggleGrayInactiveBranches",
         "title": "Inform 6: Toggle Inactive Branch Graying"
+      },
+      {
+        "command": "inform6.wrapParagraph",
+        "title": "Inform 6: Wrap Paragraph"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "inform6.wrapParagraph",
+        "key": "alt+q",
+        "when": "editorTextFocus && resourceLangId == inform6"
       }
     ],
     "configuration": {
