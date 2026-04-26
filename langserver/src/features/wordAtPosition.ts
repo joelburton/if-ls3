@@ -21,6 +21,25 @@ export function isInComment(lineText: string, col: number): boolean {
   return false;
 }
 
+/**
+ * Returns true if the cursor position falls inside an Inform6 string literal.
+ * Scans from the start of the document counting " delimiters, treating "!"
+ * as a comment-starter only when outside a string.
+ */
+export function isInString(text: string, position: Position): boolean {
+  const lines = text.split("\n");
+  let inString = false;
+  for (let line = 0; line <= position.line; line++) {
+    const lineText = lines[line] ?? "";
+    const endChar = line === position.line ? position.character : lineText.length;
+    for (let ch = 0; ch < endChar; ch++) {
+      if (!inString && lineText[ch] === "!") break;
+      if (lineText[ch] === '"') inString = !inString;
+    }
+  }
+  return inString;
+}
+
 /** Extract the Inform6 identifier under the cursor. */
 export function wordAtPosition(
   text: string,

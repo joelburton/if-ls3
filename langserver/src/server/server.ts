@@ -30,7 +30,7 @@ import { findHover, findIncludeHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
-import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment } from "../features/wordAtPosition";
+import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment, isInString } from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
 import { findReferences, refAtPosition } from "../features/references";
 import { getFoldingRanges } from "../features/foldingRanges";
@@ -205,6 +205,9 @@ connection.onHover((params: HoverParams) => {
 
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   const line1 = params.position.line + 1;
+
+  // Suppress hover inside string literals — words there are prose, not symbols.
+  if (isInString(doc.getText(), params.position)) return null;
 
   // Include directive: cursor on an Include "..." line → show resolved path.
   const incHover = includeAtLine(index, filePath, line1);
