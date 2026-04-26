@@ -17,21 +17,29 @@ jobs:
             label: linux-x64
             binary: inform6
             asset: inform6-linux-x64
+            cc: gcc
+            cflags: ""
 
-          - os: macos-13       # last Intel runner
+          - os: macos-latest   # cross-compile x86_64 on Apple Silicon runner
             label: macos-x64
             binary: inform6
             asset: inform6-macos-x64
+            cc: clang
+            cflags: "-arch x86_64"
 
           - os: macos-latest   # Apple Silicon (M-series)
             label: macos-arm64
             binary: inform6
             asset: inform6-macos-arm64
+            cc: clang
+            cflags: "-arch arm64"
 
           - os: windows-latest
             label: windows-x64
             binary: inform6.exe
             asset: inform6-windows-x64.exe
+            cc: gcc
+            cflags: ""
 
     steps:
       - uses: actions/checkout@v4
@@ -43,7 +51,7 @@ jobs:
           platform: x64
 
       - name: Build
-        run: make -C Inform6 CC=gcc
+        run: make -C Inform6 CC=${{ matrix.cc }} CFLAGS="${{ matrix.cflags }}"
         shell: bash
 
       - name: Upload artifact
