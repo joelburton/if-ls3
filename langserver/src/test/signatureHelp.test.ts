@@ -52,9 +52,7 @@ describe("getSignatureHelp", () => {
     // identifier by giving it no separator and verifying the embedded check.
     const idx = {
       ...testIndex,
-      routines: [
-        { name: "BareEmbedded", file: "/p/g.inf", start_line: 1, end_line: 2, locals: ["x"], embedded: true },
-      ],
+      routines: [{ name: "BareEmbedded", file: "/p/g.inf", start_line: 1, end_line: 2, locals: ["x"], embedded: true }],
     };
     expect(getSignatureHelp(idx, "BareEmbedded(", pos(0, 13))).toBeNull();
   });
@@ -146,7 +144,7 @@ describe("getSignatureHelp", () => {
   // findCallContext skips them wholesale so a `(` or `,` inside doesn't
   // derail the paren stack or comma count.
 
-  it("treats ' inside a \"...\" string as ordinary string content", () => {
+  it('treats \' inside a "..." string as ordinary string content', () => {
     // The apostrophe in "isn't" must NOT open a dict-word region — the
     // string-state check runs first in the scan loop, so the ' is consumed
     // as plain string content.  Pins the branch ordering invariant.

@@ -180,9 +180,7 @@ export function collectUndeclaredPropertyWarnings(
     index.symbols
       .filter(
         (s) =>
-          (s.type === "property" || s.type === "individual_property") &&
-          !s.is_system &&
-          s.formal_declaration === false,
+          (s.type === "property" || s.type === "individual_property") && !s.is_system && s.formal_declaration === false,
       )
       .map((s) => s.name),
   );

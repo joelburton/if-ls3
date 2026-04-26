@@ -31,7 +31,13 @@ import { findHover, findIncludeHover } from "../features/hover";
 import { getDocumentSymbols } from "../features/documentSymbols";
 import { getWorkspaceSymbols } from "../features/workspaceSymbols";
 import { getCompletions } from "../features/completions";
-import { wordAtPosition, objectBeforeDot, classBeforeColonColon, isInComment, isInString } from "../features/wordAtPosition";
+import {
+  wordAtPosition,
+  objectBeforeDot,
+  classBeforeColonColon,
+  isInComment,
+  isInString,
+} from "../features/wordAtPosition";
 import { getSemanticTokens } from "../features/semanticTokens";
 import { findReferences, refAtPosition } from "../features/references";
 import { getFoldingRanges } from "../features/foldingRanges";
@@ -61,7 +67,6 @@ function indexForDocument(documentUri: string): CompilerIndex | null {
   return hit?.index ?? currentIndices[0]?.index ?? null;
 }
 
-
 connection.onInitialize((params: InitializeParams): InitializeResult => {
   workspaceRoot = params.rootUri ? URI.parse(params.rootUri).fsPath : null;
   // initializationOptions.compilerPath comes from the inform6.compilerPath
@@ -69,9 +74,7 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
   const initOpts = (params.initializationOptions ?? {}) as { compilerPath?: string };
   const defaultCompiler = initOpts.compilerPath?.trim() || "inform6";
   if (workspaceRoot) {
-    workspaceConfig = loadConfig(workspaceRoot, defaultCompiler, (msg) =>
-      log(`[server] config error: ${msg}`),
-    );
+    workspaceConfig = loadConfig(workspaceRoot, defaultCompiler, (msg) => log(`[server] config error: ${msg}`));
     if (!workspaceConfig) {
       log("[server] no inform6rc.yaml found — language server features disabled");
     } else if (workspaceConfig.files.length === 0) {
@@ -194,10 +197,7 @@ connection.onDefinition((params: DefinitionParams) => {
     ? (objectBeforeDot(hit.lineText, hit.start) ?? classBeforeColonColon(hit.lineText, hit.start))
     : null;
   // Resolve "self" in the object context to the actual enclosing object name.
-  const objCtx =
-    rawCtx?.toLowerCase() === "self"
-      ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx)
-      : rawCtx;
+  const objCtx = rawCtx?.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx) : rawCtx;
 
   if (!ref) {
     // "self" with no compiler ref: navigate to the enclosing object.
@@ -209,10 +209,7 @@ connection.onDefinition((params: DefinitionParams) => {
   }
 
   // If the ref symbol is "self", resolve it to the enclosing object name.
-  const sym =
-    ref.sym.toLowerCase() === "self"
-      ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym)
-      : ref.sym;
+  const sym = ref.sym.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym) : ref.sym;
 
   const isAction = ref.type === "action";
   return findDefinition(index, sym, objCtx, isAction, isAction);
@@ -259,13 +256,9 @@ connection.onHover((params: HoverParams) => {
         : null;
       // Resolve "self" in context and in the symbol name itself.
       const objCtx =
-        rawCtx?.toLowerCase() === "self"
-          ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx)
-          : rawCtx;
+        rawCtx?.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? rawCtx) : rawCtx;
       const sym =
-        ref.sym.toLowerCase() === "self"
-          ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym)
-          : ref.sym;
+        ref.sym.toLowerCase() === "self" ? (enclosingObject(index, filePath, line1)?.name ?? ref.sym) : ref.sym;
       return findHover(index, sym, workspaceRoot ?? "", undefined, undefined, filePath, line1, objCtx);
     }
   }
@@ -361,7 +354,11 @@ connection.onRenameRequest(async (params: RenameParams) => {
   const getFileText = (path: string): string | null => {
     const doc = documents.get(URI.file(path).toString());
     if (doc) return doc.getText();
-    try { return fs.readFileSync(path, "utf-8"); } catch { return null; }
+    try {
+      return fs.readFileSync(path, "utf-8");
+    } catch {
+      return null;
+    }
   };
 
   const edit = computeRename(index, filePath, params.position, params.newName, getFileText);
@@ -369,7 +366,7 @@ connection.onRenameRequest(async (params: RenameParams) => {
   if (edit && hasInactiveBranches(index, affectedFiles(edit))) {
     void connection.window.showInformationMessage(
       "Rename applied. Note: references inside inactive #IfDef branches were not renamed — " +
-      "re-run after recompiling with different defines if needed.",
+        "re-run after recompiling with different defines if needed.",
     );
   }
 

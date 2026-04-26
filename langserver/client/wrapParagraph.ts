@@ -18,15 +18,11 @@ export function wrapParagraph(): void {
 
   const replaceRange = new vscode.Range(
     stringRange.open,
-    new vscode.Position(
-      stringRange.close.line,
-      doc.lineAt(stringRange.close.line).text.length,
-    ),
+    new vscode.Position(stringRange.close.line, doc.lineAt(stringRange.close.line).text.length),
   );
 
   void editor.edit((edit) => edit.replace(replaceRange, newText));
 }
-
 
 function findEnclosingString(
   doc: vscode.TextDocument,
@@ -59,8 +55,7 @@ function findEnclosingString(
 
   // Cursor is inside a string — scan forward for the closing quote.
   let closePos: vscode.Position | null = null;
-  outer:
-  for (let line = cursor.line; line < doc.lineCount; line++) {
+  outer: for (let line = cursor.line; line < doc.lineCount; line++) {
     const text = doc.lineAt(line).text;
     const startChar = line === cursor.line ? cursor.character : 0;
     for (let ch = startChar; ch < text.length; ch++) {
@@ -75,7 +70,6 @@ function findEnclosingString(
   return { open: openPos, close: closePos };
 }
 
-
 function getColumnLimit(editor: vscode.TextEditor): number {
   const rulers = vscode.workspace
     .getConfiguration("editor", editor.document)
@@ -86,7 +80,6 @@ function getColumnLimit(editor: vscode.TextEditor): number {
   }
   return 80;
 }
-
 
 function wrapString(
   doc: vscode.TextDocument,
@@ -110,9 +103,7 @@ function wrapString(
 
   const suffix = doc.lineAt(closePos.line).text.slice(closePos.character + 1);
 
-  const strippedLines = contentLines.map((line, i) =>
-    i === 0 ? line : line.replace(/^\s*/, ""),
-  );
+  const strippedLines = contentLines.map((line, i) => (i === 0 ? line : line.replace(/^\s*/, "")));
 
   const leadingSpace = strippedLines[0]?.match(/^(\s+)/)?.[1] ?? "";
   const lastContent = strippedLines[strippedLines.length - 1] ?? "";
@@ -125,7 +116,10 @@ function wrapString(
 
   for (const line of strippedLines) {
     if (line.trim() === "") {
-      if (current.length > 0) { groups.push(current); current = []; }
+      if (current.length > 0) {
+        groups.push(current);
+        current = [];
+      }
       groups.push(null);
     } else if (line.match(/^\^/) && current.length > 0) {
       groups.push(current);
@@ -143,20 +137,24 @@ function wrapString(
   let isFirstGroup = true;
 
   for (const group of groups) {
-    if (group === null) { outputLines.push(""); continue; }
+    if (group === null) {
+      outputLines.push("");
+      continue;
+    }
 
     const isLastGroup = group === lastContentGroup;
-    const words = group.join(" ").split(/\s+/).filter((w) => w.length > 0);
+    const words = group
+      .join(" ")
+      .split(/\s+/)
+      .filter((w) => w.length > 0);
     const wrappedLines: string[] = [];
     let currentLine = "";
 
     for (let wi = 0; wi < words.length; wi++) {
       const word = words[wi];
       const isVeryFirstLine = isFirstGroup && wrappedLines.length === 0;
-      const available = isVeryFirstLine
-        ? columns - openColumn - 1 - leadingSpace.length
-        : columns - indent.length;
-      const closingLen = (isLastGroup && wi === words.length - 1) ? closing.length : 0;
+      const available = isVeryFirstLine ? columns - openColumn - 1 - leadingSpace.length : columns - indent.length;
+      const closingLen = isLastGroup && wi === words.length - 1 ? closing.length : 0;
 
       if (currentLine === "") {
         currentLine = word;
@@ -171,11 +169,7 @@ function wrapString(
 
     for (let i = 0; i < wrappedLines.length; i++) {
       const isVeryFirstLine = isFirstGroup && i === 0;
-      outputLines.push(
-        isVeryFirstLine
-          ? `"${leadingSpace}${wrappedLines[i]}`
-          : `${indent}${wrappedLines[i]}`,
-      );
+      outputLines.push(isVeryFirstLine ? `"${leadingSpace}${wrappedLines[i]}` : `${indent}${wrappedLines[i]}`);
     }
 
     isFirstGroup = false;

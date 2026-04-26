@@ -57,9 +57,7 @@ describe("getDocumentSymbols", () => {
   it("falls back to top-level when the parent object is not in the index", () => {
     const idx: CompilerIndex = {
       ...testIndex,
-      routines: [
-        { name: "Orphan.before", file: FILE, start_line: 50, end_line: 55, locals: [], embedded: true },
-      ],
+      routines: [{ name: "Orphan.before", file: FILE, start_line: 50, end_line: 55, locals: [], embedded: true }],
       objects: [],
     };
     const result = getDocumentSymbols(idx, URI_FOR_FILE);

@@ -1,6 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { CompletionItemKind } from "vscode-languageserver";
-import { getCompletions, isInHasClause, isAfterProvides, isAfterOfclass, isAfterHashHash, isAfterClassKeyword, isAfterArrow, isAtTopLevel } from "../features/completions";
+import { CompletionItemKind, InsertTextFormat } from "vscode-languageserver";
+import {
+  getCompletions,
+  isInHasClause,
+  isAfterProvides,
+  isAfterOfclass,
+  isAfterHashHash,
+  isAfterClassKeyword,
+  isAfterArrow,
+  isAtTopLevel,
+} from "../features/completions";
 import { FILE, testIndex } from "./fixture";
 
 /** Position helper — vitest line numbers are 0-based. */
@@ -192,7 +201,7 @@ describe("getCompletions", () => {
     });
 
     it("returns all items when 'has' is in a string literal", () => {
-      const lines = ['Object O', '  with description "has light",', "  "];
+      const lines = ["Object O", '  with description "has light",', "  "];
       const items = getCompletions(testIndex, FILE, pos(11, 2), "  ", lines);
       const labels = items.map((i) => i.label);
       expect(labels).toContain("MyFunc");
@@ -283,7 +292,6 @@ describe("top-level completions", () => {
   });
 
   it("snippet items have insertText and InsertTextFormat.Snippet", () => {
-    const { CompletionItemKind, InsertTextFormat } = require("vscode-languageserver");
     const snippet = items.find((i) => i.label === "[ (routine)");
     expect(snippet).toBeDefined();
     expect(snippet!.kind).toBe(CompletionItemKind.Snippet);
@@ -330,7 +338,7 @@ describe("top-level completions", () => {
     const indentedItems = getCompletions(testIndex, FILE, pos(4, line.length), line, singleLine(line));
     const indentedLabels = indentedItems.map((i) => i.label);
     expect(indentedLabels).toContain("MyFunc"); // general completions
-    expect(indentedLabels).toContain("with");   // keyword now in general list
+    expect(indentedLabels).toContain("with"); // keyword now in general list
   });
 });
 

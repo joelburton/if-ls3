@@ -193,7 +193,9 @@ describe("findHover", () => {
   describe("skipSymbols flag", () => {
     it("returns null for a known symbol when skipSymbols=true", () => {
       // "description" is in symbols[] — should be hidden in fallback path.
-      expect(findHover(testIndex, "description", ROOT, undefined, undefined, undefined, undefined, undefined, true)).toBeNull();
+      expect(
+        findHover(testIndex, "description", ROOT, undefined, undefined, undefined, undefined, undefined, true),
+      ).toBeNull();
     });
 
     it("still returns keyword help when skipSymbols=true", () => {
@@ -203,17 +205,13 @@ describe("findHover", () => {
 
     it("still returns local variable hover when skipSymbols=true", () => {
       // Local "a" in MyFunc (lines 58-66), filePath and line1 still provided.
-      const text = md(
-        findHover(testIndex, "a", ROOT, undefined, undefined, FILE, 60, undefined, true),
-      );
+      const text = md(findHover(testIndex, "a", ROOT, undefined, undefined, FILE, 60, undefined, true));
       expect(text).toContain("**a** (local variable in **MyFunc**)");
     });
 
     it("still returns print-rule hover when skipSymbols=true", () => {
-      const lineText = 'print (string) x;';
-      const text = md(
-        findHover(testIndex, "string", ROOT, lineText, 7, undefined, undefined, undefined, true),
-      );
+      const lineText = "print (string) x;";
+      const text = md(findHover(testIndex, "string", ROOT, lineText, 7, undefined, undefined, undefined, true));
       expect(text).toContain("**print (string)**");
     });
   });

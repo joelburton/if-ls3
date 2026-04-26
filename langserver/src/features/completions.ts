@@ -16,10 +16,8 @@ export function isAtTopLevel(
   filePath: string,
   line: number, // 1-based
 ): boolean {
-  if (index.routines.some((r) => r.file === filePath && r.start_line <= line && line <= r.end_line))
-    return false;
-  if (index.objects.some((o) => o.file === filePath && o.start_line <= line && line <= o.end_line))
-    return false;
+  if (index.routines.some((r) => r.file === filePath && r.start_line <= line && line <= r.end_line)) return false;
+  if (index.objects.some((o) => o.file === filePath && o.start_line <= line && line <= o.end_line)) return false;
   return true;
 }
 
@@ -35,7 +33,8 @@ const TOPLEVEL_SNIPPETS: CompletionItem[] = [
   {
     label: "Object (with body)",
     kind: CompletionItemKind.Snippet,
-    insertText: "Object ${1:Name} \"${2:short name}\"\n  with\n    description \"${3:Description.}\",\n  has ${4:light}\n;\n",
+    insertText:
+      'Object ${1:Name} "${2:short name}"\n  with\n    description "${3:Description.}",\n  has ${4:light}\n;\n',
     insertTextFormat: InsertTextFormat.Snippet,
     detail: "object definition",
   },
@@ -117,7 +116,8 @@ const SCAN_LIMIT = 15;
 
 function lastWordIndex(text: string, word: string): number {
   const re = new RegExp(`\\b${word}\\b`, "gi");
-  let last = -1, m: RegExpExecArray | null;
+  let last = -1,
+    m: RegExpExecArray | null;
   while ((m = re.exec(text)) !== null) last = m.index;
   return last;
 }
@@ -128,11 +128,7 @@ function lastWordIndex(text: string, word: string): number {
  * string literals, then checks whether `has`/`hasnt` appears more recently
  * than any clause terminator (`;`, `with`, `private`, `class`).
  */
-export function isInHasClause(
-  lines: string[],
-  cursorLine: number,
-  cursorCol: number,
-): boolean {
+export function isInHasClause(lines: string[], cursorLine: number, cursorCol: number): boolean {
   const startLine = Math.max(0, cursorLine - SCAN_LIMIT);
   const chunks: string[] = [];
   for (let i = startLine; i <= cursorLine; i++) {
@@ -144,7 +140,7 @@ export function isInHasClause(
     chunks.push(line);
   }
   const text = chunks.join("\n");
-  const hasIdx  = Math.max(lastWordIndex(text, "has"), lastWordIndex(text, "hasnt"));
+  const hasIdx = Math.max(lastWordIndex(text, "has"), lastWordIndex(text, "hasnt"));
   const termIdx = Math.max(
     lastWordIndex(text, "with"),
     lastWordIndex(text, "private"),
@@ -190,9 +186,10 @@ export function getCompletions(
     let start = end;
     while (start > 0 && isIdChar(lineText[start - 1])) start--;
     const rawName = lineText.slice(start, end).toLowerCase();
-    const objName = rawName === "self"
-      ? (enclosingObject(index, filePath, position.line + 1)?.name.toLowerCase() ?? rawName)
-      : rawName;
+    const objName =
+      rawName === "self"
+        ? (enclosingObject(index, filePath, position.line + 1)?.name.toLowerCase() ?? rawName)
+        : rawName;
 
     const obj = index.objects.find((o) => o.name.toLowerCase() === objName);
     if (!obj) return [];

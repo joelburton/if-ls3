@@ -15,21 +15,21 @@ let outputChannel: vscode.OutputChannel;
 
 function makeFilteringChannel(inner: vscode.OutputChannel): vscode.OutputChannel {
   const filtered = (msg: string, write: (s: string) => void) => {
-    const verbose = vscode.workspace
-      .getConfiguration("inform6")
-      .get<boolean>("verboseOutput", false);
+    const verbose = vscode.workspace.getConfiguration("inform6").get<boolean>("verboseOutput", false);
     if (verbose || !isVerboseOnly(msg)) write(msg);
   };
   return {
-    get name() { return inner.name; },
-    append:     (v) => filtered(v,  (s) => inner.append(s)),
-    appendLine: (v) => filtered(v,  (s) => inner.appendLine(s)),
-    replace:    (v) => inner.replace(v),
-    clear:      ()  => inner.clear(),
+    get name() {
+      return inner.name;
+    },
+    append: (v) => filtered(v, (s) => inner.append(s)),
+    appendLine: (v) => filtered(v, (s) => inner.appendLine(s)),
+    replace: (v) => inner.replace(v),
+    clear: () => inner.clear(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    show:       (...args: any[]) => (inner.show as (...a: any[]) => void)(...args),
-    hide:       ()  => inner.hide(),
-    dispose:    ()  => inner.dispose(),
+    show: (...args: any[]) => (inner.show as (...a: any[]) => void)(...args),
+    hide: () => inner.hide(),
+    dispose: () => inner.dispose(),
   };
 }
 
@@ -41,19 +41,16 @@ const inactiveDecoration = vscode.window.createTextEditorDecorationType({
 async function applyInactiveDecorations(editor: vscode.TextEditor): Promise<void> {
   if (editor.document.languageId !== "inform6" || !client) return;
 
-  const enabled = vscode.workspace
-    .getConfiguration("inform6")
-    .get<boolean>("grayInactiveBranches", true);
+  const enabled = vscode.workspace.getConfiguration("inform6").get<boolean>("grayInactiveBranches", true);
 
   if (!enabled) {
     editor.setDecorations(inactiveDecoration, []);
     return;
   }
 
-  const conditionals = await client.sendRequest<Conditional[]>(
-    "inform6/getConditionals",
-    { uri: editor.document.uri.toString() }
-  );
+  const conditionals = await client.sendRequest<Conditional[]>("inform6/getConditionals", {
+    uri: editor.document.uri.toString(),
+  });
 
   const ranges: vscode.Range[] = [];
   for (const c of conditionals ?? []) {
@@ -72,9 +69,7 @@ function refreshAllDecorations(): void {
 const compileDiagnostics = vscode.languages.createDiagnosticCollection("inform6-compile");
 
 export function activate(context: vscode.ExtensionContext): void {
-  outputChannel = makeFilteringChannel(
-    vscode.window.createOutputChannel("Inform6 Language Server")
-  );
+  outputChannel = makeFilteringChannel(vscode.window.createOutputChannel("Inform6 Language Server"));
   context.subscriptions.push(compileDiagnostics);
 
   // Write the correct grammar file before VS Code tokenizes any .inf files.
@@ -88,23 +83,23 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel, compileDiagnostics))
+    vscode.commands.registerCommand("inform6.compile", () => compileCommand(outputChannel, compileDiagnostics)),
   );
 
   context.subscriptions.push(
-    vscode.commands.registerCommand("inform6.compileAndRun", () => compileAndRunCommand(outputChannel, compileDiagnostics))
+    vscode.commands.registerCommand("inform6.compileAndRun", () =>
+      compileAndRunCommand(outputChannel, compileDiagnostics),
+    ),
   );
 
-  context.subscriptions.push(
-    vscode.commands.registerCommand("inform6.wrapParagraph", wrapParagraph)
-  );
+  context.subscriptions.push(vscode.commands.registerCommand("inform6.wrapParagraph", wrapParagraph));
 
   context.subscriptions.push(
     vscode.commands.registerCommand("inform6.toggleGrayInactiveBranches", async () => {
       const config = vscode.workspace.getConfiguration("inform6");
       const current = config.get<boolean>("grayInactiveBranches", true);
       await config.update("grayInactiveBranches", !current, vscode.ConfigurationTarget.Global);
-    })
+    }),
   );
 
   context.subscriptions.push(
@@ -114,20 +109,19 @@ export function activate(context: vscode.ExtensionContext): void {
       if (!client) return;
 
       type Conditional = { active: string; start_line: number };
-      const conditionals = await client.sendRequest<Conditional[]>(
-        "inform6/getConditionals",
-        { uri: editor.document.uri.toString() }
-      );
+      const conditionals = await client.sendRequest<Conditional[]>("inform6/getConditionals", {
+        uri: editor.document.uri.toString(),
+      });
       if (!conditionals || conditionals.length === 0) return;
 
-      const activeLines   = conditionals.filter(c => c.active !== "none").map(c => c.start_line - 1);
-      const inactiveLines = conditionals.filter(c => c.active === "none").map(c => c.start_line - 1);
+      const activeLines = conditionals.filter((c) => c.active !== "none").map((c) => c.start_line - 1);
+      const inactiveLines = conditionals.filter((c) => c.active === "none").map((c) => c.start_line - 1);
 
       if (activeLines.length > 0)
         await vscode.commands.executeCommand("editor.unfold", { selectionLines: activeLines });
       if (inactiveLines.length > 0)
-        await vscode.commands.executeCommand("editor.fold",   { selectionLines: inactiveLines });
-    })
+        await vscode.commands.executeCommand("editor.fold", { selectionLines: inactiveLines });
+    }),
   );
 
   context.subscriptions.push(
@@ -139,18 +133,18 @@ export function activate(context: vscode.ExtensionContext): void {
       const label = !current ? "enabled" : "disabled";
       const action = await vscode.window.showInformationMessage(
         `Inform 6 TextMate highlighting ${label}. Reload the window to apply.`,
-        "Reload Window"
+        "Reload Window",
       );
       if (action === "Reload Window") {
         await vscode.commands.executeCommand("workbench.action.reloadWindow");
       }
-    })
+    }),
   );
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor((editor) => {
       if (editor) void applyInactiveDecorations(editor);
-    })
+    }),
   );
 
   // Restart the LSP client when the language server enable/disable setting changes.
@@ -158,21 +152,17 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration("inform6.enableLanguageServer")) {
-        outputChannel.appendLine(
-          "[extension] inform6.enableLanguageServer changed — restarting client"
-        );
+        outputChannel.appendLine("[extension] inform6.enableLanguageServer changed — restarting client");
         void restartClient(context);
       }
       if (e.affectsConfiguration("inform6.compilerPath")) {
-        outputChannel.appendLine(
-          "[extension] inform6.compilerPath changed — restarting client"
-        );
+        outputChannel.appendLine("[extension] inform6.compilerPath changed — restarting client");
         void restartClient(context);
       }
       if (e.affectsConfiguration("inform6.grayInactiveBranches")) {
         refreshAllDecorations();
       }
-    })
+    }),
   );
 }
 
@@ -186,9 +176,7 @@ export function activate(context: vscode.ExtensionContext): void {
 // ---------------------------------------------------------------------------
 
 function applyGrammarFile(extensionPath: string): void {
-  const enabled = vscode.workspace
-    .getConfiguration("inform6")
-    .get<boolean>("enableTextMateHighlighting", true);
+  const enabled = vscode.workspace.getConfiguration("inform6").get<boolean>("enableTextMateHighlighting", true);
 
   const srcName = enabled ? "inform6.tmLanguage.json" : "inform6-empty.tmLanguage.json";
   const src = path.join(extensionPath, "syntaxes", srcName);
@@ -197,7 +185,7 @@ function applyGrammarFile(extensionPath: string): void {
   try {
     fs.copyFileSync(src, dest);
     outputChannel.appendLine(
-      `[extension] TextMate highlighting: ${enabled ? "on" : "off"} (${srcName} → inform6-active.tmLanguage.json)`
+      `[extension] TextMate highlighting: ${enabled ? "on" : "off"} (${srcName} → inform6-active.tmLanguage.json)`,
     );
   } catch (e) {
     outputChannel.appendLine(`[extension] warning: could not write grammar file: ${e}`);
@@ -209,15 +197,11 @@ function applyGrammarFile(extensionPath: string): void {
 // ---------------------------------------------------------------------------
 
 function languageServerEnabled(): boolean {
-  return vscode.workspace
-    .getConfiguration("inform6")
-    .get<boolean>("enableLanguageServer", true);
+  return vscode.workspace.getConfiguration("inform6").get<boolean>("enableLanguageServer", true);
 }
 
 function startClient(context: vscode.ExtensionContext): void {
-  const bundledServer = context.asAbsolutePath(
-    path.join("bundled-server", "server.cjs")
-  );
+  const bundledServer = context.asAbsolutePath(path.join("bundled-server", "server.cjs"));
 
   outputChannel.appendLine(`[activate] server: ${bundledServer}`);
 
@@ -239,14 +223,10 @@ function startClient(context: vscode.ExtensionContext): void {
     return Promise.resolve(child);
   };
 
-  const compilerPath = vscode.workspace
-    .getConfiguration("inform6")
-    .get<string>("compilerPath", "inform6");
+  const compilerPath = vscode.workspace.getConfiguration("inform6").get<string>("compilerPath", "inform6");
 
   const clientOptions: LanguageClientOptions = {
-    documentSelector: [
-      { scheme: "file", language: "inform6" },
-    ],
+    documentSelector: [{ scheme: "file", language: "inform6" }],
     synchronize: {
       fileEvents: [
         vscode.workspace.createFileSystemWatcher("**/*.inf"),
@@ -258,31 +238,28 @@ function startClient(context: vscode.ExtensionContext): void {
     outputChannel,
   };
 
-  client = new LanguageClient(
-    "inform6-lsp",
-    "Inform6 Language Server",
-    serverOptions,
-    clientOptions,
-  );
+  client = new LanguageClient("inform6-lsp", "Inform6 Language Server", serverOptions, clientOptions);
 
   client.onNotification("inform6/indexUpdated", () => {
     refreshAllDecorations();
   });
 
   client.onNotification("inform6/compilerNotFound", (params: { path: string }) => {
-    void vscode.window.showWarningMessage(
-      `Inform 6: compiler not found at "${params.path}". ` +
-        `Most language features are disabled. ` +
-        `See the extension README for build and install instructions.`,
-      "Open README",
-    ).then((action) => {
-      if (action === "Open README") {
-        void vscode.commands.executeCommand(
-          "markdown.showPreview",
-          vscode.Uri.joinPath(vscode.Uri.file(context.extensionPath), "README.md"),
-        );
-      }
-    });
+    void vscode.window
+      .showWarningMessage(
+        `Inform 6: compiler not found at "${params.path}". ` +
+          `Most language features are disabled. ` +
+          `See the extension README for build and install instructions.`,
+        "Open README",
+      )
+      .then((action) => {
+        if (action === "Open README") {
+          void vscode.commands.executeCommand(
+            "markdown.showPreview",
+            vscode.Uri.joinPath(vscode.Uri.file(context.extensionPath), "README.md"),
+          );
+        }
+      });
   });
 
   // Restart the server when inform6rc.yaml changes.
@@ -300,14 +277,18 @@ function startClient(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push({
     dispose: () => {
-      void client?.stop().catch(() => { /* ignore */ });
+      void client?.stop().catch(() => {
+        /* ignore */
+      });
     },
   });
 }
 
 async function restartClient(context: vscode.ExtensionContext): Promise<void> {
   if (client) {
-    await client.stop().catch(() => { /* ignore */ });
+    await client.stop().catch(() => {
+      /* ignore */
+    });
     client = undefined;
   }
   if (languageServerEnabled()) {
@@ -319,6 +300,8 @@ async function restartClient(context: vscode.ExtensionContext): Promise<void> {
 
 export async function deactivate(): Promise<void> {
   if (!client) return;
-  await client.stop().catch(() => { /* ignore */ });
+  await client.stop().catch(() => {
+    /* ignore */
+  });
   client = undefined;
 }

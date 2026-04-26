@@ -275,26 +275,21 @@ describe("getSemanticTokens (references path)", () => {
   // Line 4 (0-based 3): "  light,"         — attribute at col 2, len 5
   // Line 5 (0-based 4): "  MyFunc();"      — routine at col 2 (not highlighted)
   // Line 6 (0-based 5): "  TheRoom,"       — object at col 2 (not highlighted)
-  const SOURCE = [
-    "  location = 0;",
-    "  NOPE = 1;",
-    "  description,",
-    "  light,",
-    "  MyFunc();",
-    "  TheRoom,",
-  ].join("\n");
+  const SOURCE = ["  location = 0;", "  NOPE = 1;", "  description,", "  light,", "  MyFunc();", "  TheRoom,"].join(
+    "\n",
+  );
 
   // Matching references[] for FILE at file index 0.
   const refIndex: CompilerIndex = {
     ...testIndex,
     files: [FILE, FILE2],
     references: [
-      { sym: "location",    type: "global_variable", locs: ["0:1:2"] },
-      { sym: "NOPE",        type: "constant",         locs: ["0:2:2"] },
-      { sym: "description", type: "property",         locs: ["0:3:2"] },
-      { sym: "light",       type: "attribute",        locs: ["0:4:2"] },
-      { sym: "MyFunc",      type: "routine",          locs: ["0:5:2"] },
-      { sym: "TheRoom",     type: "object",           locs: ["0:6:2"] },
+      { sym: "location", type: "global_variable", locs: ["0:1:2"] },
+      { sym: "NOPE", type: "constant", locs: ["0:2:2"] },
+      { sym: "description", type: "property", locs: ["0:3:2"] },
+      { sym: "light", type: "attribute", locs: ["0:4:2"] },
+      { sym: "MyFunc", type: "routine", locs: ["0:5:2"] },
+      { sym: "TheRoom", type: "object", locs: ["0:6:2"] },
     ],
   };
 
@@ -358,9 +353,7 @@ describe("getSemanticTokens (references path)", () => {
   it("handles multiple locs for the same symbol across lines", () => {
     const idx: CompilerIndex = {
       ...refIndex,
-      references: [
-        { sym: "location", type: "global_variable", locs: ["0:1:2", "0:3:0", "0:5:4"] },
-      ],
+      references: [{ sym: "location", type: "global_variable", locs: ["0:1:2", "0:3:0", "0:5:4"] }],
     };
     const tokens = decode(getSemanticTokens(idx, FILE, SOURCE));
     expect(tokens).toHaveLength(3);
@@ -372,8 +365,8 @@ describe("getSemanticTokens (references path)", () => {
     // testIndex has no references field — must still highlight globals/constants.
     const src = "location = NOPE;\n";
     const tokens = decode(getSemanticTokens(testIndex, FILE, src));
-    expect(tokens.some((t) => t.type === PROP)).toBe(true);  // location
-    expect(tokens.some((t) => t.type === ENUM)).toBe(true);  // NOPE
+    expect(tokens.some((t) => t.type === PROP)).toBe(true); // location
+    expect(tokens.some((t) => t.type === ENUM)).toBe(true); // NOPE
   });
 
   it("falls back to text scan when the file is not in index.files[]", () => {
@@ -414,9 +407,7 @@ describe("getSemanticTokens (references path)", () => {
     it("emits PROP for an individual_property reference", () => {
       const idx: CompilerIndex = {
         ...refIndex,
-        references: [
-          { sym: "before", type: "individual_property", locs: ["0:1:4"] },
-        ],
+        references: [{ sym: "before", type: "individual_property", locs: ["0:1:4"] }],
       };
       const src = "    before 0,\n";
       const tokens = decode(getSemanticTokens(idx, FILE, src));

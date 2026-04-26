@@ -116,10 +116,7 @@ describe("resolveSymbol", () => {
     const idx: CompilerIndex = {
       ...testIndex,
       // Both a routine and a constant called "Conflict".
-      routines: [
-        ...testIndex.routines,
-        { name: "Conflict", file: FILE, start_line: 1, end_line: 1, locals: [] },
-      ],
+      routines: [...testIndex.routines, { name: "Conflict", file: FILE, start_line: 1, end_line: 1, locals: [] }],
       constants: [...testIndex.constants, { name: "Conflict", file: FILE, line: 2 }],
     };
     const r = resolveSymbol(idx, "Conflict");

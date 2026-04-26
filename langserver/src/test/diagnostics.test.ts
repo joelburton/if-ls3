@@ -172,10 +172,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
   const noLines = () => [];
 
   /** Build a minimal index with the given property symbols and objects. */
-  function makeIndex(
-    symbols: CompilerIndex["symbols"],
-    objects: CompilerIndex["objects"],
-  ): CompilerIndex {
+  function makeIndex(symbols: CompilerIndex["symbols"], objects: CompilerIndex["objects"]): CompilerIndex {
     return {
       ...testIndex,
       symbols,
@@ -235,18 +232,12 @@ describe("collectUndeclaredPropertyWarnings", () => {
   });
 
   it("returns empty map when all property symbols are formally declared", () => {
-    const idx = makeIndex(
-      [formalSym],
-      [{ ...baseObj, properties: [{ name: "description", line: 14 }] }],
-    );
+    const idx = makeIndex([formalSym], [{ ...baseObj, properties: [{ name: "description", line: 14 }] }]);
     expect(collectUndeclaredPropertyWarnings(idx, noLines).size).toBe(0);
   });
 
   it("warns when an informal property is used in an object", () => {
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 15 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 15 }] }]);
     const result = collectUndeclaredPropertyWarnings(idx, noLines);
     expect(result.size).toBe(1);
     const diags = result.get(FILE)!;
@@ -256,20 +247,14 @@ describe("collectUndeclaredPropertyWarnings", () => {
   });
 
   it("warning message names the property and suggests the fix", () => {
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 15 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 15 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, noLines).get(FILE)!;
     expect(diags[0].message).toContain("before");
     expect(diags[0].message).toContain("Property before");
   });
 
   it("places the warning on the correct 0-based line", () => {
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 5 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 5 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, noLines).get(FILE)!;
     expect(diags[0].range.start.line).toBe(4); // 1-based 5 → 0-based 4
     expect(diags[0].range.end.line).toBe(4);
@@ -283,7 +268,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
           ...baseObj,
           properties: [
             { name: "description", line: 14 }, // formal — no warning
-            { name: "before", line: 15 },       // informal — warn
+            { name: "before", line: 15 }, // informal — warn
           ],
         },
       ],
@@ -294,27 +279,18 @@ describe("collectUndeclaredPropertyWarnings", () => {
   });
 
   it("does not warn on a system property even if formal_declaration is false", () => {
-    const idx = makeIndex(
-      [systemSym],
-      [{ ...baseObj, properties: [{ name: "sys_prop", line: 12 }] }],
-    );
+    const idx = makeIndex([systemSym], [{ ...baseObj, properties: [{ name: "sys_prop", line: 12 }] }]);
     expect(collectUndeclaredPropertyWarnings(idx, noLines).size).toBe(0);
   });
 
   it("does not warn when formal_declaration is absent (old compiler binary)", () => {
     const symNoFlag = { name: "before", type: "individual_property", value: 72, flags: 0, is_system: false };
-    const idx = makeIndex(
-      [symNoFlag],
-      [{ ...baseObj, properties: [{ name: "before", line: 15 }] }],
-    );
+    const idx = makeIndex([symNoFlag], [{ ...baseObj, properties: [{ name: "before", line: 15 }] }]);
     expect(collectUndeclaredPropertyWarnings(idx, noLines).size).toBe(0);
   });
 
   it("warns on private_properties as well as properties", () => {
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, private_properties: [{ name: "before", line: 16 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, private_properties: [{ name: "before", line: 16 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, noLines).get(FILE)!;
     expect(diags).toHaveLength(1);
     expect(diags[0].range.start.line).toBe(15);
@@ -340,10 +316,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
     //                   0123456789012345678901234
     const sourceLine = "    with before [ ; ],";
     const getLines = (file: string) => (file === FILE ? [sourceLine] : []);
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 1 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 1 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, getLines).get(FILE)!;
     const start = diags[0].range.start.character;
     const end = diags[0].range.end.character;
@@ -352,10 +325,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
   });
 
   it("falls back to column 0 / MAX_SAFE_INTEGER when source is unavailable", () => {
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 15 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 15 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, noLines).get(FILE)!;
     expect(diags[0].range.start.character).toBe(0);
     expect(diags[0].range.end.character).toBe(Number.MAX_SAFE_INTEGER);
@@ -381,8 +351,22 @@ describe("collectUndeclaredPropertyWarnings", () => {
   });
 
   it("warns on both property and individual_property type symbols", () => {
-    const propSym = { name: "myprop", type: "property", value: 5, flags: 0, is_system: false, formal_declaration: false as const };
-    const ipropSym = { name: "myiprop", type: "individual_property", value: 6, flags: 0, is_system: false, formal_declaration: false as const };
+    const propSym = {
+      name: "myprop",
+      type: "property",
+      value: 5,
+      flags: 0,
+      is_system: false,
+      formal_declaration: false as const,
+    };
+    const ipropSym = {
+      name: "myiprop",
+      type: "individual_property",
+      value: 6,
+      flags: 0,
+      is_system: false,
+      formal_declaration: false as const,
+    };
     const idx = makeIndex(
       [propSym, ipropSym],
       [
@@ -407,10 +391,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
   it("suppresses warning when the source line contains '! Pragma:Prop'", () => {
     const lines = ["    undeclared_prop 42,  ! Pragma:Prop"];
     const getLines = () => lines;
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 1 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 1 }] }]);
     expect(collectUndeclaredPropertyWarnings(idx, getLines).size).toBe(0);
   });
 
@@ -419,10 +400,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
     //   line 2 (index 1): something_else with Pragma:Prop — unrelated
     const lines = ["    undeclared_prop 42,", "    other_prop 0,  ! Pragma:Prop"];
     const getLines = () => lines;
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 1 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 1 }] }]);
     const diags = collectUndeclaredPropertyWarnings(idx, getLines).get(FILE)!;
     expect(diags).toHaveLength(1);
   });
@@ -431,10 +409,7 @@ describe("collectUndeclaredPropertyWarnings", () => {
     const obj2 = { ...baseObj, name: "TheHall", start_line: 30, end_line: 40 };
     // line 0 (1-based line 1): pragma → suppressed
     // line 1 (1-based line 2): no pragma → warned
-    const lines = [
-      "    before 0,  ! Pragma:Prop",
-      "    before 0,",
-    ];
+    const lines = ["    before 0,  ! Pragma:Prop", "    before 0,"];
     const getLines = () => lines;
     const idx = makeIndex(
       [informalSym],
@@ -451,20 +426,14 @@ describe("collectUndeclaredPropertyWarnings", () => {
   it("pragma suppression works when source is on a private_property line", () => {
     const lines = ["    secret_prop 0,  ! Pragma:Prop"];
     const getLines = () => lines;
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, private_properties: [{ name: "before", line: 1 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, private_properties: [{ name: "before", line: 1 }] }]);
     expect(collectUndeclaredPropertyWarnings(idx, getLines).size).toBe(0);
   });
 
   it("pragma text is case-sensitive (wrong case does not suppress)", () => {
     const lines = ["    undeclared_prop 42,  ! pragma:prop"];
     const getLines = () => lines;
-    const idx = makeIndex(
-      [informalSym],
-      [{ ...baseObj, properties: [{ name: "before", line: 1 }] }],
-    );
+    const idx = makeIndex([informalSym], [{ ...baseObj, properties: [{ name: "before", line: 1 }] }]);
     // lowercase "pragma:prop" should NOT suppress the warning
     const diags = collectUndeclaredPropertyWarnings(idx, getLines).get(FILE)!;
     expect(diags).toHaveLength(1);

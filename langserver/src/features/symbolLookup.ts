@@ -20,9 +20,7 @@ export function enclosingObject(
   filePath: string,
   line: number, // 1-based
 ): ObjectInfo | undefined {
-  return index.objects.find(
-    (o) => o.file === filePath && o.start_line <= line && line <= o.end_line,
-  );
+  return index.objects.find((o) => o.file === filePath && o.start_line <= line && line <= o.end_line);
 }
 
 /** Build an LSP Location from an absolute file path and a 1-based line number. */

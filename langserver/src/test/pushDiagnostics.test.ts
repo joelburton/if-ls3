@@ -86,7 +86,9 @@ function emptyIndex(files: string[] = []): CompilerIndex {
 
 describe("pushDiagnostics", () => {
   let fc: FakeConnection;
-  beforeEach(() => { fc = fakeConnection(); });
+  beforeEach(() => {
+    fc = fakeConnection();
+  });
 
   it("pushes compiler errors converted to LSP diagnostics", () => {
     const file = writeFile("a.inf", "Constant FOO = 1;\n");
@@ -105,9 +107,7 @@ describe("pushDiagnostics", () => {
 
   it("clears diagnostics for files that had them last run but are clean now", () => {
     const file = writeFile("clean.inf", "Constant FOO = 1;\n");
-    const compilations: Compilation[] = [
-      { fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) },
-    ];
+    const compilations: Compilation[] = [{ fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) }];
 
     const previous = new Set([URI.file(file).toString(), "file:///stale/somewhere.inf"]);
     const current = pushDiagnostics(fc.conn, compilations, previous);
@@ -122,9 +122,7 @@ describe("pushDiagnostics", () => {
 
   it("does not push empty diagnostics for files not previously affected", () => {
     const file = writeFile("clean2.inf", "Constant FOO = 1;\n");
-    const compilations: Compilation[] = [
-      { fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) },
-    ];
+    const compilations: Compilation[] = [{ fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) }];
 
     pushDiagnostics(fc.conn, compilations, new Set());
 
@@ -134,9 +132,7 @@ describe("pushDiagnostics", () => {
 
   it("warns about #IfDef of an unknown name in a project file", () => {
     const file = writeFile("ifdef.inf", "#IfDef MYSTERY;\n#EndIf;\n");
-    const compilations: Compilation[] = [
-      { fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) },
-    ];
+    const compilations: Compilation[] = [{ fileConfig: makeFileConfig({ mainFile: file }), index: emptyIndex([file]) }];
 
     pushDiagnostics(fc.conn, compilations, new Set());
 
@@ -186,9 +182,7 @@ describe("pushDiagnostics", () => {
     const file = writeFile("mix.inf", "Constant FOO = 1;\n#IfDef WHO;\n#EndIf;\n");
     const index = emptyIndex([file]);
     index.errors.push({ file, line: 1, severity: "warning", message: "some warning" });
-    const compilations: Compilation[] = [
-      { fileConfig: makeFileConfig({ mainFile: file }), index },
-    ];
+    const compilations: Compilation[] = [{ fileConfig: makeFileConfig({ mainFile: file }), index }];
 
     pushDiagnostics(fc.conn, compilations, new Set());
 
@@ -204,9 +198,7 @@ describe("pushDiagnostics", () => {
     const file = writeFile("ret.inf", "Constant FOO = 1;\n");
     const index = emptyIndex([file]);
     index.errors.push({ file, line: 1, severity: "error", message: "boom" });
-    const compilations: Compilation[] = [
-      { fileConfig: makeFileConfig({ mainFile: file }), index },
-    ];
+    const compilations: Compilation[] = [{ fileConfig: makeFileConfig({ mainFile: file }), index }];
 
     const current = pushDiagnostics(fc.conn, compilations, new Set());
 

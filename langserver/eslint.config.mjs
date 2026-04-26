@@ -10,6 +10,12 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       // Non-null assertions are used deliberately throughout
       "@typescript-eslint/no-non-null-assertion": "off",
+      // Allow `_`-prefixed unused vars/args (standard "intentionally unused"
+      // convention — useful for callback signatures whose args we don't need).
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
     },
   },
   {

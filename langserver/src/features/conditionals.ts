@@ -2,7 +2,7 @@ import type { CompilerIndex, ConditionalInfo } from "../server/types";
 
 export interface InactiveLineRange {
   startLine: number; // 0-based, inclusive
-  endLine: number;   // 0-based, inclusive
+  endLine: number; // 0-based, inclusive
 }
 
 /**
@@ -26,9 +26,6 @@ export function inactiveLineRange(c: ConditionalInfo): InactiveLineRange | null 
   return null;
 }
 
-export function getConditionalsForFile(
-  index: CompilerIndex,
-  filePath: string,
-): ConditionalInfo[] {
+export function getConditionalsForFile(index: CompilerIndex, filePath: string): ConditionalInfo[] {
   return (index.conditionals ?? []).filter((c) => c.file === filePath);
 }

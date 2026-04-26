@@ -76,14 +76,14 @@ export const testIndex: CompilerIndex = {
     // Used to verify objectContext path returns 22, not 4.
     { name: "my_test", type: "individual_property", value: 72, flags: 4, is_system: false, file: FILE, line: 4 },
     // Attributes — system and user-defined.
-    { name: "light",     type: "attribute", value: 2, flags: 516, is_system: true  },
-    { name: "container", type: "attribute", value: 3, flags: 516, is_system: true  },
-    { name: "concealed", type: "attribute", value: 8, flags: 4,   is_system: false, file: FILE, line: 5 },
+    { name: "light", type: "attribute", value: 2, flags: 516, is_system: true },
+    { name: "container", type: "attribute", value: 3, flags: 516, is_system: true },
+    { name: "concealed", type: "attribute", value: 8, flags: 4, is_system: false, file: FILE, line: 5 },
     // Action symbols (stored with __A suffix).
-    { name: "Take__A",   type: "fake_action", value: 1, flags: 4, is_system: false, file: FILE, line: 90 },
+    { name: "Take__A", type: "fake_action", value: 1, flags: 4, is_system: false, file: FILE, line: 90 },
     { name: "Foozle__A", type: "fake_action", value: 2, flags: 4, is_system: false, file: FILE, line: 95 },
     // Class symbol for ofclass completions (Room already in objects[] as is_class:true).
-    { name: "Room",      type: "class", value: 5, flags: 4, is_system: false, file: FILE, line: 24 },
+    { name: "Room", type: "class", value: 5, flags: 4, is_system: false, file: FILE, line: 24 },
   ],
 
   verbs: [],

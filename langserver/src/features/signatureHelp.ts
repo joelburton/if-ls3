@@ -11,10 +11,7 @@ import type { CompilerIndex } from "../server/types";
  * A forward scan is used (not backward) so that string delimiters are
  * unambiguous — `"` always opens or closes in forward order.
  */
-function findCallContext(
-  text: string,
-  position: Position,
-): { routineName: string; activeParam: number } | null {
+function findCallContext(text: string, position: Position): { routineName: string; activeParam: number } | null {
   const lines = text.split("\n");
 
   let cursorOffset = 0;
@@ -37,7 +34,11 @@ function findCallContext(
       continue;
     }
 
-    if (c === '"') { inString = true; i++; continue; }
+    if (c === '"') {
+      inString = true;
+      i++;
+      continue;
+    }
 
     // '...' is an Inform 6 dictionary word, not a string.  Skip it wholesale
     // so a `,` or `(` inside (e.g. 'a,b' or 'foo(') doesn't derail the comma
@@ -50,16 +51,16 @@ function findCallContext(
       continue;
     }
 
-    if (c === '!') {
+    if (c === "!") {
       // Comment: skip to end of line.
-      while (i < cursorOffset && text[i] !== '\n') i++;
+      while (i < cursorOffset && text[i] !== "\n") i++;
       continue;
     }
 
-    if (c === '(') {
+    if (c === "(") {
       // Find the identifier immediately before this paren (skip whitespace).
       let j = i - 1;
-      while (j >= 0 && (text[j] === ' ' || text[j] === '\t')) j--;
+      while (j >= 0 && (text[j] === " " || text[j] === "\t")) j--;
       const nameEnd = j + 1;
       while (j >= 0 && /\w/.test(text[j]!)) j--;
       const name = text.slice(j + 1, nameEnd);
@@ -68,13 +69,13 @@ function findCallContext(
       continue;
     }
 
-    if (c === ')') {
+    if (c === ")") {
       stack.pop();
       i++;
       continue;
     }
 
-    if (c === ',' && stack.length > 0) {
+    if (c === "," && stack.length > 0) {
       stack[stack.length - 1]!.commaCount++;
     }
 
@@ -86,18 +87,12 @@ function findCallContext(
   return top.routineName ? { routineName: top.routineName, activeParam: top.commaCount } : null;
 }
 
-export function getSignatureHelp(
-  index: CompilerIndex,
-  text: string,
-  position: Position,
-): SignatureHelp | null {
+export function getSignatureHelp(index: CompilerIndex, text: string, position: Position): SignatureHelp | null {
   const ctx = findCallContext(text, position);
   if (!ctx) return null;
 
   // Only non-embedded routines are callable by bare name.
-  const routine = index.routines.find(
-    (r) => !r.embedded && r.name.toLowerCase() === ctx.routineName.toLowerCase(),
-  );
+  const routine = index.routines.find((r) => !r.embedded && r.name.toLowerCase() === ctx.routineName.toLowerCase());
   if (!routine) return null;
 
   const locals = routine.locals ?? [];

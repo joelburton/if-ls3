@@ -31,7 +31,14 @@ function dedup(arr: string[]): string[] {
   return [...new Set(arr)];
 }
 
-const GLOBAL_KEYS = new Set(["compiler", "libraryPath", "switches", "defines", "externalDefines", "warnUndeclaredProperties"]);
+const GLOBAL_KEYS = new Set([
+  "compiler",
+  "libraryPath",
+  "switches",
+  "defines",
+  "externalDefines",
+  "warnUndeclaredProperties",
+]);
 
 /**
  * Load `inform6rc.yaml` from the workspace root.

@@ -174,16 +174,6 @@ describe("reindex", () => {
     expect(spawnMock).toHaveBeenCalledTimes(1);
     const [cmd, args] = spawnMock.mock.calls[0];
     expect(cmd).toBe(fc.compiler);
-    expect(args).toEqual([
-      "-y",
-      "-v5",
-      "-G",
-      "+/lib/inform6",
-      "--define",
-      "DEBUG=1",
-      "--define",
-      "FOO=2",
-      fc.mainFile,
-    ]);
+    expect(args).toEqual(["-y", "-v5", "-G", "+/lib/inform6", "--define", "DEBUG=1", "--define", "FOO=2", fc.mainFile]);
   });
 });

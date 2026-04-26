@@ -94,7 +94,7 @@ export function classBeforeColonColon(line: string, wordStart: number): string |
   const ccPos = wordStart - 2; // position of first ":"
   if (ccPos === 0) return null;
 
-  let classEnd = ccPos;
+  const classEnd = ccPos;
   let classStart = classEnd;
   while (classStart > 0 && isIdChar(line[classStart - 1])) classStart--;
 

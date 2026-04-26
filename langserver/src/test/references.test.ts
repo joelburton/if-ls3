@@ -42,10 +42,7 @@ describe("findReferences", () => {
   });
 
   it("finds multiple reference locations for one symbol", () => {
-    expect(findReferences(indexWithRefs, "description")).toEqual([
-      loc(uri, 15, 4),
-      loc(uri, 25, 24),
-    ]);
+    expect(findReferences(indexWithRefs, "description")).toEqual([loc(uri, 15, 4), loc(uri, 25, 24)]);
   });
 
   it("is case-insensitive", () => {
@@ -56,10 +53,7 @@ describe("findReferences", () => {
 
   it("resolves references across multiple files", () => {
     // TheRoom has one loc in FILE (index 0) and one in FILE2 (index 1).
-    expect(findReferences(indexWithRefs, "TheRoom")).toEqual([
-      loc(uri, 40, 0),
-      loc(uri2, 7, 3),
-    ]);
+    expect(findReferences(indexWithRefs, "TheRoom")).toEqual([loc(uri, 40, 0), loc(uri2, 7, 3)]);
   });
 
   it("only returns locations for the matching symbol", () => {
@@ -82,9 +76,7 @@ describe("findReferences", () => {
   it("skips malformed loc strings", () => {
     const idx: CompilerIndex = {
       ...indexWithRefs,
-      references: [
-        { sym: "Broken", type: "routine", locs: ["not-a-loc", "0:10:0", "bad"] },
-      ],
+      references: [{ sym: "Broken", type: "routine", locs: ["not-a-loc", "0:10:0", "bad"] }],
     };
     // Only the valid loc "0:10:0" should be returned.
     expect(findReferences(idx, "Broken")).toEqual([loc(uri, 10, 0)]);
@@ -93,9 +85,7 @@ describe("findReferences", () => {
   it("skips locs with out-of-range file index", () => {
     const idx: CompilerIndex = {
       ...indexWithRefs,
-      references: [
-        { sym: "Ghost", type: "routine", locs: ["99:5:0", "0:5:0"] },
-      ],
+      references: [{ sym: "Ghost", type: "routine", locs: ["99:5:0", "0:5:0"] }],
     };
     // File index 99 does not exist; only the valid loc should be returned.
     expect(findReferences(idx, "Ghost")).toEqual([loc(uri, 5, 0)]);

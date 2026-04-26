@@ -25,9 +25,7 @@ export function parseDiagnostics(stderr: string): ParseResult {
     const diag = new vscode.Diagnostic(
       range,
       message.trim(),
-      severity === "Error"
-        ? vscode.DiagnosticSeverity.Error
-        : vscode.DiagnosticSeverity.Warning,
+      severity === "Error" ? vscode.DiagnosticSeverity.Error : vscode.DiagnosticSeverity.Warning,
     );
     diag.source = "inform6-compile";
     const list = byFile.get(file) ?? [];
@@ -46,16 +44,14 @@ type TargetItem = vscode.QuickPickItem & { fileConfig: FileConfig };
 
 /** Show the quick-pick and return the chosen FileConfig, or undefined if cancelled. */
 async function pickTarget(workspaceRoot: string): Promise<FileConfig | undefined> {
-  const compilerPath = vscode.workspace
-    .getConfiguration("inform6")
-    .get<string>("compilerPath", "inform6");
+  const compilerPath = vscode.workspace.getConfiguration("inform6").get<string>("compilerPath", "inform6");
   let configError: string | null = null;
-  const config = loadConfig(workspaceRoot, compilerPath, (msg) => { configError = msg; });
+  const config = loadConfig(workspaceRoot, compilerPath, (msg) => {
+    configError = msg;
+  });
   if (!config || config.files.length === 0) {
     void vscode.window.showErrorMessage(
-      configError
-        ? `Inform 6: ${configError}`
-        : "Inform 6: no targets found in inform6rc.yaml.",
+      configError ? `Inform 6: ${configError}` : "Inform 6: no targets found in inform6rc.yaml.",
     );
     return undefined;
   }
@@ -76,8 +72,14 @@ async function pickTarget(workspaceRoot: string): Promise<FileConfig | undefined
   qp.show();
 
   return new Promise<FileConfig | undefined>((resolve) => {
-    qp.onDidAccept(() => { resolve(qp.selectedItems[0]?.fileConfig); qp.dispose(); });
-    qp.onDidHide(() => { resolve(undefined); qp.dispose(); });
+    qp.onDidAccept(() => {
+      resolve(qp.selectedItems[0]?.fileConfig);
+      qp.dispose();
+    });
+    qp.onDidHide(() => {
+      resolve(undefined);
+      qp.dispose();
+    });
   });
 }
 
@@ -115,7 +117,9 @@ async function compileTarget(
         const child = spawn(fc.compiler, args, { cwd: workspaceRoot, env: process.env });
 
         const stderrChunks: Buffer[] = [];
-        child.stdout?.on("data", () => { /* -q2 suppresses stdout */ });
+        child.stdout?.on("data", () => {
+          /* -q2 suppresses stdout */
+        });
         child.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
         child.on("error", (err) => {
@@ -126,7 +130,7 @@ async function compileTarget(
         child.on("close", (code) => {
           const stderr = Buffer.concat(stderrChunks).toString("utf-8");
           const lines = stderr.split("\n");
-          const errors   = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
+          const errors = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
           const warnings = lines.filter((l) => /:\s+Warning:\s/.test(l)).length;
 
           const { byFile, first } = parseDiagnostics(stderr);
@@ -148,25 +152,23 @@ async function compileTarget(
   );
 }
 
-function showCompileToast(
-  label: string,
-  result: CompileResult,
-  outputChannel: vscode.OutputChannel,
-): void {
+function showCompileToast(label: string, result: CompileResult, outputChannel: vscode.OutputChannel): void {
   const { errors, warnings } = result;
   const detail = [
-    errors   > 0 ? `${errors} error${errors     === 1 ? "" : "s"}`   : "",
+    errors > 0 ? `${errors} error${errors === 1 ? "" : "s"}` : "",
     warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "",
-  ].filter(Boolean).join(", ");
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   if (errors > 0) {
-    void vscode.window.showErrorMessage(
-      `Inform 6: ${label} — ${detail}.`, "Show Output",
-    ).then((a) => { if (a) outputChannel.show(); });
+    void vscode.window.showErrorMessage(`Inform 6: ${label} — ${detail}.`, "Show Output").then((a) => {
+      if (a) outputChannel.show();
+    });
   } else if (warnings > 0) {
-    void vscode.window.showWarningMessage(
-      `Inform 6: ${label} — ${detail}.`, "Show Output",
-    ).then((a) => { if (a) outputChannel.show(); });
+    void vscode.window.showWarningMessage(`Inform 6: ${label} — ${detail}.`, "Show Output").then((a) => {
+      if (a) outputChannel.show();
+    });
   } else {
     void vscode.window.showInformationMessage(`Inform 6: ${label} compiled successfully.`);
   }
@@ -174,9 +176,9 @@ function showCompileToast(
 
 function jumpToFirst(first: ParseResult["first"]): void {
   if (!first) return;
-  void vscode.workspace.openTextDocument(first.uri).then((doc) =>
-    vscode.window.showTextDocument(doc, { selection: first!.range, preserveFocus: false }),
-  );
+  void vscode.workspace
+    .openTextDocument(first.uri)
+    .then((doc) => vscode.window.showTextDocument(doc, { selection: first!.range, preserveFocus: false }));
 }
 
 // ---------------------------------------------------------------------------
@@ -186,7 +188,7 @@ function jumpToFirst(first: ParseResult["first"]): void {
 const STORY_EXTENSIONS = [".ulx", ".z8", ".z5", ".z3", ".z6", ".z4", ".z7"];
 
 function findStoryFile(mainFile: string): vscode.Uri | null {
-  const dir  = path.dirname(mainFile);
+  const dir = path.dirname(mainFile);
   const base = path.basename(mainFile, path.extname(mainFile));
   for (const ext of STORY_EXTENSIONS) {
     const candidate = path.join(dir, base + ext);
@@ -196,21 +198,30 @@ function findStoryFile(mainFile: string): vscode.Uri | null {
 }
 
 function storyViewColumn(): vscode.ViewColumn {
-  const col = vscode.workspace
-    .getConfiguration("inform6")
-    .get<string>("storyPlayerColumn", "beside");
+  const col = vscode.workspace.getConfiguration("inform6").get<string>("storyPlayerColumn", "beside");
   switch (col) {
-    case "active": return vscode.ViewColumn.Active;
-    case "one":    return vscode.ViewColumn.One;
-    case "two":    return vscode.ViewColumn.Two;
-    case "three":  return vscode.ViewColumn.Three;
-    case "four":   return vscode.ViewColumn.Four;
-    case "five":   return vscode.ViewColumn.Five;
-    case "six":    return vscode.ViewColumn.Six;
-    case "seven":  return vscode.ViewColumn.Seven;
-    case "eight":  return vscode.ViewColumn.Eight;
-    case "nine":   return vscode.ViewColumn.Nine;
-    default:       return vscode.ViewColumn.Beside;
+    case "active":
+      return vscode.ViewColumn.Active;
+    case "one":
+      return vscode.ViewColumn.One;
+    case "two":
+      return vscode.ViewColumn.Two;
+    case "three":
+      return vscode.ViewColumn.Three;
+    case "four":
+      return vscode.ViewColumn.Four;
+    case "five":
+      return vscode.ViewColumn.Five;
+    case "six":
+      return vscode.ViewColumn.Six;
+    case "seven":
+      return vscode.ViewColumn.Seven;
+    case "eight":
+      return vscode.ViewColumn.Eight;
+    case "nine":
+      return vscode.ViewColumn.Nine;
+    default:
+      return vscode.ViewColumn.Beside;
   }
 }
 
@@ -223,7 +234,10 @@ export async function compileCommand(
   diagCollection: vscode.DiagnosticCollection,
 ): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) { void vscode.window.showErrorMessage("Inform 6: no workspace folder open."); return; }
+  if (!workspaceRoot) {
+    void vscode.window.showErrorMessage("Inform 6: no workspace folder open.");
+    return;
+  }
 
   const fc = await pickTarget(workspaceRoot);
   if (!fc) return;
@@ -242,7 +256,10 @@ export async function compileAndRunCommand(
   diagCollection: vscode.DiagnosticCollection,
 ): Promise<void> {
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) { void vscode.window.showErrorMessage("Inform 6: no workspace folder open."); return; }
+  if (!workspaceRoot) {
+    void vscode.window.showErrorMessage("Inform 6: no workspace folder open.");
+    return;
+  }
 
   const fc = await pickTarget(workspaceRoot);
   if (!fc) return;
@@ -252,9 +269,7 @@ export async function compileAndRunCommand(
   const result = await compileTarget(fc, workspaceRoot, label, `Compiling ${label}…`, outputChannel, diagCollection);
   if (!result) return;
 
-  const runWithWarnings = vscode.workspace
-    .getConfiguration("inform6")
-    .get<boolean>("runWithWarnings", false);
+  const runWithWarnings = vscode.workspace.getConfiguration("inform6").get<boolean>("runWithWarnings", false);
 
   if (result.errors > 0 || (result.warnings > 0 && !runWithWarnings)) {
     showCompileToast(label, result, outputChannel);
@@ -269,16 +284,13 @@ export async function compileAndRunCommand(
   // Compile succeeded — find and open the story file.
   const storyUri = findStoryFile(fc.mainFile);
   if (!storyUri) {
-    void vscode.window.showErrorMessage(
-      `Inform 6: ${label} compiled successfully but no story file was found.`,
-    );
+    void vscode.window.showErrorMessage(`Inform 6: ${label} compiled successfully but no story file was found.`);
     return;
   }
 
   const col = storyViewColumn();
-  const isExternal = vscode.workspace
-    .getConfiguration("inform6")
-    .get<string>("storyPlayerColumn", "beside") === "external";
+  const isExternal =
+    vscode.workspace.getConfiguration("inform6").get<string>("storyPlayerColumn", "beside") === "external";
 
   if (isExternal) {
     void vscode.env.openExternal(storyUri);

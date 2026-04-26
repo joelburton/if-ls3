@@ -21,7 +21,10 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
 
   // Run once and re-use across all tests in this suite.
   try {
-    output = execSync(`${INFORM6} -y +${TINY_DIR}/ ${TINY_INF}`, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] });
+    output = execSync(`${INFORM6} -y +${TINY_DIR}/ ${TINY_INF}`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
   } catch (e: any) {
     // inform6 exits non-zero on warnings; stdout still has the JSON.
     output = e.stdout ?? "";
@@ -93,9 +96,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
     // parent can be derived by splitting on the separator.  No underscore-only
     // forms.  Each parent must actually exist in objects[].
     const idx = JSON.parse(output);
-    const embedded: Array<{ name: string }> = idx.routines.filter(
-      (r: { embedded?: boolean }) => r.embedded,
-    );
+    const embedded: Array<{ name: string }> = idx.routines.filter((r: { embedded?: boolean }) => r.embedded);
     expect(embedded.length).toBeGreaterThan(0);
 
     const objectNames = new Set<string>(idx.objects.map((o: { name: string }) => o.name));
@@ -163,9 +164,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
 
     it("emits formal_declaration on every property/individual_property symbol", () => {
       const idx = JSON.parse(output);
-      const props: Sym[] = idx.symbols.filter(
-        (s: Sym) => s.type === "property" || s.type === "individual_property",
-      );
+      const props: Sym[] = idx.symbols.filter((s: Sym) => s.type === "property" || s.type === "individual_property");
       expect(props.length).toBeGreaterThan(0);
       for (const p of props) {
         expect(typeof p.formal_declaration).toBe("boolean");
@@ -174,9 +173,7 @@ describe.skipIf(!existsSync(INFORM6))("inform6 -y compiler output", () => {
 
     it("does not emit formal_declaration on non-property symbols", () => {
       const idx = JSON.parse(output);
-      const others: Sym[] = idx.symbols.filter(
-        (s: Sym) => s.type !== "property" && s.type !== "individual_property",
-      );
+      const others: Sym[] = idx.symbols.filter((s: Sym) => s.type !== "property" && s.type !== "individual_property");
       expect(others.length).toBeGreaterThan(0);
       for (const s of others) {
         expect(s).not.toHaveProperty("formal_declaration");

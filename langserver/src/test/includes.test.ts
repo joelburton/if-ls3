@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest";
-import { URI } from "vscode-uri";
 import { includeAtLine } from "../features/definition";
 import { findIncludeHover } from "../features/hover";
 import { FILE, testIndex } from "./fixture";

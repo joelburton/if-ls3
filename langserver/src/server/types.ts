@@ -9,20 +9,20 @@ export interface SymbolReference {
 export interface IncludeInfo {
   from_file: string;
   from_line: number; // 1-based
-  from_col: number;  // 0-based
-  given: string;     // raw argument as written in source
-  resolved: string;  // absolute path of the included file
+  from_col: number; // 0-based
+  given: string; // raw argument as written in source
+  resolved: string; // absolute path of the included file
   file_index: number; // 0-based index into files[]
 }
 
 export interface ConditionalInfo {
   directive: "ifdef" | "ifndef" | "ifv3" | "ifv5" | "iftrue" | "iffalse";
   file: string;
-  start_line: number;  // 1-based
-  start_col: number;   // 0-based
-  else_line?: number;  // 1-based; present only when #Ifnot exists
+  start_line: number; // 1-based
+  start_col: number; // 0-based
+  else_line?: number; // 1-based; present only when #Ifnot exists
   else_col?: number;
-  end_line: number;    // 1-based
+  end_line: number; // 1-based
   end_col: number;
   active: "if" | "else" | "none";
 }

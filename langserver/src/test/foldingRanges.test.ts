@@ -24,14 +24,22 @@ describe("getFoldingRanges", () => {
       FILE,
     );
     expect(ranges).toHaveLength(1);
-    expect(ranges[0].startLine).toBe(9);   // #IfDef line (visible)
-    expect(ranges[0].endLine).toBe(18);    // line before #EndIf (last hidden)
+    expect(ranges[0].startLine).toBe(9); // #IfDef line (visible)
+    expect(ranges[0].endLine).toBe(18); // line before #EndIf (last hidden)
   });
 
   it("skips conditionals from other files", () => {
     const ranges = getFoldingRanges(
       withConditionals([
-        { directive: "ifdef", file: "/other/file.inf", start_line: 1, start_col: 0, end_line: 5, end_col: 0, active: "if" },
+        {
+          directive: "ifdef",
+          file: "/other/file.inf",
+          start_line: 1,
+          start_col: 0,
+          end_line: 5,
+          end_col: 0,
+          active: "if",
+        },
         { directive: "ifdef", file: FILE, start_line: 10, start_col: 0, end_line: 20, end_col: 0, active: "none" },
       ]),
       FILE,

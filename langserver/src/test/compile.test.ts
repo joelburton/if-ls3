@@ -28,7 +28,7 @@ vi.mock("vscode", () => {
 import { parseDiagnostics } from "../../client/compile";
 
 const FILE = "/project/game.inf";
-const LIB  = "/project/lib.h";
+const LIB = "/project/lib.h";
 
 describe("parseDiagnostics", () => {
   it("returns empty map and null first for clean output", () => {
@@ -52,7 +52,7 @@ describe("parseDiagnostics", () => {
 
   it("parses a single error", () => {
     const stderr = `${FILE}(23): Error:  Expected ';' but found foo\n`;
-    const { byFile, first } = parseDiagnostics(stderr);
+    const { byFile } = parseDiagnostics(stderr);
     const diags = byFile.get(FILE)!;
     expect(diags[0].severity).toBe(0); // Error
     expect(diags[0].message).toBe("Expected ';' but found foo");
@@ -70,10 +70,7 @@ describe("parseDiagnostics", () => {
   });
 
   it("first points to the earliest diagnostic in output order", () => {
-    const stderr = [
-      `${LIB}(12): Warning:  something in lib`,
-      `${FILE}(5): Error:  error in game`,
-    ].join("\n");
+    const stderr = [`${LIB}(12): Warning:  something in lib`, `${FILE}(5): Error:  error in game`].join("\n");
     const { first } = parseDiagnostics(stderr);
     // LIB warning came first in output
     expect(first?.uri.fsPath).toBe(LIB);
@@ -81,10 +78,7 @@ describe("parseDiagnostics", () => {
   });
 
   it("skips source-echo lines starting with >", () => {
-    const stderr = [
-      `${FILE}(10): Error:  Bad syntax`,
-      `>   bad line here`,
-    ].join("\n");
+    const stderr = [`${FILE}(10): Error:  Bad syntax`, `>   bad line here`].join("\n");
     const { byFile } = parseDiagnostics(stderr);
     expect(byFile.get(FILE)).toHaveLength(1);
   });

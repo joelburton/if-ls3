@@ -91,7 +91,8 @@ export const KEYWORD_HELP: Record<string, string> = {
 
   // ── Directive modifiers ───────────────────────────────────────────────────
   individual: "**individual** — used in `Property name individual` to declare a per-object (individual) property.",
-  alias: "**alias** *name* — used in `Property`/`Attribute` to create an alternative name for an existing property or attribute.",
+  alias:
+    "**alias** *name* — used in `Property`/`Attribute` to create an alternative name for an existing property or attribute.",
 
   // ── Verb/grammar tokens ───────────────────────────────────────────────────
   // `noun` has two senses, both lower-case identifiers:
@@ -102,18 +103,18 @@ export const KEYWORD_HELP: Record<string, string> = {
     "**noun**\n\n" +
     "- *Grammar token* (in a `Verb`/`Extend` line): matches the primary object noun.\n" +
     "- *Inside an action routine*: the primary object of the current player command.",
-  held:        "**held** — grammar token: like `noun` but the object must be held by the player.",
-  multi:       "**multi** — grammar token: matches multiple objects.",
-  multiheld:   "**multiheld** — grammar token: matches multiple held objects.",
+  held: "**held** — grammar token: like `noun` but the object must be held by the player.",
+  multi: "**multi** — grammar token: matches multiple objects.",
+  multiheld: "**multiheld** — grammar token: matches multiple held objects.",
   multiexcept: "**multiexcept** — grammar token: matches multiple objects except one specified.",
   multiinside: "**multiinside** — grammar token: matches multiple objects inside a container.",
-  creature:    "**creature** — grammar token: matches an animate object.",
-  topic:       "**topic** — grammar token: matches any sequence of words as a string topic.",
-  special:     "**special** — grammar token: matches a special dictionary word.",
-  number:      "**number** — grammar token: matches a number typed by the player.",
-  "scope=":    "**scope=***Routine* — grammar token: uses *Routine* to determine the scope of matchable objects.",
-  only:        "**only** — grammar line modifier: restricts this grammar line to exact token matches.",
-  reverse:     "**reverse** — grammar line modifier: swaps the roles of `noun` and `second`.",
+  creature: "**creature** — grammar token: matches an animate object.",
+  topic: "**topic** — grammar token: matches any sequence of words as a string topic.",
+  special: "**special** — grammar token: matches a special dictionary word.",
+  number: "**number** — grammar token: matches a number typed by the player.",
+  "scope=": "**scope=***Routine* — grammar token: uses *Routine* to determine the scope of matchable objects.",
+  only: "**only** — grammar line modifier: restricts this grammar line to exact token matches.",
+  reverse: "**reverse** — grammar line modifier: swaps the roles of `noun` and `second`.",
 
   // ── Implicit locals in object routines ───────────────────────────────────
   // `noun` is documented above with both its grammar-token and action-routine
@@ -222,19 +223,19 @@ export const KEYWORD_COMPLETIONS: { label: string; kind: "keyword" | "directive"
   { label: "individual", kind: "keyword" },
   { label: "alias", kind: "keyword" },
   // Verb/grammar tokens
-  { label: "noun",        kind: "keyword" },
-  { label: "held",        kind: "keyword" },
-  { label: "multi",       kind: "keyword" },
-  { label: "multiheld",   kind: "keyword" },
+  { label: "noun", kind: "keyword" },
+  { label: "held", kind: "keyword" },
+  { label: "multi", kind: "keyword" },
+  { label: "multiheld", kind: "keyword" },
   { label: "multiexcept", kind: "keyword" },
   { label: "multiinside", kind: "keyword" },
-  { label: "creature",    kind: "keyword" },
-  { label: "topic",       kind: "keyword" },
-  { label: "special",     kind: "keyword" },
-  { label: "number",      kind: "keyword" },
-  { label: "scope=",      kind: "keyword" },
-  { label: "only",        kind: "keyword" },
-  { label: "reverse",     kind: "keyword" },
+  { label: "creature", kind: "keyword" },
+  { label: "topic", kind: "keyword" },
+  { label: "special", kind: "keyword" },
+  { label: "number", kind: "keyword" },
+  { label: "scope=", kind: "keyword" },
+  { label: "only", kind: "keyword" },
+  { label: "reverse", kind: "keyword" },
   // Directives (capitalised as conventionally written)
   { label: "Array", kind: "directive" },
   { label: "Attribute", kind: "directive" },

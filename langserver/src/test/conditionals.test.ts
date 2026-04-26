@@ -11,9 +11,12 @@ describe("inactiveLineRange", () => {
   describe('active="none" (dead — nested in inactive parent, or fully skipped)', () => {
     it("returns the full start→end span", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "none",
       });
       expect(r).toEqual({ startLine: 9, endLine: 19 });
@@ -21,9 +24,12 @@ describe("inactiveLineRange", () => {
 
     it("converts 1-based compiler lines to 0-based LSP lines", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 1, start_col: 0,
-        end_line: 3, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 1,
+        start_col: 0,
+        end_line: 3,
+        end_col: 0,
         active: "none",
       });
       expect(r).toEqual({ startLine: 0, endLine: 2 });
@@ -31,10 +37,14 @@ describe("inactiveLineRange", () => {
 
     it("includes else_line in the span when present", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        else_line: 15, else_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        else_line: 15,
+        else_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "none",
       });
       expect(r).toEqual({ startLine: 9, endLine: 19 });
@@ -44,9 +54,12 @@ describe("inactiveLineRange", () => {
   describe('active="if" (first branch compiled)', () => {
     it("returns null when there is no else clause", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "if",
       });
       expect(r).toBeNull();
@@ -54,10 +67,14 @@ describe("inactiveLineRange", () => {
 
     it("returns else_line→end_line when an else clause is present", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        else_line: 15, else_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        else_line: 15,
+        else_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "if",
       });
       expect(r).toEqual({ startLine: 14, endLine: 19 });
@@ -67,10 +84,14 @@ describe("inactiveLineRange", () => {
   describe('active="else" (else branch compiled)', () => {
     it("returns start_line→else_line when else_line is present", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        else_line: 15, else_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        else_line: 15,
+        else_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "else",
       });
       expect(r).toEqual({ startLine: 9, endLine: 14 });
@@ -78,9 +99,12 @@ describe("inactiveLineRange", () => {
 
     it("falls back to end_line when else_line is absent (malformed but safe)", () => {
       const r = inactiveLineRange({
-        directive: "ifdef", file: FILE,
-        start_line: 10, start_col: 0,
-        end_line: 20, end_col: 0,
+        directive: "ifdef",
+        file: FILE,
+        start_line: 10,
+        start_col: 0,
+        end_line: 20,
+        end_col: 0,
         active: "else",
       });
       expect(r).toEqual({ startLine: 9, endLine: 19 });
@@ -91,7 +115,15 @@ describe("inactiveLineRange", () => {
     const directives = ["ifdef", "ifndef", "ifv3", "ifv5", "iftrue", "iffalse"] as const;
     for (const directive of directives) {
       expect(() =>
-        inactiveLineRange({ directive, file: FILE, start_line: 1, start_col: 0, end_line: 5, end_col: 0, active: "none" })
+        inactiveLineRange({
+          directive,
+          file: FILE,
+          start_line: 1,
+          start_col: 0,
+          end_line: 5,
+          end_col: 0,
+          active: "none",
+        }),
       ).not.toThrow();
     }
   });
@@ -104,9 +136,9 @@ describe("inactiveLineRange", () => {
 const OTHER = "/project/other.inf";
 
 const sampleConditionals: ConditionalInfo[] = [
-  { directive: "ifdef", file: FILE,  start_line: 10, start_col: 0, end_line: 15, end_col: 0, active: "if" },
+  { directive: "ifdef", file: FILE, start_line: 10, start_col: 0, end_line: 15, end_col: 0, active: "if" },
   { directive: "ifdef", file: OTHER, start_line: 20, start_col: 0, end_line: 25, end_col: 0, active: "none" },
-  { directive: "ifv5",  file: FILE,  start_line: 30, start_col: 0, end_line: 35, end_col: 0, active: "none" },
+  { directive: "ifv5", file: FILE, start_line: 30, start_col: 0, end_line: 35, end_col: 0, active: "none" },
 ];
 
 function withConditionals(conditionals: ConditionalInfo[]): CompilerIndex {

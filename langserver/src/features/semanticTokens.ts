@@ -107,12 +107,7 @@ function collectTokensViaReferences(
 
 // ── Text-scan fallback ────────────────────────────────────────────────────────
 
-function collectTokensViaTextScan(
-  index: CompilerIndex,
-  filePath: string,
-  lines: string[],
-  out: TokenPos[],
-): void {
+function collectTokensViaTextScan(index: CompilerIndex, filePath: string, lines: string[], out: TokenPos[]): void {
   const globalNames = new Set(index.globals.map((g) => g.name.toLowerCase()));
   const constantNames = new Set(index.constants.map((c) => c.name.toLowerCase()));
 
