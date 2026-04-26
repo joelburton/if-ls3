@@ -120,6 +120,42 @@ describe("isInString", () => {
   it("returns false at column 0 with no preceding content", () => {
     expect(isInString(`"hello"`, pos(0, 0))).toBe(false);
   });
+
+  // ── Regression coverage for upcoming perf rewrite ──────────────────────────
+
+  it("does not treat a '...' dictionary word as a string", () => {
+    // Inform 6 single-quoted tokens are dictionary words, not string literals.
+    // isInString must only track double quotes.
+    const src = `Verb 'take' * noun -> Take;`;
+    // Cursor inside 'take' — should NOT report inString.
+    expect(isInString(src, pos(0, 7))).toBe(false);
+  });
+
+  it('ignores " inside a single-line ! comment when scanning later lines', () => {
+    // The " inside the comment on line 0 must not leak open-string state to line 1.
+    const src = `! He said "hi" earlier.\nx = 1;`;
+    expect(isInString(src, pos(1, 4))).toBe(false);
+  });
+
+  it("returns true on a continuation line of a string spanning many lines", () => {
+    // 50-line multi-line string; cursor on line 25.
+    const middle = "more text\n".repeat(50);
+    const src = `description "${middle}";`;
+    expect(isInString(src, pos(25, 4))).toBe(true);
+  });
+
+  it("returns false on a line far below a closed multi-line string", () => {
+    const middle = "more text\n".repeat(50);
+    const src = `description "${middle}";\n${"x = 1;\n".repeat(20)}y = 2;`;
+    // Cursor on the very last line — string closed long ago.
+    const lines = src.split("\n");
+    expect(isInString(src, pos(lines.length - 1, 2))).toBe(false);
+  });
+
+  it("returns true inside an unterminated string at end of file", () => {
+    const src = `x = 1;\nmsg = "still open`;
+    expect(isInString(src, pos(1, 10))).toBe(true);
+  });
 });
 
 // ── wordAtPosition ───────────────────────────────────────────────────────────

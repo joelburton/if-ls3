@@ -122,4 +122,59 @@ describe("getSignatureHelp", () => {
     expect(label.slice((params[1]!.label as [number, number])[0], (params[1]!.label as [number, number])[1])).toBe("b");
     expect(label.slice((params[2]!.label as [number, number])[0], (params[2]!.label as [number, number])[1])).toBe("x");
   });
+
+  // ── Multi-line and mid-call comment handling (already correct) ──────────────
+
+  it("tracks active parameter across a multi-line call", () => {
+    // MyFunc(
+    //   1,
+    //   |   ← cursor here, second parameter
+    const src = text("MyFunc(", "  1,", "  ");
+    const result = getSignatureHelp(testIndex, src, pos(2, 2));
+    expect(result!.signatures[0]!.label).toBe("MyFunc(a, b, x)");
+    expect(result!.activeParameter).toBe(1);
+  });
+
+  it("ignores ! line comment in mid-call (commas inside comment don't count)", () => {
+    const src = text("MyFunc(1, ! commas, in, comment", "  ");
+    const result = getSignatureHelp(testIndex, src, pos(1, 2));
+    expect(result!.activeParameter).toBe(1);
+  });
+
+  // ── Dictionary words: '...' ─────────────────────────────────────────────────
+  // Inform 6 single-quoted tokens are dictionary words, not string literals.
+  // The current findCallContext doesn't know about them, so a `(` or `,` inside
+  // a dict word derails the paren stack / comma count.  These tests document
+  // the intended behavior; they pass once the dict-word skip is added to the
+  // scan loop in signatureHelp.ts.  Remove `.fails` after the fix.
+
+  it.fails("ignores comma inside a '...' dictionary word", () => {
+    // MyFunc('a,b', |) — only one real comma, so cursor is on second param.
+    const result = getSignatureHelp(testIndex, "MyFunc('a,b', ", pos(0, 14));
+    expect(result!.activeParameter).toBe(1);
+  });
+
+  it.fails("ignores ( inside a '...' dictionary word", () => {
+    // MyFunc('foo(', |) — the ( inside the dict word should not open a frame.
+    const result = getSignatureHelp(testIndex, "MyFunc('foo(', ", pos(0, 15));
+    expect(result).not.toBeNull();
+    expect(result!.signatures[0]!.label).toBe("MyFunc(a, b, x)");
+    expect(result!.activeParameter).toBe(1);
+  });
+
+  // ── Long preamble (regression for upcoming bounded-scan rewrite) ────────────
+
+  it("resolves a call after a long preamble of unrelated code", () => {
+    // ~3 KB of unrelated content followed by the call.  Once the scan becomes
+    // a bounded backward window, the call must still resolve as long as it's
+    // within the window (a few hundred bytes is far inside any reasonable
+    // bound).
+    const filler = "! filler comment line\n".repeat(150); // ~3.3 KB
+    const src = filler + "MyFunc(1, ";
+    const lastLine = src.split("\n").length - 1;
+    const lastLineText = src.split("\n")[lastLine]!;
+    const result = getSignatureHelp(testIndex, src, pos(lastLine, lastLineText.length));
+    expect(result!.signatures[0]!.label).toBe("MyFunc(a, b, x)");
+    expect(result!.activeParameter).toBe(1);
+  });
 });
