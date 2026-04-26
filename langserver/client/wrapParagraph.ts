@@ -32,28 +32,37 @@ function findEnclosingString(
   doc: vscode.TextDocument,
   cursor: vscode.Position,
 ): { open: vscode.Position; close: vscode.Position } | null {
+  // Track string state from document start so we correctly handle multi-line
+  // strings and don't mistake a closing " for an opening one. Outside a
+  // string, "!" starts a comment; inside a string, "!" is literal content.
+  let inString = false;
   let openPos: vscode.Position | null = null;
 
-  outer:
-  for (let line = cursor.line; line >= 0; line--) {
+  for (let line = 0; line <= cursor.line; line++) {
     const text = doc.lineAt(line).text;
     const endChar = line === cursor.line ? cursor.character : text.length;
-    for (let ch = endChar - 1; ch >= 0; ch--) {
+    for (let ch = 0; ch < endChar; ch++) {
+      if (!inString && text[ch] === "!") break; // rest of line is comment
       if (text[ch] === '"') {
-        openPos = new vscode.Position(line, ch);
-        break outer;
+        if (!inString) {
+          inString = true;
+          openPos = new vscode.Position(line, ch);
+        } else {
+          inString = false;
+          openPos = null;
+        }
       }
     }
   }
 
-  if (!openPos) return null;
+  if (!inString || !openPos) return null;
 
+  // Cursor is inside a string — scan forward for the closing quote.
   let closePos: vscode.Position | null = null;
-
   outer:
-  for (let line = openPos.line; line < doc.lineCount; line++) {
+  for (let line = cursor.line; line < doc.lineCount; line++) {
     const text = doc.lineAt(line).text;
-    const startChar = line === openPos.line ? openPos.character + 1 : 0;
+    const startChar = line === cursor.line ? cursor.character : 0;
     for (let ch = startChar; ch < text.length; ch++) {
       if (text[ch] === '"') {
         closePos = new vscode.Position(line, ch);
@@ -63,9 +72,6 @@ function findEnclosingString(
   }
 
   if (!closePos) return null;
-
-  if (cursor.isBeforeOrEqual(openPos) || cursor.isAfterOrEqual(closePos)) return null;
-
   return { open: openPos, close: closePos };
 }
 
