@@ -7,8 +7,14 @@ import type { FileConfig } from "../src/workspace/config";
 // Matches "-E1" Microsoft-format lines: /abs/path/file(line): Error:  message
 const DIAG_RE = /^(.+)\((\d+)\):\s+(Error|Warning):\s+(.*)$/;
 
-function parseDiagnostics(stderr: string): Map<string, vscode.Diagnostic[]> {
+interface ParseResult {
+  byFile: Map<string, vscode.Diagnostic[]>;
+  first: { uri: vscode.Uri; range: vscode.Range } | null;
+}
+
+function parseDiagnostics(stderr: string): ParseResult {
   const byFile = new Map<string, vscode.Diagnostic[]>();
+  let first: ParseResult["first"] = null;
   for (const line of stderr.split("\n")) {
     const m = DIAG_RE.exec(line);
     if (!m) continue;
@@ -26,8 +32,9 @@ function parseDiagnostics(stderr: string): Map<string, vscode.Diagnostic[]> {
     const list = byFile.get(file) ?? [];
     list.push(diag);
     byFile.set(file, list);
+    if (!first) first = { uri: vscode.Uri.file(file), range };
   }
-  return byFile;
+  return { byFile, first };
 }
 
 export async function compileCommand(
@@ -118,7 +125,7 @@ export async function compileCommand(
           const warnings = lines.filter((l) => /:\s+Warning:\s/.test(l)).length;
 
           // Push parsed diagnostics to Problems panel.
-          const byFile = parseDiagnostics(stderr);
+          const { byFile, first } = parseDiagnostics(stderr);
           for (const [file, diags] of byFile) {
             diagCollection.set(vscode.Uri.file(file), diags);
           }
@@ -149,6 +156,13 @@ export async function compileCommand(
           } else {
             void vscode.window.showInformationMessage(
               `Inform 6: ${label} compiled successfully.`,
+            );
+          }
+
+          // Jump to the first error or warning.
+          if (first) {
+            void vscode.workspace.openTextDocument(first.uri).then((doc) =>
+              vscode.window.showTextDocument(doc, { selection: first!.range, preserveFocus: false })
             );
           }
         });
