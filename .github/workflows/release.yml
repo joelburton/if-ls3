@@ -61,9 +61,57 @@ jobs:
           path: Inform6/${{ matrix.binary }}
           if-no-files-found: error
 
+  build-vsix:
+    name: Build VS Code extension
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: langserver/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: langserver
+
+      - name: Package VSIX
+        run: npm run package-vsix
+        working-directory: langserver
+
+      - name: Upload VSIX
+        uses: actions/upload-artifact@v4
+        with:
+          name: inform6-lsp-vsix
+          path: langserver/*.vsix
+          if-no-files-found: error
+
+  build-source:
+    name: Package Inform6 source
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create archives
+        run: |
+          tar czf inform6-src.tar.gz Inform6/
+          zip -r inform6-src.zip Inform6/
+
+      - name: Upload source archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: inform6-src
+          path: |
+            inform6-src.tar.gz
+            inform6-src.zip
+          if-no-files-found: error
+
   release:
     name: Create GitHub release
-    needs: build-compiler
+    needs: [build-compiler, build-vsix, build-source]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -76,14 +124,14 @@ jobs:
         with:
           path: dist
 
-      # Each artifact lands in its own subdirectory; flatten to dist/
-      - name: Flatten artifacts
+      - name: Flatten compiler artifacts
         run: |
-          for dir in dist/*/; do
-            name=$(basename "$dir")
-            mv "$dir"/* "dist/$name"
-            rmdir "$dir"
+          for name in inform6-linux-x64 inform6-macos-x64 inform6-macos-arm64 inform6-windows-x64.exe; do
+            mv "dist/$name" "dist/_tmp_$name"
+            mv "dist/_tmp_$name"/* "dist/$name"
+            rmdir "dist/_tmp_$name"
           done
+        shell: bash
 
       - name: Create release
         env:
@@ -96,4 +144,7 @@ jobs:
             dist/inform6-linux-x64 \
             dist/inform6-macos-x64 \
             dist/inform6-macos-arm64 \
-            dist/inform6-windows-x64.exe
+            dist/inform6-windows-x64.exe \
+            dist/inform6-lsp-vsix/*.vsix \
+            dist/inform6-src/inform6-src.tar.gz \
+            dist/inform6-src/inform6-src.zip
