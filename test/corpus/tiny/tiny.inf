@@ -3,7 +3,6 @@ Include "lib";
 Property room_func;
 Property description;
 Attribute my_attr;
-
 Class Room
   with
     name 'my-name',
@@ -12,13 +11,14 @@ Class Room
 
 Array arr --> 10 20 30;
 Constant MY_CONST 42;
-Global foo 13;   !! A docstring for foo
+Global foo ;   !! A docstring for foo
 
 Room TheRoom "The Room"
   has my_attr
   with
-    description "The description TheRoom if Room room theroom If verb Verb.",
-    before [; 
+    description "The description TheRoom if Room room theroom If verb Verb. but
+    also this",
+    before [; ! Pragma:Prop
       self.Room::room_func();
       print self.description();
       Foozle: "You foozle!";
@@ -32,7 +32,9 @@ Room TheRoom "The Room"
   print (string) TheRoom.description();
   print (property) description;
   print LIB_CONST;
+  Foozle(1, 2, 3);
 ];
+
 
 [ Main;
   print foo, MY_CONST, arr-->0;
@@ -47,7 +49,8 @@ Room TheRoom "The Room"
   MyFunc();
 ];
 
-[ Foozle;
+[ Foozle apple berry cherry;
+  print apple, berry, cherry;
   ! This sub is not actually related to the Foozle action
 ];
 
@@ -56,4 +59,5 @@ Room TheRoom "The Room"
 
 
 Verb 'foozle'
-  * noun -> Foozle;
+  * noun -> Foozle
+;
