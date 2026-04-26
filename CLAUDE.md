@@ -69,6 +69,13 @@ All `file` fields in the JSON are absolute paths (resolved via `realpath()`).
 The main source file was previously emitted as a relative path; it is now
 absolute like all other files.
 
+**IMPORTANT:** The JSON output has a `"version"` field (currently `1`, emitted
+in `index.c`). Any change to the JSON *structure* — adding/removing/renaming
+top-level keys or changing field types — requires bumping this version number so
+the language server can detect incompatible compiler builds. Fixing what data is
+emitted (e.g. more refs, corrected column numbers) without changing field names
+or shape does NOT require a bump.
+
 Doc comments use `!! ` (two bangs + space) convention. Preceding `!! ` lines
 before a definition, or trailing `!! ` on the same line as a definition.
 
