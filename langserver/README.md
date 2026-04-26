@@ -144,6 +144,45 @@ return value convention.
 
 ## Setup
 
+### Installing the compiler
+
+The extension needs the **Inform 6 compiler** (a custom build from this
+repository) to power most features. TextMate highlighting, snippets, and
+string wrapping work without it, but hover, go-to-definition, completions,
+diagnostics, and semantic highlighting all require it.
+
+#### macOS and Linux
+
+You need a C compiler (`cc`/`gcc`/`clang`) and `make` — both are standard on
+macOS (via Xcode Command Line Tools) and on any Linux distro.
+
+```bash
+git clone https://github.com/joelburton/if-ls3.git
+make -C if-ls3/Inform6
+```
+
+Copy (or symlink) the resulting `if-ls3/Inform6/inform6` binary somewhere on
+your PATH, e.g. `~/bin/inform6`.
+
+#### Windows
+
+Install [MSYS2](https://www.msys2.org/), then open an **MSYS2 MinGW 64-bit**
+shell and run:
+
+```bash
+pacman -S mingw-w64-x86_64-gcc make
+git clone https://github.com/joelburton/if-ls3.git
+make -C if-ls3/Inform6
+```
+
+Copy `if-ls3/Inform6/inform6.exe` somewhere convenient, e.g.
+`C:\Users\you\bin\inform6.exe`.
+
+#### Setting the compiler path
+
+Point `inform6rc.yaml` at the binary you just built (see Workspace
+configuration below).
+
 ### Workspace configuration
 
 Create an `inform6rc.yaml` file in your workspace root to tell the language

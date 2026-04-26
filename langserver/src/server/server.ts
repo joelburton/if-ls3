@@ -106,6 +106,8 @@ connection.onInitialized(async () => {
   await triggerReindex();
 });
 
+let compilerNotFoundNotified = false;
+
 async function triggerReindex(): Promise<void> {
   if (!workspaceConfig || !workspaceRoot) return;
   if (workspaceConfig.files.length === 0) return;
@@ -122,6 +124,14 @@ async function triggerReindex(): Promise<void> {
   if (currentIndices.length > 0) {
     previousDiagnosticUris = pushDiagnostics(connection, currentIndices, previousDiagnosticUris);
     connection.sendNotification("inform6/indexUpdated");
+  } else if (!compilerNotFoundNotified) {
+    // Check whether any configured compiler binary is missing — that's the most
+    // common reason every compilation returns null on first launch.
+    const missing = workspaceConfig.files.find((fc) => !fs.existsSync(fc.compiler));
+    if (missing) {
+      compilerNotFoundNotified = true;
+      connection.sendNotification("inform6/compilerNotFound", { path: missing.compiler });
+    }
   }
 }
 

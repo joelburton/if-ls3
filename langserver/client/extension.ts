@@ -258,6 +258,22 @@ function startClient(context: vscode.ExtensionContext): void {
     refreshAllDecorations();
   });
 
+  client.onNotification("inform6/compilerNotFound", (params: { path: string }) => {
+    void vscode.window.showWarningMessage(
+      `Inform 6: compiler not found at "${params.path}". ` +
+        `Most language features are disabled. ` +
+        `See the extension README for build and install instructions.`,
+      "Open README",
+    ).then((action) => {
+      if (action === "Open README") {
+        void vscode.commands.executeCommand(
+          "markdown.showPreview",
+          vscode.Uri.joinPath(vscode.Uri.file(context.extensionPath), "README.md"),
+        );
+      }
+    });
+  });
+
   // Restart the server when inform6rc.yaml changes.
   const yamlWatcher = vscode.workspace.createFileSystemWatcher("**/inform6rc.yaml");
   context.subscriptions.push(
