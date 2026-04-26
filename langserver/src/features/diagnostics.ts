@@ -99,7 +99,8 @@ export function pushDiagnostics(
       let content: string;
       try {
         content = fs.readFileSync(filePath, "utf-8");
-      } catch {
+      } catch (e) {
+        connection.console.warn(`[diagnostics] could not read ${filePath} for #IfDef scan: ${e}`);
         continue;
       }
 
