@@ -32,7 +32,10 @@ No undone-but-actually-done items found.
 
 Low priority. Not blockers; flag for a small cleanup pass.
 
-> **Status — 2026-04-25:** B1–B5 complete. B6 still open (deferred).
+> **Status — 2026-04-25:** B1–B5 complete. B6 retracted on re-check —
+> grep found zero `console.*` calls in client code; all catch blocks
+> already route to `outputChannel` / `showErrorMessage` or are
+> deliberate dispose-time ignores. No issue to fix.
 
 ### B1. Duplicate "6." in completions.ts JSDoc — ✅ Done
 
@@ -84,11 +87,15 @@ local `content` variable with its own logging. Three near-duplicates of
 the same pattern, with **inconsistent error logging** in the second one.
 Consider a small `getCachedLines(file)` helper that always logs on failure.
 
-### B6. `client/compile.ts` and other client logic uses `console.error`/no logging
+### B6. ~~Client logging routes to Extension Host log~~ — Retracted
 
-Worth a follow-up: extension code logs to `console.*` (e.g., the catch
-blocks in `extension.ts`), which lands in the Extension Host log rather
-than the Output channel users see. Minor UX issue if anything misbehaves.
+Original concern was that catch blocks in `client/extension.ts` logged to
+`console.*` (Extension Host log) rather than the Output channel. On
+re-check this is wrong: there are zero `console.*` calls in client code.
+All catch blocks either use `outputChannel.appendLine` (e.g.
+`extension.ts:190`), `vscode.window.showErrorMessage` (e.g.
+`extension.ts:274`), or deliberately swallow shutdown errors. No fix
+needed.
 
 ---
 
