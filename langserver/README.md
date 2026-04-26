@@ -108,6 +108,20 @@ a glance which code paths are compiled. Toggle with the **Inform 6: Toggle
 Inactive Branch Graying** command, or set `inform6.grayInactiveBranches` to
 `false` to disable permanently.
 
+### Compile (Ctrl+Shift+B)
+
+The **Inform 6: Compile** command (also the ▶ button in the editor title bar)
+compiles your project using `inform6rc.yaml`:
+
+- Shows a quick-pick list of all configured targets, pre-selecting the
+  currently open file if it is a listed target
+- On errors or warnings: jumps the editor to the first diagnostic, shows a
+  coloured toast (red for errors, yellow for warnings-only), and offers a
+  **Show Output** button with the full message list
+- On success: shows a green toast
+- Diagnostics appear in the Problems panel with clickable links to jump to
+  each location; use F8 / Shift+F8 to move between them
+
 ### Fill and wrap strings (Alt+Q)
 
 With the cursor inside a string literal, **Alt+Q** reflows the string content
@@ -161,6 +175,7 @@ file, or when `inform6rc.yaml` changes.
 | `inform6.enableTextMateHighlighting` | `true` | Enable TextMate grammar highlighting (reload required) |
 | `inform6.enableLanguageServer` | `true` | Enable the language server |
 | `inform6.grayInactiveBranches` | `true` | Gray out inactive conditional compilation branches |
+| `inform6.verboseOutput` | `false` | Show verbose indexer/server logs in the output channel (useful when debugging the extension) |
 
 ### Per-file options in `inform6rc.yaml`
 

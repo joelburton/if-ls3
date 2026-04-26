@@ -6,22 +6,12 @@ import { LanguageClient, LanguageClientOptions } from "vscode-languageclient/nod
 import { inactiveLineRange } from "../src/features/conditionals";
 import { wrapParagraph } from "./wrapParagraph";
 import { compileCommand } from "./compile";
+import { isVerboseOnly } from "./outputFilter";
 
 type Conditional = Parameters<typeof inactiveLineRange>[0];
 
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel;
-
-// Messages that are only interesting when debugging the extension itself.
-function isVerboseOnly(msg: string): boolean {
-  return (
-    msg.startsWith("[activate] server:") ||
-    msg.startsWith("[server] exited") ||
-    msg.startsWith("[stderr]") ||
-    /^\[extension\] (?:TextMate|inform6\.enable)/.test(msg) ||
-    /\[indexer\] (?:spawning|OK|stdout:|stderr:)/.test(msg)
-  );
-}
 
 function makeFilteringChannel(inner: vscode.OutputChannel): vscode.OutputChannel {
   const filtered = (msg: string, write: (s: string) => void) => {

@@ -7,12 +7,12 @@ import type { FileConfig } from "../src/workspace/config";
 // Matches "-E1" Microsoft-format lines: /abs/path/file(line): Error:  message
 const DIAG_RE = /^(.+)\((\d+)\):\s+(Error|Warning):\s+(.*)$/;
 
-interface ParseResult {
+export interface ParseResult {
   byFile: Map<string, vscode.Diagnostic[]>;
   first: { uri: vscode.Uri; range: vscode.Range } | null;
 }
 
-function parseDiagnostics(stderr: string): ParseResult {
+export function parseDiagnostics(stderr: string): ParseResult {
   const byFile = new Map<string, vscode.Diagnostic[]>();
   let first: ParseResult["first"] = null;
   for (const line of stderr.split("\n")) {
