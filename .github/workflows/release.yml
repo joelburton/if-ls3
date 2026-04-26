@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-compiler:
+    name: Build compiler (${{ matrix.label }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: linux-x64
+            binary: inform6
+            asset: inform6-linux-x64
+
+          - os: macos-13       # last Intel runner
+            label: macos-x64
+            binary: inform6
+            asset: inform6-macos-x64
+
+          - os: macos-latest   # Apple Silicon (M-series)
+            label: macos-arm64
+            binary: inform6
+            asset: inform6-macos-arm64
+
+          - os: windows-latest
+            label: windows-x64
+            binary: inform6.exe
+            asset: inform6-windows-x64.exe
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up MinGW (Windows)
+        if: runner.os == 'Windows'
+        uses: egor-tensin/setup-mingw@v2
+        with:
+          platform: x64
+
+      - name: Build
+        run: make -C Inform6 CC=gcc
+        shell: bash
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: Inform6/${{ matrix.binary }}
+          if-no-files-found: error
+
+  release:
+    name: Create GitHub release
+    needs: build-compiler
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      # Each artifact lands in its own subdirectory; flatten to dist/
+      - name: Flatten artifacts
+        run: |
+          for dir in dist/*/; do
+            name=$(basename "$dir")
+            mv "$dir"/* "dist/$name"
+            rmdir "$dir"
+          done
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" \
+            --title "Inform 6 Language Server $TAG" \
+            --notes-file .github/RELEASE_NOTES.md \
+            dist/inform6-linux-x64 \
+            dist/inform6-macos-x64 \
+            dist/inform6-macos-arm64 \
+            dist/inform6-windows-x64.exe
