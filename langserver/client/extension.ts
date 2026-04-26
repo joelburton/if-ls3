@@ -12,6 +12,37 @@ type Conditional = Parameters<typeof inactiveLineRange>[0];
 let client: LanguageClient | undefined;
 let outputChannel: vscode.OutputChannel;
 
+// Messages that are only interesting when debugging the extension itself.
+function isVerboseOnly(msg: string): boolean {
+  return (
+    msg.startsWith("[activate] server:") ||
+    msg.startsWith("[server] exited") ||
+    msg.startsWith("[stderr]") ||
+    /^\[extension\] (?:TextMate|inform6\.enable)/.test(msg) ||
+    /\[indexer\] (?:spawning|OK|stdout:|stderr:)/.test(msg)
+  );
+}
+
+function makeFilteringChannel(inner: vscode.OutputChannel): vscode.OutputChannel {
+  const filtered = (msg: string, write: (s: string) => void) => {
+    const verbose = vscode.workspace
+      .getConfiguration("inform6")
+      .get<boolean>("verboseOutput", false);
+    if (verbose || !isVerboseOnly(msg)) write(msg);
+  };
+  return {
+    get name() { return inner.name; },
+    append:     (v) => filtered(v,  (s) => inner.append(s)),
+    appendLine: (v) => filtered(v,  (s) => inner.appendLine(s)),
+    replace:    (v) => inner.replace(v),
+    clear:      ()  => inner.clear(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    show:       (...args: any[]) => (inner.show as (...a: any[]) => void)(...args),
+    hide:       ()  => inner.hide(),
+    dispose:    ()  => inner.dispose(),
+  };
+}
+
 const inactiveDecoration = vscode.window.createTextEditorDecorationType({
   opacity: "0.4",
   isWholeLine: true,
@@ -51,7 +82,9 @@ function refreshAllDecorations(): void {
 const compileDiagnostics = vscode.languages.createDiagnosticCollection("inform6-compile");
 
 export function activate(context: vscode.ExtensionContext): void {
-  outputChannel = vscode.window.createOutputChannel("Inform6 Language Server");
+  outputChannel = makeFilteringChannel(
+    vscode.window.createOutputChannel("Inform6 Language Server")
+  );
   context.subscriptions.push(compileDiagnostics);
 
   // Write the correct grammar file before VS Code tokenizes any .inf files.

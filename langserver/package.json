@@ -104,6 +104,11 @@
           "type": "boolean",
           "default": true,
           "description": "Gray out inactive conditional compilation branches (#IfDef, #IfV5, etc.) based on the compiler's evaluation."
+        },
+        "inform6.verboseOutput": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show verbose indexer and server logs in the Inform 6 output channel. Off by default; enable when debugging the extension."
         }
       }
     }
