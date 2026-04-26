@@ -46,7 +46,7 @@ export async function compileCommand(): Promise<void> {
   if (!fc) return;
   const label = path.basename(fc.mainFile);
 
-  const args: string[] = [];
+  const args: string[] = ["-q2"];
   if (fc.switches) args.push(...fc.switches.trim().split(/\s+/));
   if (fc.libraryPath) args.push(`+${fc.libraryPath}`);
   for (const def of fc.defines) {
@@ -69,6 +69,7 @@ export async function compileCommand(): Promise<void> {
         });
 
         const stderrChunks: Buffer[] = [];
+        child.stdout?.on("data", () => { /* -q2 suppresses stdout */ });
         child.stderr?.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
 
         child.on("error", (err) => {
@@ -80,29 +81,26 @@ export async function compileCommand(): Promise<void> {
 
         child.on("close", (code) => {
           resolve();
-          const stderr = Buffer.concat(stderrChunks).toString("utf-8").trim();
-          const errorMatch = stderr.match(/(\d+)\s+error/i);
-          const warnMatch = stderr.match(/(\d+)\s+warning/i);
-          const errors = errorMatch ? parseInt(errorMatch[1]) : 0;
-          const warnings = warnMatch ? parseInt(warnMatch[1]) : 0;
+          const lines = Buffer.concat(stderrChunks).toString("utf-8").split("\n");
+          const errors   = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
+          const warnings = lines.filter((l) => /:\s+Warning:\s/.test(l)).length;
 
-          if (code === 0 || errors === 0) {
-            const detail =
-              warnings > 0
-                ? ` (${warnings} warning${warnings === 1 ? "" : "s"})`
-                : "";
-            void vscode.window.showInformationMessage(
-              `Inform 6: ${label} compiled successfully${detail}.`,
+          const detail = [
+            errors   > 0 ? `${errors} error${errors     === 1 ? "" : "s"}`   : "",
+            warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "",
+          ].filter(Boolean).join(", ");
+
+          if (code !== 0) {
+            void vscode.window.showErrorMessage(
+              `Inform 6: ${label} — ${detail || "compilation failed"}.`,
+            );
+          } else if (warnings > 0) {
+            void vscode.window.showWarningMessage(
+              `Inform 6: ${label} — ${detail}.`,
             );
           } else {
-            const detail = [
-              errors > 0 ? `${errors} error${errors === 1 ? "" : "s"}` : "",
-              warnings > 0 ? `${warnings} warning${warnings === 1 ? "" : "s"}` : "",
-            ]
-              .filter(Boolean)
-              .join(", ");
-            void vscode.window.showErrorMessage(
-              `Inform 6: ${label} failed — ${detail}.`,
+            void vscode.window.showInformationMessage(
+              `Inform 6: ${label} compiled successfully.`,
             );
           }
         });
