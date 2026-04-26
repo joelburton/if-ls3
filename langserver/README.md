@@ -76,6 +76,12 @@ Context-aware completions triggered as you type:
   arrays, and language keywords
 - Completions are suppressed inside comments
 
+### Signature help
+
+Typing `(` after a routine name shows a popup with the routine's parameter
+list. The current parameter is highlighted as you type; `,` advances to the
+next one.
+
 ### Diagnostics
 
 Compiler errors and warnings appear inline as you edit. The full Inform 6
