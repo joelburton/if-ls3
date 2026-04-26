@@ -165,9 +165,9 @@ export function isInHasClause(lines: string[], cursorLine: number, cursorCol: nu
  * 4. **`ofclass` / `ofclass … or`**: class names.
  * 5. **`class` clause in object header**: class names (space-separated list).
  * 6. **`has`/`hasnt` clause**: attribute names.
- * 6. **Top-top** (first token at col 0, outside all bodies): directives,
+ * 7. **Top-top** (first token at col 0, outside all bodies): directives,
  *    class names, snippet templates.
- * 7. **General**: in-scope locals, then all user symbols and keywords.
+ * 8. **General**: in-scope locals, then all user symbols and keywords.
  *    After `->`, action names are prepended (grammar lines get them first;
  *    `obj->prop` access still has the full symbol list).
  */

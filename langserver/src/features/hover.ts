@@ -8,12 +8,6 @@ function md(parts: string[]): Hover {
 }
 
 /**
- * Build a hover response for `word` using the compiler index.
- *
- * Lookup order: routines (richest data) → objects → constants → globals →
- * arrays → symbols[] fallback (covers library properties/attributes).
- */
-/**
  * Return a display path for filePath relative to workspaceRoot.
  * If the relative path requires more than 2 leading "../" segments it's
  * more confusing than helpful, so fall back to the absolute path.
@@ -33,6 +27,12 @@ export function findIncludeHover(inc: IncludeInfo, workspaceRoot: string): Hover
   return md([`**Include** \`"${inc.given}"\``, `→ *${display}*`]);
 }
 
+/**
+ * Build a hover response for `word` using the compiler index.
+ *
+ * Lookup order: routines (richest data) → objects → constants → globals →
+ * arrays → symbols[] fallback (covers library properties/attributes).
+ */
 export function findHover(
   index: CompilerIndex,
   word: string,

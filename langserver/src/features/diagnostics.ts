@@ -25,6 +25,22 @@ export function pushDiagnostics(
   const byUri = new Map<string, Diagnostic[]>();
   const fileLines = new Map<string, string[]>(); // path → lines cache
 
+  // Read a file's lines once and cache. Logs (but does not throw) on failure
+  // so a missing file degrades to an empty array — diagnostics still flow,
+  // just without source-line context for that file.
+  const getCachedLines = (file: string): string[] => {
+    let cached = fileLines.get(file);
+    if (cached !== undefined) return cached;
+    try {
+      cached = fs.readFileSync(file, "utf-8").split("\n");
+    } catch (e) {
+      connection.console.warn(`[diagnostics] could not read ${file}: ${e}`);
+      cached = [];
+    }
+    fileLines.set(file, cached);
+    return cached;
+  };
+
   // --- Compiler errors (from all compilations) ---
   for (const { index } of compilations) {
     for (const error of index.errors) {
@@ -42,15 +58,7 @@ export function pushDiagnostics(
       let endChar = Number.MAX_SAFE_INTEGER;
       const nameMatch = /"([^"]+)"/.exec(error.message);
       if (nameMatch) {
-        if (!fileLines.has(error.file)) {
-          try {
-            fileLines.set(error.file, fs.readFileSync(error.file, "utf-8").split("\n"));
-          } catch (e) {
-            connection.console.warn(`[diagnostics] could not read ${error.file}: ${e}`);
-            fileLines.set(error.file, []);
-          }
-        }
-        const srcLine = fileLines.get(error.file)![line] ?? "";
+        const srcLine = getCachedLines(error.file)[line] ?? "";
         // indexOf finds the first occurrence; may squiggle the wrong token if
         // the name appears more than once on the line. Acceptable for now.
         const col = srcLine.indexOf(nameMatch[1]);
@@ -96,15 +104,10 @@ export function pushDiagnostics(
 
       if (libraryPaths.some((lp) => filePath.startsWith(lp))) continue;
 
-      let content: string;
-      try {
-        content = fs.readFileSync(filePath, "utf-8");
-      } catch (e) {
-        connection.console.warn(`[diagnostics] could not read ${filePath} for #IfDef scan: ${e}`);
-        continue;
-      }
+      const lines = getCachedLines(filePath);
+      if (lines.length === 0) continue;
 
-      const warnings = scanIfDefWarnings(content, knownNames);
+      const warnings = scanIfDefWarnings(lines.join("\n"), knownNames);
       if (warnings.length === 0) continue;
 
       const uri = URI.file(filePath).toString();
@@ -117,18 +120,7 @@ export function pushDiagnostics(
   for (const { index, fileConfig } of compilations) {
     if (!fileConfig.warnUndeclaredProperties) continue;
 
-    const getLines = (file: string) => {
-      if (!fileLines.has(file)) {
-        try {
-          fileLines.set(file, fs.readFileSync(file, "utf-8").split("\n"));
-        } catch {
-          fileLines.set(file, []);
-        }
-      }
-      return fileLines.get(file)!;
-    };
-
-    for (const [filePath, diags] of collectUndeclaredPropertyWarnings(index, getLines)) {
+    for (const [filePath, diags] of collectUndeclaredPropertyWarnings(index, getCachedLines)) {
       const uri = URI.file(filePath).toString();
       if (!byUri.has(uri)) byUri.set(uri, []);
       byUri.get(uri)!.push(...diags);

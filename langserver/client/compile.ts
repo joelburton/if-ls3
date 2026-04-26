@@ -127,7 +127,7 @@ async function compileTarget(
           resolve(null);
         });
 
-        child.on("close", (code) => {
+        child.on("close", () => {
           const stderr = Buffer.concat(stderrChunks).toString("utf-8");
           const lines = stderr.split("\n");
           const errors = lines.filter((l) => /:\s+Error:\s/.test(l)).length;
@@ -146,7 +146,6 @@ async function compileTarget(
           }
 
           resolve({ errors, warnings, first });
-          void code; // exit code covered by error/warning counts
         });
       }),
   );
