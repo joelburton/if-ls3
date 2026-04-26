@@ -336,6 +336,9 @@
 #endif
 /* 2 */
 #define HAS_REALPATH
+#ifdef _WIN32
+#undef HAS_REALPATH
+#endif
 /* 4 */
 #define FN_SEP '/'
 #endif

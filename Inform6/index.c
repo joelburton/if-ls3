@@ -505,11 +505,15 @@ static void json_print_escaped_string(const char *s)
 /* Resolve path to absolute before printing. Falls back to the original
    if realpath() fails (e.g. file no longer exists at output time). */
 static void json_print_abs_path(const char *path)
-{   char resolved[4096];
+{
+#ifdef HAS_REALPATH
+    char resolved[4096];
     if (path && realpath(path, resolved))
-        json_print_escaped_string(resolved);
-    else
-        json_print_escaped_string(path ? path : "");
+    {   json_print_escaped_string(resolved);
+        return;
+    }
+#endif
+    json_print_escaped_string(path ? path : "");
 }
 
 static const char *array_type_name(int type)
