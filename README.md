@@ -164,3 +164,16 @@ index. There is no incremental parsing or in-server Inform 6 grammar.
 
 See `CLAUDE.md` for a detailed module-by-module breakdown intended for
 contributors (human or AI).
+
+---
+
+## Credits
+
+- **Inform 6 compiler** — Graham Nelson and contributors (GPL-2.0)
+- **[vscode-inform6](https://gitlab.com/Natrium729/vscode-inform6)** by
+  Nathanaël Marion (MIT) — the TextMate grammar in `langserver/syntaxes/`
+  descends from his, and the compile-and-run story-launcher logic is adapted
+  from his extension
+- **[IF Player](https://marketplace.visualstudio.com/items?itemName=natrium729.if-player)**
+  by Nathanaël Marion — the in-editor story player used by the Compile and Run
+  feature
