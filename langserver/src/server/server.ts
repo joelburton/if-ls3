@@ -15,6 +15,7 @@ import {
   FoldingRangeParams,
   PrepareRenameParams,
   RenameParams,
+  SignatureHelpParams,
 } from "vscode-languageserver/node";
 import * as fs from "node:fs";
 import * as path from "node:path";
@@ -36,6 +37,7 @@ import { findReferences, refAtPosition } from "../features/references";
 import { getFoldingRanges } from "../features/foldingRanges";
 import { getConditionalsForFile } from "../features/conditionals";
 import { prepareRename, computeRename, affectedFiles, hasInactiveBranches } from "../features/rename";
+import { getSignatureHelp } from "../features/signatureHelp";
 
 const connection = createConnection(ProposedFeatures.all);
 const documents = new TextDocuments(TextDocument);
@@ -98,6 +100,10 @@ connection.onInitialize((params: InitializeParams): InitializeResult => {
       },
       foldingRangeProvider: true,
       renameProvider: { prepareProvider: true },
+      signatureHelpProvider: {
+        triggerCharacters: ["(", ","],
+        retriggerCharacters: [","],
+      },
     },
   };
 });
@@ -288,6 +294,14 @@ connection.onCompletion((params: CompletionParams) => {
   if (isInComment(lineText, params.position.character)) return null;
   const filePath = URI.parse(params.textDocument.uri).fsPath;
   return getCompletions(index, filePath, params.position, lineText, lines);
+});
+
+connection.onSignatureHelp((params: SignatureHelpParams) => {
+  const index = indexForDocument(params.textDocument.uri);
+  if (!index) return null;
+  const doc = documents.get(params.textDocument.uri);
+  if (!doc) return null;
+  return getSignatureHelp(index, doc.getText(), params.position);
 });
 
 connection.languages.semanticTokens.on((params: SemanticTokensParams) => {
