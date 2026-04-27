@@ -181,8 +181,10 @@ function jumpToFirst(first: ParseResult["first"]): void {
 }
 
 // ---------------------------------------------------------------------------
-// Story file detection
+// Story file detection and playback
 // ---------------------------------------------------------------------------
+
+let ifPlayerMessageShown = false;
 
 const STORY_EXTENSIONS = [".ulx", ".z8", ".z5", ".z3", ".z6", ".z4", ".z7"];
 
@@ -293,10 +295,29 @@ export async function compileAndRunCommand(
 
   if (isExternal) {
     void vscode.env.openExternal(storyUri);
-  } else {
+  } else if (vscode.extensions.getExtension("natrium729.if-player")) {
     void vscode.commands.executeCommand("vscode.open", storyUri, {
       preview: false,
       viewColumn: col,
     });
+  } else {
+    void vscode.env.openExternal(storyUri);
+    if (!ifPlayerMessageShown) {
+      ifPlayerMessageShown = true;
+      void vscode.window
+        .showInformationMessage(
+          "Inform 6: IF Player extension not found — story opened with your system's default app. " +
+            "Install IF Player from the VS Code Marketplace for in-editor playback.",
+          "Install IF Player",
+        )
+        .then((action) => {
+          if (action === "Install IF Player") {
+            void vscode.commands.executeCommand(
+              "vscode.open",
+              vscode.Uri.parse("vscode:extension/natrium729.if-player"),
+            );
+          }
+        });
+    }
   }
 }

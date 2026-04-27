@@ -128,6 +128,21 @@ compiles your project using `inform6rc.yaml`:
 - Diagnostics appear in the Problems panel with clickable links to jump to
   each location; use F8 / Shift+F8 to move between them
 
+### Compile and Run (F5)
+
+The **Inform 6: Compile and Run** command (also the ▶▶ button in the editor title bar,
+or F5) compiles your project and opens the resulting story file for play.
+
+By default the story opens in a panel beside your code using the
+[IF Player](https://marketplace.visualstudio.com/items?itemName=natrium729.if-player)
+extension. IF Player is available free on the VS Code Marketplace — install it for the
+best experience. If IF Player is not installed (e.g. on VSCodium, where the Microsoft
+Marketplace is unavailable), the story opens with your system's default application
+instead and you'll see a one-time prompt offering to install it.
+
+Set `inform6.storyPlayerColumn` to `"external"` to always open with your system's
+default application (e.g. [Lectrote](https://github.com/erkyrath/lectrote)).
+
 ### Fill and wrap strings (Alt+Q)
 
 With the cursor inside a string literal, **Alt+Q** reflows the string content
@@ -239,6 +254,8 @@ file, or when `inform6rc.yaml` changes.
 | `inform6.enableLanguageServer` | `true` | Enable the language server |
 | `inform6.grayInactiveBranches` | `true` | Gray out inactive conditional compilation branches |
 | `inform6.verboseOutput` | `false` | Show verbose indexer/server logs in the output channel (useful when debugging the extension) |
+| `inform6.storyPlayerColumn` | `beside` | Where to open the story after Compile and Run: `beside`, `active`, `external` (system default app), or `one`–`nine` for a specific column. |
+| `inform6.runWithWarnings` | `false` | Launch the story even when there are compiler warnings (errors always prevent launch). |
 
 ### Per-file options in `inform6rc.yaml`
 
@@ -271,4 +288,5 @@ Doc comments appear in hover popups and help document your project's API.
   Nathanaël Marion (MIT) — the TextMate grammar descends from his, and the
   compile-and-run story-launcher is adapted from his extension
 - **[IF Player](https://marketplace.visualstudio.com/items?itemName=natrium729.if-player)**
-  by Nathanaël Marion — the in-editor story player used by Compile and Run
+  by Nathanaël Marion — the in-editor story player used by Compile and Run (optional;
+  without it the story opens with your system's default application)

@@ -113,13 +113,20 @@ configs.inform6 = {
 lspconfig.inform6.setup {}
 ```
 
+I'm not a Neovim user; this setup is untested. Let me know if it works or
+doesn't work for you.
+
 ### Helix
 
 In `~/.config/helix/languages.toml`:
 
 ```toml
 [[language]]
-name = "inform6"
+name             = "inform6"
+scope            = "source.inform6"
+file-types       = ["inf"]
+roots            = ["inform6rc.yaml"]
+comment-token    = "!"
 language-servers = ["inform6-lsp"]
 
 [language-server.inform6-lsp]
@@ -127,7 +134,26 @@ command = "node"
 args    = ["/path/to/repo/langserver/bundled-server/server.cjs", "--stdio"]
 ```
 
+> **Notes:** `.h` files are omitted from `file-types` to avoid conflicting with
+> Helix's built-in C support. If your project uses `.h` for Inform 6 includes
+> exclusively, you can add `"h"` to the list.
+
+I'm not a Helix user, but my understanding from their docs is that Helix won't
+use TextMate for highlighting, so this would only give you the language server
+features. I'm not familiar enough with Helix to give this a thorough test, but I checked
+a few basic things like jump-to-symbol and it worked.
+
+I looks like Helix has strong opinions about where to start looking for files;
+it may be necessary to launch Helix from the directory where you have your
+`inform6rc.yaml` file.
+
+
 ### IntelliJ-based IDEs (LSP4IJ)
+
+The VSCode extension has a few features not in the language server, like
+Rename Symbol --- however IntelliJ is my main editor, so as many things as
+possible are handled by the language server rather than the VSCode extension.
+
 
 **Language server**
 
@@ -175,5 +201,7 @@ contributors (human or AI).
   descends from his, and the compile-and-run story-launcher logic is adapted
   from his extension
 - **[IF Player](https://marketplace.visualstudio.com/items?itemName=natrium729.if-player)**
-  by Nathanaël Marion — the in-editor story player used by the Compile and Run
+  by Nathanaël Marion — the in-editor story player used by Compile and Run (optional;
+  without it, or on VSCodium where it is unavailable, the story opens with your
+  system's default application)
   feature

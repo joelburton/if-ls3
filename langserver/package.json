@@ -11,9 +11,6 @@
   "categories": [
     "Programming Languages"
   ],
-  "extensionDependencies": [
-    "natrium729.if-player"
-  ],
   "activationEvents": [
     "onLanguage:inform6"
   ],
